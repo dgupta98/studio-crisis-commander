@@ -216,3 +216,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Secrets — NEVER commit these
+.env
+service-account.json
+*.json.key
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+.next/
