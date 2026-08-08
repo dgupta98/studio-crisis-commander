@@ -12,7 +12,6 @@ SELECTs must stay in sync with the MV definitions in ddl.sql.
 from __future__ import annotations
 
 import argparse
-import sys
 import time
 
 from data.ch_client import client
@@ -78,6 +77,8 @@ def backfill_one(name: str, select_sql: str) -> int:
         dt = time.perf_counter() - t0
         n = c.query(f"SELECT count() FROM {name}").result_rows[0][0]
     print(f"  {name}: {n:,} rows in {dt:.2f}s")
+    if n == 0:
+        raise RuntimeError(f"{name}: INSERT produced 0 rows — source table empty or wrong DB context?")
     return n
 
 
