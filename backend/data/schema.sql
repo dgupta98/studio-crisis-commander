@@ -15,8 +15,9 @@ CREATE TABLE IF NOT EXISTS films (
     budget_usd    UInt64,
     revenue_usd   UInt64,
     popularity    Float32,
-    vote_average  Float32
-) ENGINE = ReplacingMergeTree()
+    vote_average  Float32,
+    fetched_at    DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(fetched_at)
 ORDER BY film_id;
 
 ------------------------------------------------------------
