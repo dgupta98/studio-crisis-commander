@@ -19,6 +19,8 @@ Read these before starting Task 1:
 - **Working directory for all commands:** `backend/`. The venv is `backend/venv/`. Run Python as `./venv/bin/python`. Modules run as `./venv/bin/python -m <dotted.path>`.
 - **Layer 2 must be built and detections populated.** Verify with `./venv/bin/python -c "from data.ch_client import client; c = client().__enter__(); print(c.query('SELECT count() FROM detections').result_rows[0][0])"` — should print a number in the millions. If zero, run Layer 2's `data.mv.refresh --since-hours 1440` first.
 - **`.env` at repo root** already has `CLICKHOUSE_HOST/PORT/USER/PASSWORD/DB` and `GOOGLE_CLOUD_PROJECT/LOCATION/GOOGLE_APPLICATION_CREDENTIALS`. Do NOT read or print `.env`. The existing `data/ch_client.py` shows how Layer 1/2 loads it via `python-dotenv`.
+- **`.env` extra keys for ADK+Vertex:** `GOOGLE_GENAI_USE_VERTEXAI=1` is required so `google.genai` routes through Vertex AI (without it, ADK looks for a Gemini API key and fails). `GOOGLE_APPLICATION_CREDENTIALS` must be an **absolute** path — relative paths (`./service-account.json`) resolve against cwd (`backend/`) and won't find the file at the repo root.
+- **List-tables tool requires `database` arg:** `mcp-clickhouse`'s `list_tables` tool has no default database. Proof and any sub-agent calling it must supply `database=...` — the proof discovers it via a preceding `list_databases` call.
 - **The installed `mcp` package is the MCP Python SDK** — a dependency of both `mcp-clickhouse` and ADK's `MCPToolset`. Our local package MUST be named `mcp_integration`, never `mcp`, or every ADK import breaks.
 - **mcp-clickhouse tool names (verified via `mcp.get_tools()`):** `list_databases`, `list_tables`, `run_query`. The spec §11.2 §7 mentions `run_select_query` — that was a guess. Use `run_query`.
 - **mcp-clickhouse env variables:** it expects `CLICKHOUSE_DATABASE` (not `CLICKHOUSE_DB` — Layer 1 uses `CLICKHOUSE_DB`). Our `client.py` maps between them so `.env` stays unchanged.
@@ -295,9 +297,12 @@ from mcp_integration.client import build_toolset
 
 
 PROOF_INSTRUCTION = """\
-You are a ClickHouse operator. Use the list_tables tool to show all tables
-in the current database, then reply in one sentence naming the tables.
-Do NOT call run_query. Do NOT ask for permission.
+You are a ClickHouse operator proving that MCP integration works.
+Step 1: Call the list_databases tool (no arguments).
+Step 2: Pick the first user database from the result (skip system/information_schema/INFORMATION_SCHEMA).
+Step 3: Call list_tables with database=<that name>.
+Step 4: In one sentence, name 3-5 of the tables you saw.
+Do NOT call run_query. Do NOT ask for permission. Do NOT ask clarifying questions.
 """
 
 
@@ -366,9 +371,11 @@ if __name__ == "__main__":
 Run from `backend/`: `./venv/bin/python -m mcp_integration.proof`
 Expected: prints something like:
 ```
-[mcp_proof] tool_call: list_tables({...})
+[mcp_proof] tool_call: list_databases({})
+[mcp_proof] tool_response: [{"name": "system"}, {"name": "<your db>"}, ...]...
+[mcp_proof] tool_call: list_tables({"database": "<your db>"})
 [mcp_proof] tool_response: [{"name": "audience_sentiment", ...}]...
-[mcp_proof] text: The database contains tables including audience_sentiment, box_office_revenue, ...
+[mcp_proof] text: The database contains audience_sentiment, box_office_revenue, ...
 OK — mcp-clickhouse spawned, tools listed, Gemini answered.
 ```
 Exit code 0.
