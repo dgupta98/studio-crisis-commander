@@ -11,10 +11,10 @@ Thresholds live here as module constants so calibration is one edit.
 
 from __future__ import annotations
 
-Z_THRESHOLD = 3.0        # z-score |z| >= this fires
+Z_THRESHOLD = 2.5        # was 3.0
 EWMA_ALPHA = 0.3
-EWMA_THRESHOLD = 0.4     # normalized dev |Δ/ewma| > this fires
-PCT_THRESHOLD = 0.30     # 30% change fires
+EWMA_THRESHOLD = 0.30    # was 0.40
+PCT_THRESHOLD = 0.20     # was 0.30
 
 
 def zscore_sql(metric_name: str, source_table: str, value_expr: str,
