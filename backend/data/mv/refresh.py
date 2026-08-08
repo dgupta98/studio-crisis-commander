@@ -127,7 +127,7 @@ def _metric_selects() -> list[tuple[str, str]]:
     return selects
 
 
-def _build_detection_query(since_hours: int) -> str:
+def _build_detection_query(since_hours: int, anchor_ts: str) -> str:
     """Wrap UNION ALL of detector fragments with the JOIN that computes
     business_impact, severity, dedup_key. Filters by since_hours cutoff."""
     unioned = "\n        UNION ALL\n".join(
@@ -159,24 +159,32 @@ def _build_detection_query(since_hours: int) -> str:
     ) AS d
     LEFT JOIN films f              ON f.film_id = d.film_id
     LEFT JOIN film_region_weight w ON w.film_id = d.film_id AND w.region = d.region
-    WHERE d.metric_ts > (SELECT max(ts) FROM roll_sentiment_hourly) - INTERVAL {since_hours} HOUR
+    WHERE d.metric_ts > toDateTime('{anchor_ts}') - INTERVAL {since_hours} HOUR
       AND d.magnitude IS NOT NULL
     """
+
+
+def _anchor_ts(c) -> str:
+    """Latest data-time observed across rollups, capped at now() so a
+    future-timestamped inject can't retroactively widen the window."""
+    row = c.query(
+        "SELECT toString(least(now(), (SELECT max(ts) FROM roll_sentiment_hourly)))"
+    ).result_rows[0][0]
+    return row
 
 
 def refresh_detections(since_hours: int = 168) -> int:
     """Refresh detections for buckets within the last `since_hours`.
     Returns count of unique dedup_keys post-refresh."""
-    query = _build_detection_query(since_hours)
     with client() as c:
+        anchor = _anchor_ts(c)
+        query = _build_detection_query(since_hours, anchor)
         t0 = time.perf_counter()
         c.command(query)
         dt = time.perf_counter() - t0
-        # OPTIMIZE FINAL is not always allowed on Cloud; use FINAL in the count
         n_unique = c.query(
             "SELECT count(DISTINCT dedup_key) FROM detections "
-            "WHERE metric_ts > (SELECT max(ts) FROM roll_sentiment_hourly) "
-            f"- INTERVAL {since_hours} HOUR"
+            f"WHERE metric_ts > toDateTime('{anchor}') - INTERVAL {since_hours} HOUR"
         ).result_rows[0][0]
     print(f"refresh_detections(since_hours={since_hours}): "
           f"query {dt*1000:.0f}ms, unique dedup_keys={n_unique:,}", file=sys.stderr)
