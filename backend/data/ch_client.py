@@ -62,9 +62,16 @@ def insert_batches(
     table: str,
     rows: Sequence[Sequence[Any]],
     column_names: Sequence[str],
-    batch_size: int = 500_000,
+    batch_size: int = 100_000,
 ) -> int:
-    """Insert rows into `table` in fixed-size batches. Returns total inserted."""
+    """Insert rows into `table` in fixed-size batches. Returns total inserted.
+
+    `rows` must be materialized (Sequence, not a generator) — needs len/slicing.
+    Default batch_size sized for ClickHouse Cloud Mini (12GB); Task 4/9 may
+    tune upward once memory headroom is measured.
+    """
+    if not rows:
+        return 0
     total = 0
     with client() as c:
         for start in range(0, len(rows), batch_size):
