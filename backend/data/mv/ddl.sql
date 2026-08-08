@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS roll_social_hourly (
     sum_sentiment  Float64,
     sum_virality   Float64,
     sum_mentions   UInt64,
-    n              UInt32
+    n              UInt64
 ) ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(ts)
 ORDER BY (film_id, region, ts);
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS roll_trailer_hourly (
     sum_sentiment_x_views      Float64
 ) ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(ts)
-ORDER BY (film_id, region, variant, ts);
+ORDER BY (trailer_id, film_id, region, variant, ts);
 
 CREATE TABLE IF NOT EXISTS roll_streaming_hourly (
     film_id          UInt64,
