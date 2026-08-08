@@ -142,7 +142,11 @@ ORDER BY (film_id, region, release_date);
 ------------------------------------------------------------
 -- Text
 ------------------------------------------------------------
+-- review_id lets Replacing dedupe on retry: same (batch_idx, row_idx)
+-- always yields the same review_id, so a mid-run resume that re-generates
+-- a completed batch will collapse instead of double-writing.
 CREATE TABLE IF NOT EXISTS reviews_text (
+    review_id       UInt64,
     film_id         UInt64,
     region          LowCardinality(String),
     ts              DateTime,
@@ -150,9 +154,9 @@ CREATE TABLE IF NOT EXISTS reviews_text (
     raw_text        String,
     sentiment_score Float32,
     themes          Array(LowCardinality(String))
-) ENGINE = MergeTree()
+) ENGINE = ReplacingMergeTree()
 PARTITION BY toYYYYMM(ts)
-ORDER BY (film_id, region, ts);
+ORDER BY (film_id, region, ts, review_id);
 
 ------------------------------------------------------------
 -- Ground truth (eval harness answer key)

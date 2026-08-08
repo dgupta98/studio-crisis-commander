@@ -14,6 +14,7 @@ import json
 import os
 import random
 import sys
+import zlib
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -173,9 +174,15 @@ def _run_batch(cl: "genai.Client", spec: BatchSpec) -> tuple[list[list], int, in
     parsed = json.loads(resp.text)
     reviews = parsed.get("reviews", [])
     rows: list[list] = []
-    for rev in reviews[:BATCH_SIZE]:
+    # Deterministic per-batch jitter so retries produce identical (ts, review_id)
+    # and Replacing dedupes them.
+    jitter_rng = random.Random(spec.idx)
+    for row_idx, rev in enumerate(reviews[:BATCH_SIZE]):
+        ts = spec.around_ts + timedelta(minutes=jitter_rng.randint(-30, 30))
+        review_id = zlib.adler32(f"{spec.idx}:{row_idx}".encode())
         rows.append([
-            spec.film_id, spec.region, spec.around_ts, "gemini_synth",
+            review_id,
+            spec.film_id, spec.region, ts, "gemini_synth",
             str(rev.get("raw_text", ""))[:2000],
             float(rev.get("sentiment_score", 0.0)),
             [str(t)[:64] for t in rev.get("themes", [])[:6]],
@@ -223,7 +230,7 @@ def run(limit: int | None = None) -> None:
             continue
         if rows:
             insert_batches("reviews_text", rows,
-                           column_names=["film_id", "region", "ts", "source",
+                           column_names=["review_id", "film_id", "region", "ts", "source",
                                          "raw_text", "sentiment_score", "themes"],
                            batch_size=BATCH_SIZE)
         state["completed_batches"].append(spec.idx)

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import Iterable
 
 from data.ch_client import client
+from data.generate_numeric import WINDOW_DAYS, _film_center_date, _load_films
 from data.ground_truth import Crisis, CrisisType, write as write_gt
 from data.region_split import REGIONS
 
@@ -63,8 +64,10 @@ SCENARIO_META: dict[CrisisType, tuple[list[str], str, str]] = {
 
 
 def _pick_film(rng: random.Random) -> int:
+    # ORDER BY is required for rng.choice to be reproducible — ClickHouse
+    # doesn't guarantee row order without it.
     with client() as c:
-        ids = [r[0] for r in c.query("SELECT film_id FROM films").result_rows]
+        ids = [r[0] for r in c.query("SELECT film_id FROM films ORDER BY film_id").result_rows]
     if not ids:
         raise RuntimeError("No films — run seed_tmdb first.")
     return rng.choice(ids)
@@ -156,13 +159,25 @@ def _build_crisis(
 
 
 def seed_historical(n: int, seed: int = 1337) -> list[Crisis]:
-    """Spread N crises across the last 90 days for text-generation clustering."""
+    """Spread N crises within the baseline telemetry window.
+
+    Anchoring to the film-median release date (same as generate_numeric)
+    guarantees each crisis has ≥ ~30 days of baseline telemetry before it
+    for Detection's rolling z-score to compare against.
+    """
     rng = random.Random(seed)
-    now = datetime.utcnow().replace(microsecond=0)
+    films = _load_films()
+    if not films:
+        raise RuntimeError("No films — run seed_tmdb first.")
+    center = _film_center_date(films)
+    # Place crises in the second half of the baseline window: [center, center + WINDOW_DAYS/2)
     out: list[Crisis] = []
     for i in range(n):
-        days_back = rng.randint(5, 90)
-        ts = now - timedelta(days=days_back, hours=rng.randint(0, 23))
+        days_into_second_half = rng.randint(2, WINDOW_DAYS // 2 - 2)
+        crisis_date = center + timedelta(days=days_into_second_half)
+        ts = datetime.combine(
+            crisis_date, datetime.min.time()
+        ) + timedelta(hours=rng.randint(0, 23), minutes=rng.randint(0, 59))
         c = _build_crisis(rng, is_live=False, ts=ts)
         _perturb(c)
         write_gt(c)

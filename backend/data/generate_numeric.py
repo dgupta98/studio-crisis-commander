@@ -15,6 +15,7 @@ import argparse
 import math
 import random
 import sys
+import zlib
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -75,7 +76,9 @@ def _daily_range(center: date) -> list[date]:
 
 
 def _noise(seed: tuple) -> float:
-    r = random.Random(hash(seed))
+    # adler32(repr(seed)) — stable across processes; hash() would be salted
+    # per-process and re-runs would produce different telemetry.
+    r = random.Random(zlib.adler32(repr(seed).encode()))
     # log-normal noise, mean 1
     return math.exp(r.gauss(0.0, 0.08))
 
@@ -163,7 +166,7 @@ def _generate_campaign(films: list[Film], days: list[date]) -> list[list]:
         w = weights_for(f.genre)
         for region in REGIONS:
             for ch in channels:
-                cid = f.film_id * 100 + hash(ch) % 100
+                cid = f.film_id * 100 + zlib.adler32(ch.encode()) % 100
                 for d in days:
                     dsr = (d - f.release_date).days
                     daily = max(1.0, f.revenue_usd) * w[region] * _lifecycle(dsr) / WINDOW_DAYS
@@ -247,11 +250,27 @@ TABLE_JOBS = [
 ]
 
 
-def run(only: str | None = None) -> None:
+def run(only: str | None = None, force: bool = False) -> None:
     films = _load_films()
     if not films:
         print("No films seeded. Run seed_tmdb first.", file=sys.stderr)
         sys.exit(1)
+
+    # TRUNCATE wipes crisis perturbation rows that crisis_injector layered on
+    # top of the baseline. Refuse if ground truth is non-empty unless caller
+    # opted in with --force. Reseed crises after regenerating telemetry.
+    with client() as c:
+        crisis_rows = c.query("SELECT count() FROM crisis_ground_truth").result_rows[0][0]
+    if crisis_rows and not force:
+        print(
+            f"REFUSING to run: crisis_ground_truth has {crisis_rows} rows; "
+            "TRUNCATE would silently wipe their telemetry perturbations. "
+            "Re-run with --force after you're ready to reseed crises, or "
+            "clear crisis_ground_truth first.",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
     center = _film_center_date(films)
     days = _daily_range(center)
 
@@ -283,11 +302,13 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--only", help="Generate only one table")
     p.add_argument("--verify", action="store_true")
+    p.add_argument("--force", action="store_true",
+                   help="Truncate even if crisis_ground_truth is non-empty")
     args = p.parse_args()
     if args.verify:
         verify()
     else:
-        run(only=args.only)
+        run(only=args.only, force=args.force)
         verify()
 
 

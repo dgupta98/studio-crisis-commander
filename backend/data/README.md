@@ -53,6 +53,13 @@ Steps 3 and 5 are the long-running ones. Step 5 requires Vertex AI auth
 to be configured; use `GEMINI_DRYRUN=1 ./venv/bin/python -m data.generate_text`
 to smoke the code path without spending tokens.
 
+**Ordering matters.** `generate_numeric` TRUNCATEs every telemetry table
+before regenerating, which would wipe the perturbation rows that
+`crisis_injector` layered on top. To protect against this, step 3
+refuses to run when `crisis_ground_truth` is non-empty. If you need to
+regenerate telemetry, either clear `crisis_ground_truth` first (and
+reseed after) or pass `--force` and reseed afterwards.
+
 ## Verification
 
 Every module ships a `--verify` (or module-level `verify()`) that prints
@@ -85,7 +92,7 @@ everything):
 ```bash
 ./venv/bin/python -m data.apply_schema --reset --yes
 ./venv/bin/python -m data.seed_tmdb --refresh
-./venv/bin/python -m data.generate_numeric
+./venv/bin/python -m data.generate_numeric        # crisis_ground_truth is empty after --reset
 ./venv/bin/python -m data.crisis_injector --seed-historical 12
 ./venv/bin/python -m data.generate_text
 ```
