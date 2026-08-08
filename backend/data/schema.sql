@@ -128,13 +128,15 @@ ORDER BY (film_id, region, channel, date);
 ------------------------------------------------------------
 -- Temporal / context
 ------------------------------------------------------------
+-- Small reference table (~few thousand rows). Competitor release dates
+-- span decades, which blows past the 100-partitions-per-INSERT-block cap
+-- if we partition monthly. No perf benefit from partitioning at this size.
 CREATE TABLE IF NOT EXISTS competitor_releases (
     film_id            UInt64,
     region             LowCardinality(String),
     release_date       Date,
     competitor_film_id UInt64
 ) ENGINE = MergeTree()
-PARTITION BY toYYYYMM(release_date)
 ORDER BY (film_id, region, release_date);
 
 ------------------------------------------------------------
