@@ -30,17 +30,17 @@ def test_env_maps_layer1_names_to_mcp_clickhouse_names(monkeypatch):
     assert "CLICKHOUSE_DATABASE" not in os.environ  # never mutates parent env
 
 
-def test_env_requires_host():
-    """Missing CLICKHOUSE_HOST is a fail-fast setup error."""
-    # Clear the four required vars for this test
-    saved = {k: os.environ.pop(k, None) for k in ("CLICKHOUSE_HOST",)}
-    try:
-        with pytest.raises(RuntimeError, match="CLICKHOUSE_HOST"):
-            _env_for_subprocess()
-    finally:
-        for k, v in saved.items():
-            if v is not None:
-                os.environ[k] = v
+@pytest.mark.parametrize("missing", ["CLICKHOUSE_HOST", "CLICKHOUSE_USER", "CLICKHOUSE_PASSWORD"])
+def test_env_requires_each_var(missing, monkeypatch):
+    """Missing any required var is a fail-fast setup error."""
+    # Ensure the other required vars are present so we isolate `missing`.
+    for var in ("CLICKHOUSE_HOST", "CLICKHOUSE_USER", "CLICKHOUSE_PASSWORD"):
+        if var == missing:
+            monkeypatch.delenv(var, raising=False)
+        else:
+            monkeypatch.setenv(var, "x")
+    with pytest.raises(RuntimeError, match=missing):
+        _env_for_subprocess()
 
 
 @pytest.mark.skipif("CLICKHOUSE_HOST" not in os.environ,
