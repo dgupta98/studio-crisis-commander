@@ -114,6 +114,8 @@ ORDER BY (metric, film_id, region, metric_ts, detector);
 -- backfill.py (Task 4).
 ------------------------------------------------------------
 
+-- NOTE: GROUP BY references the SELECT alias (e.g. `ts`, `day`) — required by ClickHouse's new analyzer when the expression is aliased.
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_sentiment_hourly
 TO roll_sentiment_hourly AS
 SELECT
@@ -175,7 +177,7 @@ SELECT
     sum(impressions)   AS sum_impressions,
     sum(clicks)        AS sum_clicks
 FROM marketing_spend
-GROUP BY film_id, region, channel, date;
+GROUP BY film_id, region, channel, day;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_campaign_daily
 TO roll_campaign_daily AS
@@ -187,4 +189,4 @@ SELECT
     sum(spend_usd)     AS sum_spend,
     sum(conversions)   AS sum_conversions
 FROM campaign_performance
-GROUP BY film_id, region, channel, date;
+GROUP BY film_id, region, channel, day;
