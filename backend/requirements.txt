@@ -23,3 +23,6 @@ pandas>=2.2.0
 # Utilities
 python-dotenv>=1.0.0
 pydantic>=2.0.0
+
+# Testing (Layer 3a onward)
+pytest>=8.0.0
