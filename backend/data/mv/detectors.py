@@ -31,10 +31,7 @@ def zscore_sql(metric_name: str, source_table: str, value_expr: str,
         {value_expr}                                            AS actual_value,
         toFloat32(({value_expr} - avg({value_expr}) OVER win)
             / nullIf(stddevPop({value_expr}) OVER win, 0))      AS magnitude
-    FROM (
-        SELECT film_id, region, ts, {value_expr}
-        FROM {source_table}
-    )
+    FROM {source_table}
     WINDOW win AS (PARTITION BY {partition_cols} ORDER BY ts
                    ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING)
     QUALIFY abs(magnitude) >= {Z_THRESHOLD}
@@ -58,7 +55,7 @@ def ewma_sql(metric_name: str, source_table: str, value_expr: str,
                    PARTITION BY {partition_cols} ORDER BY ts
                    ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
                ) AS prior_vals
-        FROM (SELECT film_id, region, ts, {value_expr} FROM {source_table})
+        FROM {source_table}
     )
     SELECT
         ts                                       AS metric_ts,
@@ -103,7 +100,7 @@ def pctchange_sql(metric_name: str, source_table: str, value_expr: str,
         sum({value_expr}) OVER win_curr                    AS actual_value,
         toFloat32((sum({value_expr}) OVER win_curr - sum({value_expr}) OVER win_prior)
                   / nullIf(sum({value_expr}) OVER win_prior, 0)) AS magnitude
-    FROM (SELECT film_id, region, ts, {value_expr} FROM {source_table})
+    FROM {source_table}
     WINDOW win_prior AS (PARTITION BY {partition_cols} ORDER BY ts
                          ROWS BETWEEN {prior_from} PRECEDING AND {prior_to} PRECEDING),
            win_curr  AS (PARTITION BY {partition_cols} ORDER BY ts
