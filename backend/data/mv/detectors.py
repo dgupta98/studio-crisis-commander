@@ -54,11 +54,10 @@ def ewma_sql(metric_name: str, source_table: str, value_expr: str,
     return f"""
     WITH windowed AS (
         SELECT film_id, region, ts, {value_expr} AS v,
-               arraySlice(
-                   groupArray({value_expr}) OVER (
-                       PARTITION BY {partition_cols} ORDER BY ts
-                       ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
-                   ), 1) AS prior_vals
+               groupArray({value_expr}) OVER (
+                   PARTITION BY {partition_cols} ORDER BY ts
+                   ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
+               ) AS prior_vals
         FROM (SELECT film_id, region, ts, {value_expr} FROM {source_table})
     )
     SELECT
