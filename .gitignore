@@ -233,3 +233,8 @@ __pycache__/
 node_modules/
 dist/
 .next/
+
+# Layer 1 data generation cache — never commit
+backend/data/seed/*.parquet
+backend/data/seed/*.json
+backend/data/seed/*.csv

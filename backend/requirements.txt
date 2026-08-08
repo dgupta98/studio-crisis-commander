@@ -3,12 +3,22 @@ google-cloud-aiplatform[agent_engines,adk]>=1.101.0
 google-genai>=1.0.0
 vertexai
 
-# ClickHouse MCP — required for ClickHouse track
+# ClickHouse MCP — required for ClickHouse track (Layer 3 runtime)
 mcp-clickhouse>=0.1.0
 
-# API
+# ClickHouse direct client — Layer 1 (data generation) and Layer 2 (MV setup) ONLY.
+# Do NOT import from any agent code.
+clickhouse-connect>=0.7.0
+
+# API (Layer 4)
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
+
+# Data ingest + generation (Layer 1)
+requests>=2.31.0
+tenacity>=8.2.0
+pyarrow>=15.0.0
+pandas>=2.2.0
 
 # Utilities
 python-dotenv>=1.0.0
