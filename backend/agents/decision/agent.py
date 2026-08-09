@@ -30,7 +30,7 @@ from agents.decision.contracts import DecisionResult, RecommendedAction
 from agents.decision.prompts import DECISION_PROMPT
 from agents.investigation.contracts import InvestigationResult
 
-DECISION_TIMEOUT_SECONDS = 45.0
+DECISION_TIMEOUT_SECONDS = 90.0
 FLASH = "gemini-2.5-flash"
 
 
