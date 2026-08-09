@@ -250,8 +250,10 @@ def compute_status(
     pending_approval.
 
     Returns (status, threshold_that_gated). If auto, threshold is the
-    lowest ceiling that was cleared (informational). If pending, it's the
-    threshold of the highest-magnitude action that failed the gate.
+    highest per-action ceiling that was cleared (informational). If pending,
+    it's the largest FINITE threshold of a failing action; 0.0 means the
+    only gating reason was escalate_to_human (its infinite threshold isn't
+    representable in JSON — status='pending_approval' carries the signal).
     """
     gating_threshold = 0.0
     all_auto = True
@@ -260,12 +262,11 @@ def compute_status(
         # inf threshold (escalate_to_human) always requires approval.
         if a.impact_usd is None or thr == float("inf") or a.impact_usd >= thr:
             all_auto = False
-            if thr > gating_threshold and thr != float("inf"):
-                gating_threshold = thr
-            elif thr == float("inf") and gating_threshold == 0.0:
+            if thr != float("inf") and thr > gating_threshold:
                 gating_threshold = thr
     if all_auto:
-        # Report the highest per-action ceiling that was cleared.
+        # Report the highest per-action ceiling that was cleared. auto_executed
+        # can never include escalate_to_human (inf threshold), so this is finite.
         return "auto_executed", max(
             DEFAULT_THRESHOLDS_USD[a.action_type] for a in actions
         )
