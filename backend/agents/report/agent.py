@@ -64,18 +64,31 @@ def build_report_agent() -> LlmAgent:
 async def invoke_report(
     inv: InvestigationResult, dec: DecisionResult,
 ) -> ExecutiveReport:
-    try:
-        final = await asyncio.wait_for(
-            _run_pipeline(inv, dec), timeout=REPORT_TIMEOUT_SECONDS
-        )
-    except asyncio.TimeoutError as e:
-        raise ReportTimeout(
-            f"Report exceeded {REPORT_TIMEOUT_SECONDS:.0f}s"
-        ) from e
-    # Audit attach is outside the LLM timeout — it's a write operation that
-    # depends on the MCP read path and should not count against the report budget.
-    await async_audit_attach_report(dec.decision_id, final)
-    return final
+    """Run the report agent; retry once on ReportProvenanceError.
+
+    Provenance failures are nondeterministic — Flash occasionally copies a
+    verbatim SQL string but mislabels the signal that produced it. Retrying
+    the whole pipeline (fresh session, cold prompt) usually resolves it
+    without weakening the strict anti-fabrication validator.
+    """
+    for attempt in range(2):
+        try:
+            final = await asyncio.wait_for(
+                _run_pipeline(inv, dec), timeout=REPORT_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError as e:
+            raise ReportTimeout(
+                f"Report exceeded {REPORT_TIMEOUT_SECONDS:.0f}s"
+            ) from e
+        except ReportProvenanceError:
+            if attempt == 0:
+                continue
+            raise
+        # Audit attach is outside the LLM timeout — write op depending on the
+        # MCP read path; shouldn't count against the report LLM budget.
+        await async_audit_attach_report(dec.decision_id, final)
+        return final
+    raise RuntimeError("unreachable")  # for type checker
 
 
 async def _run_pipeline(
