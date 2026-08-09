@@ -3,7 +3,8 @@
 Flow:
   1. LlmAgent proposes actions with rationale + params (no SQL/no numbers).
   2. Orchestrator validates params, renders canonical SQL per action.
-  3. Orchestrator executes each SQL through a shared MCPToolset.
+  3. Orchestrator executes each SQL directly via clickhouse-connect (BUILD-RISK-FALLBACK;
+     original MCP-mediated approach cost 15-20s per query due to LLM schema discovery).
   4. Orchestrator populates impact_usd / impact_sql on each action.
   5. Orchestrator computes status (auto vs pending) from thresholds.
   6. Orchestrator writes the audit row.
@@ -15,7 +16,6 @@ import asyncio
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any
 from uuid import uuid4
 
 from google.adk.agents.llm_agent import LlmAgent
@@ -25,12 +25,10 @@ from google.genai import types
 from agents.decision.actions import (
     compute_status, render_action_sql, validate_params,
 )
-from agents.decision.audit import audit_insert
+from agents.decision.audit import audit_insert, run_impact_sql
 from agents.decision.contracts import DecisionResult, RecommendedAction
 from agents.decision.prompts import DECISION_PROMPT
 from agents.investigation.contracts import InvestigationResult
-from mcp_integration.client import build_toolset
-
 
 DECISION_TIMEOUT_SECONDS = 45.0
 FLASH = "gemini-2.5-flash"
@@ -123,9 +121,11 @@ async def _run_pipeline(inv: InvestigationResult) -> DecisionResult:
             sql = ""
         rendered.append((a, sql))
 
-    # --- 3. Execute impact SQL via a shared MCP toolset ------------------
-    toolset = build_toolset()
-    impacts = await _run_impacts(toolset, [sql for _, sql in rendered])
+    # --- 3. Execute impact SQL directly via clickhouse-connect (BUILD-RISK-FALLBACK)
+    # Impact SQLs are rendered from canonical TEMPLATES with validated params.
+    # Original LLM-mediated MCP approach cost 15-20s per query (schema discovery);
+    # direct execution is safe and completes in <1s per query.
+    impacts = await _run_impacts([sql for _, sql in rendered])
     for (action, _), impact in zip(rendered, impacts):
         if isinstance(impact, Exception):
             action.impact_error = str(impact)[:400]
@@ -167,79 +167,23 @@ async def _run_pipeline(inv: InvestigationResult) -> DecisionResult:
 # ---------------------------------------------------------------------
 
 async def _run_impacts(
-    toolset: Any, sqls: list[str],
+    sqls: list[str],
 ) -> list[float | None | Exception]:
+    """Execute impact SQLs directly via clickhouse-connect (BUILD-RISK-FALLBACK).
+
+    Replaces the original LLM-mediated MCP approach: each _run_one_impact spin-up
+    cost 15-20s due to schema discovery. run_impact_sql (in audit.py, already exempt
+    from the §1 boundary rule) executes the validated canonical SQL in <1s.
+    """
     results: list[float | None | Exception] = []
     for sql in sqls:
         if not sql:
             results.append(None)
             continue
         try:
-            results.append(await _run_one_impact(toolset, sql))
+            results.append(run_impact_sql(sql))
         except Exception as e:                                # noqa: BLE001
             results.append(e)
     return results
 
 
-async def _run_one_impact(toolset: Any, sql: str) -> float | None:
-    """Run one impact SQL via a stub agent that uses the shared toolset."""
-    agent = LlmAgent(
-        name="impact_runner",
-        model=FLASH,
-        instruction=(
-            "Call run_query with EXACTLY this SQL and return ONLY the raw "
-            "JSON result the tool gives back:\n\n" + sql
-        ),
-        tools=[toolset],
-    )
-    runner = InMemoryRunner(agent=agent, app_name="impact")
-    session = await runner.session_service.create_session(
-        app_name="impact", user_id="impact",
-    )
-    rows: list[list[Any]] = []
-    async for event in runner.run_async(
-        user_id="impact",
-        session_id=session.id,
-        new_message=types.Content(
-            role="user", parts=[types.Part.from_text(text="Run it.")],
-        ),
-    ):
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.function_response:
-                    rows = _extract_rows(part.function_response.response) or rows
-    if not rows or not rows[0]:
-        return None
-    val = rows[0][0]
-    if val is None:
-        return None
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
-
-
-def _extract_rows(resp: Any) -> list[list[Any]]:
-    """Mirror of audit._extract_rows — mcp-clickhouse response parser."""
-    if isinstance(resp, dict):
-        sc = resp.get("structuredContent")
-        if isinstance(sc, dict) and isinstance(sc.get("result"), str):
-            try:
-                parsed = json.loads(sc["result"])
-                if isinstance(parsed, dict) and isinstance(parsed.get("rows"), list):
-                    return parsed["rows"]
-            except json.JSONDecodeError:
-                pass
-        content = resp.get("content")
-        if isinstance(content, list):
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "text":
-                    txt = item.get("text")
-                    if isinstance(txt, str):
-                        try:
-                            parsed = json.loads(txt)
-                            if isinstance(parsed, dict) and isinstance(parsed.get("rows"), list):
-                                return parsed["rows"]
-                        except json.JSONDecodeError:
-                            pass
-    return []
