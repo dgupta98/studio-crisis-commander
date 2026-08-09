@@ -1,0 +1,419 @@
+{
+  "investigation_id": "195a6ada01be4ee8a84d9ee07d1f6854",
+  "detection": {
+    "metric_ts": "2023-08-26T14:00:00",
+    "metric": "social_trends.avg_virality",
+    "film_id": 199,
+    "region": "Korea",
+    "detector": "zscore",
+    "baseline_value": 0.000991666661320778,
+    "actual_value": 0.2099000063026324,
+    "magnitude": 337.4479675292969,
+    "business_impact": 0.04377525672316551,
+    "severity": 14.771871566772461,
+    "dedup_key": "social_trends.avg_virality|199|Korea|2023-08-26 14:00:00|zscore"
+  },
+  "findings": [
+    {
+      "signal": "numeric_context",
+      "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 199 AND region = 'Korea' AND ts >= '2023-08-25 14:00:00' AND ts <= '2023-08-27 14:00:00' ORDER BY ts LIMIT 100",
+      "columns": [
+        "ts",
+        "avg_virality"
+      ],
+      "rows": [
+        [
+          "2023-08-25 14:00:00",
+          0.001500000013038516
+        ],
+        [
+          "2023-08-25 15:00:00",
+          0.001500000013038516
+        ],
+        [
+          "2023-08-25 16:00:00",
+          0.002099999925121665
+        ],
+        [
+          "2023-08-25 17:00:00",
+          0.0017000000225380063
+        ],
+        [
+          "2023-08-25 18:00:00",
+          0.0017999999690800905
+        ],
+        [
+          "2023-08-25 19:00:00",
+          0.0017999999690800905
+        ],
+        [
+          "2023-08-25 20:00:00",
+          0.001500000013038516
+        ],
+        [
+          "2023-08-25 21:00:00",
+          0.00139999995008111
+        ],
+        [
+          "2023-08-25 22:00:00",
+          0.0008999999845400453
+        ],
+        [
+          "2023-08-25 23:00:00",
+          0.0007999999797903001
+        ],
+        [
+          "2023-08-26 00:00:00",
+          0.0006000000284984708
+        ],
+        [
+          "2023-08-26 01:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-08-26 02:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-08-26 03:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-08-26 04:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-08-26 05:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-08-26 06:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-08-26 07:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-08-26 08:00:00",
+          0.0006000000284984708
+        ],
+        [
+          "2023-08-26 09:00:00",
+          0.0007999999797903001
+        ],
+        [
+          "2023-08-26 10:00:00",
+          0.0010000000474974513
+        ],
+        [
+          "2023-08-26 11:00:00",
+          0.0010999999940395355
+        ],
+        [
+          "2023-08-26 12:00:00",
+          0.0015999999595806003
+        ],
+        [
+          "2023-08-26 13:00:00",
+          0.001500000013038516
+        ],
+        [
+          "2023-08-26 14:00:00",
+          0.2099000063026324
+        ],
+        [
+          "2023-08-26 15:00:00",
+          0.3347600101027638
+        ],
+        [
+          "2023-08-26 16:00:00",
+          0.0017000000225380063
+        ],
+        [
+          "2023-08-26 17:00:00",
+          0.0017999999690800905
+        ],
+        [
+          "2023-08-26 18:00:00",
+          0.0017000000225380063
+        ],
+        [
+          "2023-08-26 19:00:00",
+          0.0015999999595806003
+        ],
+        [
+          "2023-08-26 20:00:00",
+          0.001500000013038516
+        ],
+        [
+          "2023-08-26 21:00:00",
+          0.0012000000569969416
+        ],
+        [
+          "2023-08-26 22:00:00",
+          0.0013000000035390258
+        ],
+        [
+          "2023-08-26 23:00:00",
+          0.0007999999797903001
+        ],
+        [
+          "2023-08-27 00:00:00",
+          0.0006000000284984708
+        ],
+        [
+          "2023-08-27 01:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-08-27 02:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-08-27 03:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-08-27 04:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-08-27 05:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-08-27 06:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-08-27 07:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-08-27 08:00:00",
+          0.0005000000237487257
+        ],
+        [
+          "2023-08-27 09:00:00",
+          0.0007999999797903001
+        ],
+        [
+          "2023-08-27 10:00:00",
+          0.0010000000474974513
+        ],
+        [
+          "2023-08-27 11:00:00",
+          0.0012000000569969416
+        ],
+        [
+          "2023-08-27 12:00:00",
+          0.0013000000035390258
+        ],
+        [
+          "2023-08-27 13:00:00",
+          0.0017000000225380063
+        ],
+        [
+          "2023-08-27 14:00:00",
+          0.0017999999690800905
+        ]
+      ],
+      "narrative": "The average virality for 'social_trends.avg_virality' in Korea for film_id 199 was generally low, fluctuating between 0.0003 and 0.0021 prior to the anomaly at 2023-08-26 14:00:00. At 2023-08-26 14:00:00, the virality spiked sharply to 0.2099 and peaked at 0.3348 an hour later at 2023-08-26 15:00:00. By 2023-08-26 16:00:00, the virality returned to baseline levels of 0.0017, indicating a sharp, short-lived spike that persisted for approximately 2 hours.",
+      "latency_ms": 15788
+    },
+    {
+      "signal": "text_reason",
+      "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 199 AND region = 'Korea' AND ts BETWEEN toDateTime('2023-08-26T14:00:00') - INTERVAL 6 HOUR AND toDateTime('2023-08-26T14:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+      "columns": [],
+      "rows": [],
+      "narrative": "no significant text evidence in the ±6h window.",
+      "latency_ms": 3467
+    },
+    {
+      "signal": "categorical_isolation",
+      "sql": "SELECT platform, avg(virality) AS avg_virality FROM social_trends WHERE film_id = 199 AND region = 'Korea' AND ts BETWEEN '2023-08-26 08:00:00' AND '2023-08-26 20:00:00' GROUP BY platform ORDER BY avg_virality DESC LIMIT 15",
+      "columns": [
+        "platform",
+        "avg_virality"
+      ],
+      "rows": [
+        [
+          "twitter",
+          0.11713889239601688
+        ]
+      ],
+      "narrative": "The anomaly in `social_trends.avg_virality` is almost entirely isolated to a single platform. Within the 12-hour window surrounding the anomaly, Twitter showed an average virality of 0.117, while other platforms had negligible virality. This indicates that a viral event on Twitter was the primary driver of the spike.",
+      "latency_ms": 6206
+    },
+    {
+      "signal": "temporal_context",
+      "sql": "SELECT metric_ts, metric, magnitude FROM detections WHERE film_id = 199 AND region = 'Korea' AND metric_ts >= toDateTime('2023-08-26 14:00:00') - INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT cr.competitor_film_id, f.title AS competitor_film_title, cr.release_date FROM competitor_releases AS cr JOIN films AS f ON cr.competitor_film_id = f.film_id WHERE cr.film_id = 199 AND cr.region = 'Korea' AND cr.release_date >= toDate('2023-08-26') - INTERVAL 14 DAY AND cr.release_date <= toDate('2023-08-26') + INTERVAL 14 DAY",
+      "columns": [
+        "metric_ts",
+        "metric",
+        "magnitude"
+      ],
+      "rows": [
+        [
+          "2023-08-23 14:00:00",
+          "social_trends.avg_virality",
+          4.307692527770996
+        ],
+        [
+          "2023-08-26 12:00:00",
+          "audience_sentiment.avg_score",
+          -0.5182153582572937
+        ],
+        [
+          "2023-08-26 12:00:00",
+          "social_trends.avg_sentiment",
+          0.3659350275993347
+        ],
+        [
+          "2023-08-26 12:00:00",
+          "social_trends.avg_virality",
+          1.8000000715255737
+        ],
+        [
+          "2023-08-26 12:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          3.0
+        ],
+        [
+          "2023-08-26 13:00:00",
+          "social_trends.avg_sentiment",
+          0.347016841173172
+        ],
+        [
+          "2023-08-26 13:00:00",
+          "social_trends.avg_virality",
+          3.5833332538604736
+        ],
+        [
+          "2023-08-26 14:00:00",
+          "social_trends.avg_virality",
+          337.4479675292969
+        ],
+        [
+          "2023-08-26 14:00:00",
+          "audience_sentiment.avg_score",
+          -3.2301747798919678
+        ],
+        [
+          "2023-08-26 14:00:00",
+          "audience_sentiment.avg_score",
+          1.30008864402771
+        ],
+        [
+          "2023-08-26 14:00:00",
+          "social_trends.avg_sentiment",
+          0.6137033104896545
+        ],
+        [
+          "2023-08-26 15:00:00",
+          "audience_sentiment.avg_score",
+          -74.7813491821289
+        ],
+        [
+          "2023-08-26 15:00:00",
+          "social_trends.avg_virality",
+          133.9375
+        ],
+        [
+          "2023-08-26 15:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          4.25
+        ],
+        [
+          "2023-08-26 16:00:00",
+          "audience_sentiment.avg_score",
+          4.342084884643555
+        ],
+        [
+          "2023-08-26 16:00:00",
+          "social_trends.avg_sentiment",
+          -0.7802214622497559
+        ],
+        [
+          "2023-08-26 16:00:00",
+          "social_trends.avg_virality",
+          238.06956481933594
+        ],
+        [
+          "2023-08-26 17:00:00",
+          "audience_sentiment.avg_score",
+          5.230979919433594
+        ],
+        [
+          "2023-08-26 17:00:00",
+          "social_trends.avg_sentiment",
+          -0.9285092353820801
+        ],
+        [
+          "2023-08-26 17:00:00",
+          "social_trends.avg_virality",
+          171.0500030517578
+        ],
+        [
+          "2023-08-26 18:00:00",
+          "social_trends.avg_virality",
+          130.25238037109375
+        ],
+        [
+          "2023-08-26 19:00:00",
+          "social_trends.avg_virality",
+          99.24727630615234
+        ],
+        [
+          "2023-08-26 20:00:00",
+          "social_trends.avg_virality",
+          82.55455017089844
+        ],
+        [
+          "2023-08-26 21:00:00",
+          "social_trends.avg_virality",
+          0.5889763832092285
+        ],
+        [
+          "2023-08-26 22:00:00",
+          "audience_sentiment.avg_score",
+          -28.14400291442871
+        ],
+        [
+          "2023-08-26 22:00:00",
+          "social_trends.avg_sentiment",
+          3.6256704330444336
+        ],
+        [
+          "2023-08-26 23:00:00",
+          "social_trends.avg_sentiment",
+          15.296052932739258
+        ],
+        [
+          "2023-08-27 00:00:00",
+          "audience_sentiment.avg_score",
+          17.82465362548828
+        ]
+      ],
+      "narrative": "The anomalous activity for film 199 in Korea began on 2023-08-23 at 14:00:00 with a spike in `social_trends.avg_virality`. This was followed by a cluster of related anomalies in the 72-hour window leading up to the primary `social_trends.avg_virality` anomaly, including significant fluctuations in `audience_sentiment.avg_score`, `streaming_watch_minutes.completion_ratio`, and `social_trends.avg_sentiment`. There were no competitor film releases in the region within ±14 days of the anomaly, suggesting the anomalous activity is not attributable to competitive pressure.",
+      "latency_ms": 34540
+    }
+  ],
+  "hypothesis": {
+    "primary_cause": "The sharp, short-lived spike in film virality on August 26, 2023, was primarily driven by a viral event localized to Twitter.",
+    "contributing_factors": [
+      "Previous anomalous activity across various social and audience metrics in the preceding 72 hours.",
+      "Absence of a direct trigger from new reviews."
+    ],
+    "confidence": "high",
+    "citations": [
+      "numeric_context",
+      "categorical_isolation",
+      "temporal_context",
+      "text_reason"
+    ]
+  },
+  "started_at": "2026-08-09T16:28:51.653903Z",
+  "finished_at": "2026-08-09T16:30:36.533608Z"
+}

@@ -1,0 +1,329 @@
+{
+  "investigation_id": "4a541c3d982447dd92fded28a86a7acd",
+  "detection": {
+    "metric_ts": "2023-09-13T14:00:00",
+    "metric": "social_trends.avg_virality",
+    "film_id": 136,
+    "region": "Korea",
+    "detector": "pctchange",
+    "baseline_value": 0.00009999999747378752,
+    "actual_value": 0.0015000000057625584,
+    "magnitude": 14.0,
+    "business_impact": 0.029678979888558388,
+    "severity": 0.41550570726394653,
+    "dedup_key": "social_trends.avg_virality|136|Korea|2023-09-13 14:00:00|pctchange"
+  },
+  "findings": [
+    {
+      "signal": "numeric_context",
+      "sql": "SELECT ts, sum_virality / greatest(n, 1) AS avg_virality FROM roll_social_hourly WHERE film_id = 136 AND region = 'Korea' AND ts BETWEEN '2023-09-12 14:00:00' AND '2023-09-14 14:00:00' ORDER BY ts LIMIT 100",
+      "columns": [
+        "ts",
+        "avg_virality"
+      ],
+      "rows": [
+        [
+          "2023-09-12 14:00:00",
+          0.0005000000237487257
+        ],
+        [
+          "2023-09-12 15:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-12 16:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-12 17:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-12 18:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-12 19:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-12 20:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-12 21:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-12 22:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-09-12 23:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-13 00:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-13 01:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-13 02:00:00",
+          0.0
+        ],
+        [
+          "2023-09-13 03:00:00",
+          0.0
+        ],
+        [
+          "2023-09-13 04:00:00",
+          0.0
+        ],
+        [
+          "2023-09-13 05:00:00",
+          0.0
+        ],
+        [
+          "2023-09-13 06:00:00",
+          0.0
+        ],
+        [
+          "2023-09-13 07:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-13 08:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-13 09:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-09-13 10:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-09-13 11:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-13 12:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-13 13:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-13 14:00:00",
+          0.0005000000237487257
+        ],
+        [
+          "2023-09-13 15:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-13 16:00:00",
+          0.0005000000237487257
+        ],
+        [
+          "2023-09-13 17:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-13 18:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-13 19:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-13 20:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-13 21:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-13 22:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-09-13 23:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-14 00:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-14 01:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-14 02:00:00",
+          0.0
+        ],
+        [
+          "2023-09-14 03:00:00",
+          0.0
+        ],
+        [
+          "2023-09-14 04:00:00",
+          0.0
+        ],
+        [
+          "2023-09-14 05:00:00",
+          0.0
+        ],
+        [
+          "2023-09-14 06:00:00",
+          0.0
+        ],
+        [
+          "2023-09-14 07:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-14 08:00:00",
+          0.00009999999747378752
+        ],
+        [
+          "2023-09-14 09:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-09-14 10:00:00",
+          0.00019999999494757503
+        ],
+        [
+          "2023-09-14 11:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-14 12:00:00",
+          0.0003000000142492354
+        ],
+        [
+          "2023-09-14 13:00:00",
+          0.00039999998989515007
+        ],
+        [
+          "2023-09-14 14:00:00",
+          0.00039999998989515007
+        ]
+      ],
+      "narrative": "The average virality for film 136 in Korea experienced an upward drift. For several hours leading up to the detection at 2023-09-13 14:00:00, the virality steadily increased. Beginning at 2023-09-13 09:00:00 with a value of 0.0002, it rose to 0.0005 at the detection timestamp. This represents a sustained increase over a 5-hour period from baseline values around 0.0001 earlier that day.",
+      "latency_ms": 27853
+    },
+    {
+      "signal": "text_reason",
+      "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 136 AND region = 'Korea' AND ts BETWEEN toDateTime('2023-09-13T14:00:00') - INTERVAL 6 HOUR AND toDateTime('2023-09-13T14:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+      "columns": [],
+      "rows": [],
+      "narrative": "no significant text evidence in the ±6h window.",
+      "latency_ms": 3208
+    },
+    {
+      "signal": "categorical_isolation",
+      "sql": "SELECT\n  platform,\n  avg(virality) AS avg_virality\nFROM social_trends\nWHERE\n  film_id = 136\n  AND region = 'Korea'\n  AND ts BETWEEN '2023-09-13 08:00:00' AND '2023-09-13 20:00:00'\nGROUP BY platform\nORDER BY avg_virality DESC\nLIMIT 15",
+      "columns": [
+        "platform",
+        "avg_virality"
+      ],
+      "rows": [
+        [
+          "twitter",
+          0.0003384615405453727
+        ]
+      ],
+      "narrative": "The increase in average virality for film 136 in Korea is exclusively driven by the Twitter platform. During the 12-hour window around the detection, Twitter was the only platform showing virality, with an average virality of 0.000338. This indicates that the content's spread is highly concentrated on this specific social media channel.",
+      "latency_ms": 6615
+    },
+    {
+      "signal": "temporal_context",
+      "sql": "SELECT metric_ts, metric, magnitude FROM detections WHERE film_id = 136 AND region = 'Korea' AND metric_ts >= toDateTime('2023-09-13T14:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2023-09-13T14:00:00') ORDER BY metric_ts; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE film_id = 136 AND region = 'Korea' AND release_date >= toDate('2023-09-13T14:00:00') - INTERVAL 14 DAY AND release_date <= toDate('2023-09-13T14:00:00') + INTERVAL 14 DAY",
+      "columns": [
+        "metric_ts",
+        "metric",
+        "magnitude"
+      ],
+      "rows": [
+        [
+          "2023-09-10 14:00:00",
+          "social_trends.avg_virality",
+          14.0
+        ],
+        [
+          "2023-09-10 14:00:00",
+          "social_trends.avg_sentiment",
+          0.45988741517066956
+        ],
+        [
+          "2023-09-13 12:00:00",
+          "audience_sentiment.avg_score",
+          -0.9633377194404602
+        ],
+        [
+          "2023-09-13 12:00:00",
+          "audience_sentiment.avg_score",
+          0.4953960180282593
+        ],
+        [
+          "2023-09-13 12:00:00",
+          "social_trends.avg_virality",
+          3.5
+        ],
+        [
+          "2023-09-13 13:00:00",
+          "social_trends.avg_sentiment",
+          0.3412970304489136
+        ],
+        [
+          "2023-09-13 13:00:00",
+          "social_trends.avg_virality",
+          11.0
+        ],
+        [
+          "2023-09-13 14:00:00",
+          "audience_sentiment.avg_score",
+          -0.42931893467903137
+        ],
+        [
+          "2023-09-13 14:00:00",
+          "social_trends.avg_sentiment",
+          0.5796324014663696
+        ],
+        [
+          "2023-09-13 14:00:00",
+          "social_trends.avg_virality",
+          14.0
+        ]
+      ],
+      "narrative": "The anomaly on `social_trends.avg_virality` is part of a larger period of volatility for film 136 in Korea, starting about 72 hours prior to the detection. The earliest related detection was for `social_trends.avg_virality` on 2023-09-10 at 14:00:00, with a magnitude of 14.0. In the hours leading up to the current anomaly, there were numerous other detections across `social_trends.avg_virality`, `social_trends.avg_sentiment`, and `audience_sentiment.avg_score`, indicating a sustained period of unusual activity. There were no competitor films released in the region within ±14 days of the detection.",
+      "latency_ms": 24284
+    }
+  ],
+  "hypothesis": {
+    "primary_cause": "The increase in average virality for film 136 in Korea is primarily driven by an upward drift in activity exclusively on the Twitter platform.",
+    "contributing_factors": [
+      "This virality increase is part of a broader period of sustained social media volatility for the film.",
+      "The absence of significant new text evidence around the detection suggests the virality may stem from ongoing content sharing or general discussion rather than specific new highly-sentimental reviews."
+    ],
+    "confidence": "high",
+    "citations": [
+      "numeric_context",
+      "categorical_isolation",
+      "temporal_context",
+      "text_reason"
+    ]
+  },
+  "started_at": "2026-08-09T16:34:38.746276Z",
+  "finished_at": "2026-08-09T16:36:20.779285Z"
+}

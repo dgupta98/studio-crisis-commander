@@ -1,0 +1,531 @@
+{
+  "investigation_id": "ae75290a547947c6a421e73c01c8aabc",
+  "detection": {
+    "metric_ts": "2023-08-20T08:00:00",
+    "metric": "social_trends.avg_sentiment",
+    "film_id": 141,
+    "region": "LATAM",
+    "detector": "pctchange",
+    "baseline_value": 0.7068908484652638,
+    "actual_value": 1.404689446091652,
+    "magnitude": 0.9871376752853394,
+    "business_impact": 0.04476134851574898,
+    "severity": 0.044185612350702286,
+    "dedup_key": "social_trends.avg_sentiment|141|LATAM|2023-08-20 08:00:00|pctchange"
+  },
+  "findings": [
+    {
+      "signal": "numeric_context",
+      "sql": "SELECT ts, sum_sentiment / greatest(n, 1) AS avg_sentiment FROM roll_social_hourly WHERE film_id = 141 AND region = 'LATAM' AND ts BETWEEN '2023-08-19 08:00:00' AND '2023-08-21 08:00:00' ORDER BY ts LIMIT 100",
+      "columns": [
+        "ts",
+        "avg_sentiment"
+      ],
+      "rows": [
+        [
+          "2023-08-19 08:00:00",
+          0.3090328574180603
+        ],
+        [
+          "2023-08-19 09:00:00",
+          0.2573658227920532
+        ],
+        [
+          "2023-08-19 10:00:00",
+          0.47673675417900085
+        ],
+        [
+          "2023-08-19 11:00:00",
+          0.3705329895019531
+        ],
+        [
+          "2023-08-19 12:00:00",
+          0.06386960297822952
+        ],
+        [
+          "2023-08-19 13:00:00",
+          0.4446401298046112
+        ],
+        [
+          "2023-08-19 14:00:00",
+          0.03432610630989075
+        ],
+        [
+          "2023-08-19 15:00:00",
+          0.0011858530342578888
+        ],
+        [
+          "2023-08-19 16:00:00",
+          0.1035873293876648
+        ],
+        [
+          "2023-08-19 17:00:00",
+          0.1771424561738968
+        ],
+        [
+          "2023-08-19 18:00:00",
+          0.011602887883782387
+        ],
+        [
+          "2023-08-19 19:00:00",
+          0.19960154592990875
+        ],
+        [
+          "2023-08-19 20:00:00",
+          0.2653864920139313
+        ],
+        [
+          "2023-08-19 21:00:00",
+          0.17484933137893677
+        ],
+        [
+          "2023-08-19 22:00:00",
+          -0.06573200970888138
+        ],
+        [
+          "2023-08-19 23:00:00",
+          0.2176370620727539
+        ],
+        [
+          "2023-08-20 00:00:00",
+          0.1020519956946373
+        ],
+        [
+          "2023-08-20 01:00:00",
+          0.012697977013885975
+        ],
+        [
+          "2023-08-20 02:00:00",
+          0.15051954984664917
+        ],
+        [
+          "2023-08-20 03:00:00",
+          0.3526199460029602
+        ],
+        [
+          "2023-08-20 04:00:00",
+          0.4339524209499359
+        ],
+        [
+          "2023-08-20 05:00:00",
+          0.08494752645492554
+        ],
+        [
+          "2023-08-20 06:00:00",
+          0.0717775970697403
+        ],
+        [
+          "2023-08-20 07:00:00",
+          0.3108724057674408
+        ],
+        [
+          "2023-08-20 08:00:00",
+          0.2655138075351715
+        ],
+        [
+          "2023-08-20 09:00:00",
+          0.2011675238609314
+        ],
+        [
+          "2023-08-20 10:00:00",
+          0.2989038825035095
+        ],
+        [
+          "2023-08-20 11:00:00",
+          0.43010687828063965
+        ],
+        [
+          "2023-08-20 12:00:00",
+          0.2032826542854309
+        ],
+        [
+          "2023-08-20 13:00:00",
+          0.6841370463371277
+        ],
+        [
+          "2023-08-20 14:00:00",
+          0.08018722385168076
+        ],
+        [
+          "2023-08-20 15:00:00",
+          0.10126682370901108
+        ],
+        [
+          "2023-08-20 16:00:00",
+          0.07230447232723236
+        ],
+        [
+          "2023-08-20 17:00:00",
+          0.34731051325798035
+        ],
+        [
+          "2023-08-20 18:00:00",
+          0.30234336853027344
+        ],
+        [
+          "2023-08-20 19:00:00",
+          0.28905928134918213
+        ],
+        [
+          "2023-08-20 20:00:00",
+          0.24301442503929138
+        ],
+        [
+          "2023-08-20 21:00:00",
+          0.45946937799453735
+        ],
+        [
+          "2023-08-20 22:00:00",
+          0.25002026557922363
+        ],
+        [
+          "2023-08-20 23:00:00",
+          0.4936632812023163
+        ],
+        [
+          "2023-08-21 00:00:00",
+          0.24231655895709991
+        ],
+        [
+          "2023-08-21 01:00:00",
+          0.17447775602340698
+        ],
+        [
+          "2023-08-21 02:00:00",
+          0.17897683382034302
+        ],
+        [
+          "2023-08-21 03:00:00",
+          0.1870681792497635
+        ],
+        [
+          "2023-08-21 04:00:00",
+          0.02910572849214077
+        ],
+        [
+          "2023-08-21 05:00:00",
+          0.18806827068328857
+        ],
+        [
+          "2023-08-21 06:00:00",
+          0.0066925217397511005
+        ],
+        [
+          "2023-08-21 07:00:00",
+          0.2760436534881592
+        ],
+        [
+          "2023-08-21 08:00:00",
+          0.08802754431962967
+        ]
+      ],
+      "narrative": "The `avg_sentiment` values in the 24 hours prior to the detection timestamp of `2023-08-20 08:00:00` generally fluctuated between `0.001` and `0.476`. At `2023-08-20 08:00:00`, the `avg_sentiment` was `0.2655`, which is within the typical range observed. A transient spike to `0.6841` occurred at `2023-08-20 13:00:00`, five hours after the detection timestamp, before declining to `0.0801` by `2023-08-20 14:00:00`, and remaining within the normal range thereafter.",
+      "latency_ms": 51028
+    },
+    {
+      "signal": "text_reason",
+      "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 141 AND region = 'LATAM' AND ts BETWEEN toDateTime('2023-08-20 08:00:00') - INTERVAL 6 HOUR AND toDateTime('2023-08-20 08:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+      "columns": [],
+      "rows": [],
+      "narrative": "no significant text evidence in the \u00106h window.",
+      "latency_ms": 2683
+    },
+    {
+      "signal": "categorical_isolation",
+      "sql": "SELECT\n    t.region,\n    avg(t.sentiment) AS avg_sentiment,\n    w.weight\nFROM\n    social_trends AS t\nLEFT JOIN\n    film_region_weight AS w\nON\n    t.film_id = w.film_id AND t.region = w.region\nWHERE\n    t.film_id = 141\n    AND t.ts BETWEEN '2023-08-20 02:00:00' AND '2023-08-20 14:00:00'\nGROUP BY\n    t.region,\n    w.weight\nORDER BY\n    avg_sentiment DESC\nLIMIT 15",
+      "columns": [
+        "region",
+        "avg_sentiment",
+        "weight"
+      ],
+      "rows": [
+        [
+          "LATAM",
+          0.27446065098047256,
+          0.05000000074505806
+        ],
+        [
+          "China",
+          0.2567439176715337,
+          0.11999999731779099
+        ],
+        [
+          "EU-East",
+          0.24580809302054918,
+          0.029999999329447746
+        ],
+        [
+          "Africa",
+          0.24368949005236992,
+          0.019999999552965164
+        ],
+        [
+          "SEA",
+          0.21671290688503247,
+          0.03999999910593033
+        ],
+        [
+          "Japan",
+          0.20722060593274924,
+          0.05999999865889549
+        ],
+        [
+          "Brazil",
+          0.20639851049054414,
+          0.03999999910593033
+        ],
+        [
+          "NA",
+          0.2039659057672207,
+          0.30000001192092896
+        ],
+        [
+          "UK",
+          0.19979706693154115,
+          0.05999999865889549
+        ],
+        [
+          "EU-West",
+          0.19691454232312167,
+          0.10999999940395355
+        ],
+        [
+          "MENA",
+          0.1894375802232669,
+          0.019999999552965164
+        ],
+        [
+          "India",
+          0.1800913602973406,
+          0.05999999865889549
+        ],
+        [
+          "Korea",
+          0.1674463081245239,
+          0.03999999910593033
+        ],
+        [
+          "ANZ",
+          0.16493518478595293,
+          0.029999999329447746
+        ],
+        [
+          "Nordics",
+          0.15677937747050935,
+          0.019999999552965164
+        ]
+      ],
+      "narrative": "The sentiment spike is led by the LATAM region, which registered an average sentiment of 0.274 during the anomaly window. While this is the highest among all regions, the sentiment increase is broad-based and not sharply concentrated, with China also showing a high average sentiment of 0.257. It's worth noting that LATAM's audience weight (0.05) is smaller than that of other regions such as NA (0.3) and China (0.12).",
+      "latency_ms": 15126
+    },
+    {
+      "signal": "temporal_context",
+      "sql": "SELECT metric_ts, metric, detector, magnitude FROM detections WHERE film_id = 141 AND region = 'LATAM' AND metric_ts >= toDateTime('2023-08-20 08:00:00') - INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT\n    competitor_film_id,\n    release_date\nFROM\n    competitor_releases\nWHERE\n    region = 'LATAM'\n    AND release_date BETWEEN toDate('2023-08-20') - INTERVAL 14 DAY AND toDate('2023-08-20') + INTERVAL 14 DAY",
+      "columns": [
+        "metric_ts",
+        "metric",
+        "detector",
+        "magnitude"
+      ],
+      "rows": [
+        [
+          "2023-08-17 08:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          -0.5069200992584229
+        ],
+        [
+          "2023-08-17 08:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          -0.7699999809265137
+        ],
+        [
+          "2023-08-17 08:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          "pctchange",
+          -0.4193548262119293
+        ],
+        [
+          "2023-08-17 09:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          -0.3765585720539093
+        ],
+        [
+          "2023-08-17 09:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          -0.625
+        ],
+        [
+          "2023-08-17 09:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          "pctchange",
+          -0.4375
+        ],
+        [
+          "2023-08-17 11:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          0.380952388048172
+        ],
+        [
+          "2023-08-17 12:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          1.5483871698379517
+        ],
+        [
+          "2023-08-17 12:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          "pctchange",
+          0.7777777910232544
+        ],
+        [
+          "2023-08-17 13:00:00",
+          "audience_sentiment.avg_score",
+          "ewma",
+          0.717692494392395
+        ],
+        [
+          "2023-08-17 13:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          1.050796627998352
+        ],
+        [
+          "2023-08-17 13:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          3.2916667461395264
+        ],
+        [
+          "2023-08-17 13:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          "pctchange",
+          0.7222222089767456
+        ],
+        [
+          "2023-08-17 14:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          1.1335363388061523
+        ],
+        [
+          "2023-08-17 14:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          4.4347825050354
+        ],
+        [
+          "2023-08-17 14:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          "pctchange",
+          0.6666666865348816
+        ],
+        [
+          "2023-08-17 15:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          3.7333333492279053
+        ],
+        [
+          "2023-08-17 15:00:00",
+          "streaming_watch_minutes.completion_ratio",
+          "pctchange",
+          0.5833333134651184
+        ],
+        [
+          "2023-08-17 16:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          2.8809523582458496
+        ],
+        [
+          "2023-08-17 17:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          2.0862069129943848
+        ],
+        [
+          "2023-08-17 18:00:00",
+          "audience_sentiment.avg_score",
+          "ewma",
+          0.6501026153564453
+        ],
+        [
+          "2023-08-17 18:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          -0.3188367187976837
+        ],
+        [
+          "2023-08-17 18:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          1.3291138410568237
+        ],
+        [
+          "2023-08-17 19:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          -0.3483552932739258
+        ],
+        [
+          "2023-08-17 19:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          0.864077627658844
+        ],
+        [
+          "2023-08-17 20:00:00",
+          "social_trends.avg_sentiment",
+          "pctchange",
+          -0.4387369751930237
+        ],
+        [
+          "2023-08-17 20:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          0.5119999647140503
+        ],
+        [
+          "2023-08-17 21:00:00",
+          "social_trends.avg_virality",
+          "pctchange",
+          0.3239436745643616
+        ],
+        [
+          "2023-08-18 00:00:00",
+          "audience_sentiment.avg_score",
+          "ewma",
+          -0.46702852845191956
+        ],
+        [
+          "2023-08-18 01:00:00",
+          "audience_sentiment.avg_score",
+          "ewma",
+          0.5103747248649597
+        ]
+      ],
+      "narrative": "The anomaly began on 2023-08-17 at 08:00:00, with a cluster of sibling alerts firing across `social_trends.avg_sentiment`, `social_trends.avg_virality`, and `streaming_watch_minutes.completion_ratio`. The sentiment anomaly on 2023-08-20 is a continuation of this ongoing incident. There were no competitor film releases in the LATAM region within ±14 days of the anomaly, so a competitive collision is unlikely.",
+      "latency_ms": 55851
+    }
+  ],
+  "hypothesis": {
+    "primary_cause": "The sentiment anomaly on 2023-08-20 is a continuation of a broader, ongoing incident affecting various social trends and streaming metrics that began on 2023-08-17.",
+    "contributing_factors": [
+      "The sentiment increase is broad-based across multiple regions, not sharply concentrated.",
+      "The LATAM region is leading the sentiment spike within this ongoing trend."
+    ],
+    "confidence": "high",
+    "citations": [
+      "temporal_context",
+      "categorical_isolation",
+      "numeric_context"
+    ]
+  },
+  "started_at": "2026-08-09T16:31:07.915019Z",
+  "finished_at": "2026-08-09T16:34:07.429584Z"
+}
