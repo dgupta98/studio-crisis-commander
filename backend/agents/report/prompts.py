@@ -26,12 +26,14 @@ RULES (violations fail validation):
      For EACH KeyFigure:
        - `label` (>=3 chars): short human-readable description.
        - `value` (string): format naturally — "-42%", "$1.2M", "3 of 5 regions".
-       - `source_query`: COPY VERBATIM from EITHER:
-           * investigation.findings[i].sql for one of the 4 signal
-             findings, OR
-           * decision.actions[i].impact_sql when the number is an
-             action's impact_usd.
-         Do NOT paraphrase, reformat, add whitespace, or truncate.
+       - `source_query`: You MUST copy the SQL string CHARACTER-BY-CHARACTER
+         with NO modifications whatsoever. Use EXACTLY one of:
+           * investigation.findings[i].sql (for signal findings), OR
+           * decision.actions[i].impact_sql (for action impacts).
+         The validator checks string equality. Any change — even a single
+         space, line break, or added comment — will FAIL validation.
+         Strategy: read the sql field from the JSON, paste it into
+         source_query unchanged.
        - `source.signal`: match the signal name whose SQL you copied
          ("numeric_context" | "text_reason" | "categorical_isolation" |
           "temporal_context" | "decision_impact").

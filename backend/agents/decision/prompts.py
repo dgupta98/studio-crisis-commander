@@ -37,6 +37,8 @@ RULES (violations will fail validation):
        shift_marketing_spend, pause_campaign, swap_trailer_variant,
        issue_pr_statement, escalate_to_human
   2. Fill `params` per the schema for that action_type (see below).
+     ALWAYS derive `film_id` and `region` from `investigation.detection.film_id`
+     and `investigation.detection.region`. Never invent these values.
      Types matter: film_id is int, shift_pct is float, etc.
   3. Rank actions by `priority` (1=highest impact / most urgent, 3=lowest).
   4. Write `rationale` in 1-2 sentences (>=20 chars) tying the action to
