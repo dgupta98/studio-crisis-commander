@@ -1,15 +1,16 @@
 """Audit persistence for the Decision + Report agents.
 
-Reads use mcp-clickhouse (Layer 3a boundary rule).
-Writes use clickhouse-connect (BUILD-RISK-FALLBACK per Task 2).
+Reads and writes both go through clickhouse-connect (BUILD-RISK-FALLBACK
+per Task 2 for writes; extended to reads because the LLM+MCP read path
+was 5-10s per SELECT and produced Vertex 499 cascades under acceptance
+load). audit.py is the single §1 exception for both directions.
 
 Schema: decision_audit is ReplacingMergeTree(updated_at) — creation and
 approve/deny both INSERT a new row with the same decision_id; SELECT ...
 FINAL returns the latest version.
 """
 
-# BUILD-RISK-FALLBACK ACTIVE: Task 2 confirmed MCP writes are blocked;
-# audit INSERTs use clickhouse-connect (see _run_write). Reads still use MCP.
+# BUILD-RISK-FALLBACK ACTIVE: audit reads and writes both use clickhouse-connect.
 
 from __future__ import annotations
 
@@ -18,16 +19,12 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from google.adk.agents.llm_agent import LlmAgent
-from google.adk.runners import InMemoryRunner
-from google.genai import types
 from pydantic import BaseModel
 
 from agents.decision.contracts import (
     ApprovalStatus, DecisionResult, RecommendedAction,
 )
 from agents.investigation.contracts import InvestigationResult
-from mcp_integration.client import build_toolset
 
 
 # Report is imported lazily to avoid a circular import between
@@ -108,61 +105,20 @@ def run_impact_sql(sql: str) -> float | None:
 
 
 async def _run_read(sql: str) -> list[list[Any]]:
-    """Fire a single SELECT through mcp-clickhouse and return the rows."""
-    agent = LlmAgent(
-        name="audit_reader",
-        model="gemini-2.5-flash",
-        instruction=(
-            "Call run_query with EXACTLY this SQL and return ONLY the raw "
-            "JSON result the tool gives back:\n\n" + sql
-        ),
-        tools=[build_toolset()],
-    )
-    runner = InMemoryRunner(agent=agent, app_name="audit_reader")
-    session = await runner.session_service.create_session(
-        app_name="audit_reader", user_id="audit"
-    )
-    rows: list[list[Any]] = []
-    async for event in runner.run_async(
-        user_id="audit",
-        session_id=session.id,
-        new_message=types.Content(
-            role="user",
-            parts=[types.Part.from_text(text="Run it.")],
-        ),
-    ):
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.function_response:
-                    rows = _extract_rows(part.function_response.response) or rows
-    return rows
+    """Fire a single SELECT via clickhouse-connect (BUILD-RISK-FALLBACK).
 
+    Original LLM+MCP path cost 5-10s per read (Gemini schema discovery)
+    and produced Vertex 499 CANCELLED cascades when acceptance ran audit
+    reads back-to-back. audit.py was already §1-exempt for _run_write —
+    extending the fallback to reads is symmetry, not a new exception.
 
-def _extract_rows(resp: Any) -> list[list[Any]]:
-    """mcp-clickhouse returns {'structuredContent':{'result':<json-str>}, ...}
-    where the json-str parses to {'columns':[...], 'rows':[[...]]}."""
-    if isinstance(resp, dict):
-        sc = resp.get("structuredContent")
-        if isinstance(sc, dict) and isinstance(sc.get("result"), str):
-            try:
-                parsed = json.loads(sc["result"])
-                if isinstance(parsed, dict) and isinstance(parsed.get("rows"), list):
-                    return parsed["rows"]
-            except json.JSONDecodeError:
-                pass
-        content = resp.get("content")
-        if isinstance(content, list):
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "text":
-                    txt = item.get("text")
-                    if isinstance(txt, str):
-                        try:
-                            parsed = json.loads(txt)
-                            if isinstance(parsed, dict) and isinstance(parsed.get("rows"), list):
-                                return parsed["rows"]
-                        except json.JSONDecodeError:
-                            pass
-    return []
+    Kept async signature so callers (async_get_audit etc.) don't need to
+    change; body is synchronous clickhouse-connect (single-cell reads,
+    <100ms, blocking is fine).
+    """
+    from data.ch_client import client
+    with client() as c:
+        return [list(row) for row in c.query(sql).result_rows]
 
 
 def _sql_escape(s: str) -> str:
