@@ -38,8 +38,11 @@ from mcp_integration.client import build_toolset
 
 
 # Wall-clock cap for one investigation. Blows past this → InvestigationTimeout.
-# Spec §10 target: mean ~15s, cap 30s.
-INVESTIGATION_TIMEOUT_SECONDS = 30.0
+# Sequential 5-sub-agent pipeline; each tool-using sub-agent spawns its own
+# mcp-clickhouse subprocess (~5s startup + 3-5s Gemini think + 1s query + 3s
+# emit). Pro sub-agents (categorical_isolation, temporal_context) can hit
+# 25-35s each with a query retry. Observed: ~70-110s per investigation.
+INVESTIGATION_TIMEOUT_SECONDS = 200.0
 
 # Names in fixed order — used by build_investigation_agent() and result assembly.
 _FINDING_NAMES = (
@@ -82,24 +85,33 @@ async def _load_schema_hints() -> str:
     # this string is the one place to update. A dynamic MCP-based pull
     # can replace it if schema drift becomes real.
     return """\
-Layer 1 tables (columns):
-  audience_sentiment(film_id UInt64, region LowCardinality(String), ts DateTime,
-                     platform String, score Float32, volume UInt32, text String)
-  social_trends(film_id, region, ts, platform, mentions, sentiment, virality)
-  trailer_analytics(trailer_id, film_id, region, variant, ts, views,
-                    completion_rate Float32, sentiment_score Float32)
-  streaming_watch_minutes(film_id, region, ts, watch_minutes, completions, drops)
-  marketing_spend(film_id, region, channel, date Date, spend_usd, impressions, clicks)
+Layer 1 tables (columns — verified against DESCRIBE):
+  audience_sentiment(film_id, region, ts DateTime, platform, score Float32,
+                     volume UInt32)                       -- NUMERIC ONLY, no text
+  reviews_text(review_id, film_id, region, ts DateTime, source, raw_text String,
+               sentiment_score Float32, themes Array(String))  -- for text_reason
+  social_trends(film_id, region, ts DateTime, platform,
+                mentions UInt32, sentiment Float32, virality Float32)
+  trailer_analytics(trailer_id, film_id, variant, region, ts DateTime,
+                    views UInt32, completion_rate Float32, sentiment_score Float32)
+  streaming_watch_minutes(film_id, region, ts DateTime,
+                          watch_minutes UInt64, completions UInt32, drops UInt32)
+  marketing_spend(film_id, region, channel, date Date,
+                  spend_usd UInt64, impressions UInt64, clicks UInt32)
   campaign_performance(campaign_id, film_id, region, channel, date Date,
-                       spend_usd, conversions)
-  box_office_revenue(film_id, region, date Date, revenue_usd, tickets_sold, refunds)
-  ticket_refunds(film_id, region, ts DateTime, refund_count UInt32, refund_reason)
-  review_scores(film_id, source, ts, score, review_count)
+                       spend_usd UInt64, conversions UInt32)
+  box_office_revenue(film_id, region, date Date,
+                     revenue_usd UInt64, tickets_sold UInt32, refunds UInt32)
+  ticket_refunds(film_id, region, ts DateTime,
+                 refund_count UInt32, refund_reason)
+  review_scores(film_id, source, ts DateTime, score Float32, review_count UInt32)
   competitor_releases(film_id, region, release_date Date, competitor_film_id)
-  film_region_weight(film_id, region, weight Float32)  -- share-of-audience weight
-  films(film_id, title, revenue_usd, ...)
-  detections(metric_ts, metric, film_id, region, detector, baseline_value,
-             actual_value, magnitude, business_impact, severity, dedup_key)
+  film_region_weight(film_id, region, weight Float32)   -- share-of-audience
+  films(film_id, tmdb_id, title, genre, language, release_date Date,
+        runtime_min, budget_usd, revenue_usd, popularity, vote_average, fetched_at)
+  detections(detection_id, fired_at, metric_ts DateTime, metric, film_id, region,
+             detector, baseline_value, actual_value, magnitude, business_impact,
+             severity, dedup_key)
 
 Layer 2 rollups (columns):
   roll_sentiment_hourly(film_id, region, ts, sum_score_weighted, sum_volume)

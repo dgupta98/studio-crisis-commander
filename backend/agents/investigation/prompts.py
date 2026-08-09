@@ -67,18 +67,19 @@ You will be given:
   detection: {detection}
   schema_hints: {schema_hints}
 
-Query `audience_sentiment` for rows near detection.metric_ts (±6 hours),
-filtered to detection.film_id and detection.region. Select the 10 rows
-with the LOWEST score (proxy for negative reactions). Include the text,
-score, and platform columns. Example shape:
+Text lives in `reviews_text` (NOT `audience_sentiment` — that table is
+numeric only). Query `reviews_text` for rows near detection.metric_ts
+(±6 hours), filtered to detection.film_id and detection.region. Select
+the 10 rows with the LOWEST sentiment_score (proxy for negative
+reactions). Include raw_text, sentiment_score, source, and ts. Example:
 
-  SELECT text, score, platform, ts
-  FROM audience_sentiment
+  SELECT raw_text, sentiment_score, source, ts
+  FROM reviews_text
   WHERE film_id = <fid>
     AND region  = '<reg>'
     AND ts BETWEEN toDateTime('<ts>') - INTERVAL 6 HOUR
                 AND toDateTime('<ts>') + INTERVAL 6 HOUR
-  ORDER BY score ASC
+  ORDER BY sentiment_score ASC
   LIMIT 10
 
 Call `run_query`. On error, revise once and retry.
@@ -156,13 +157,19 @@ and retry.
 
 Return a SignalFinding:
   signal:      "temporal_context"
-  sql:         the SQL you executed (if 2, join with `; -- QUERY 2 -- `)
-  columns:     column names from the (last) result
-  rows:        result rows (concat of both queries, max 30 total)
+  sql:         the SQL you executed. If 2 queries, join with
+               "; -- QUERY 2 -- " so the SQL is a complete audit trail.
+  columns:     column names from ONE query's result — pick the query
+               most relevant to the anomaly (usually the sibling
+               detections query). Do NOT mix columns from both queries.
+  rows:        rows from the SAME query whose columns you reported.
+               Column count must equal row width. Max 30 rows.
   narrative:   2-4 sentences. State when the anomaly began (earliest
                related detection), list sibling detections on other
                metrics if any, and note any competitor release within
                ±14 days. If none of those exist, say so plainly.
+               Cite specifics from the other query in prose even
+               though its rows are not returned.
   latency_ms:  0
 """
 
