@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -78,6 +79,7 @@ class Hypothesis(BaseModel):
 class InvestigationResult(BaseModel):
     """Top-level artifact returned by invoke_investigation()."""
 
+    investigation_id: str = Field(default_factory=lambda: uuid4().hex)
     detection: DetectionIn
     findings: list[SignalFinding] = Field(
         ..., description="length 4, in fixed order matching sub-agent order"
