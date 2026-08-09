@@ -16,6 +16,7 @@ import asyncio
 import json
 import time
 from datetime import datetime, timezone
+from typing import Any, Callable
 from uuid import uuid4
 
 from google.adk.agents.llm_agent import LlmAgent
@@ -58,11 +59,16 @@ def build_decision_agent() -> LlmAgent:
     )
 
 
-async def invoke_decision(inv: InvestigationResult) -> DecisionResult:
+async def invoke_decision(
+    inv: InvestigationResult,
+    *,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> DecisionResult:
     """Run the Decision Agent, orchestrate impact SQL, persist audit row."""
     try:
         return await asyncio.wait_for(
-            _run_pipeline(inv), timeout=DECISION_TIMEOUT_SECONDS
+            _run_pipeline(inv, on_event=on_event),
+            timeout=DECISION_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError as e:
         raise DecisionTimeout(
@@ -70,7 +76,11 @@ async def invoke_decision(inv: InvestigationResult) -> DecisionResult:
         ) from e
 
 
-async def _run_pipeline(inv: InvestigationResult) -> DecisionResult:
+async def _run_pipeline(
+    inv: InvestigationResult,
+    *,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> DecisionResult:
     t0 = time.perf_counter()
 
     # --- 1. LLM proposes actions ---------------------------------------
@@ -109,6 +119,13 @@ async def _run_pipeline(inv: InvestigationResult) -> DecisionResult:
 
     proposed = DecisionResult.model_validate(raw)
 
+    if on_event is not None:
+        for a in proposed.actions:
+            on_event({
+                "type": "action.proposed",
+                "data": {"action_type": a.action_type, "priority": a.priority},
+            })
+
     # --- 2. Validate params + render SQL --------------------------------
     rendered: list[tuple[RecommendedAction, str]] = []
     for a in proposed.actions:
@@ -133,6 +150,15 @@ async def _run_pipeline(inv: InvestigationResult) -> DecisionResult:
             action.impact_error = "query returned no rows"
         else:
             action.impact_usd = impact
+        if on_event is not None:
+            on_event({
+                "type": "action.impact_computed",
+                "data": {
+                    "action_type": action.action_type,
+                    "impact_usd": action.impact_usd,
+                    "impact_error": action.impact_error or None,
+                },
+            })
 
     if all(a.impact_usd is None for a in proposed.actions):
         raise DecisionImpactError(

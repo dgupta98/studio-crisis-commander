@@ -15,7 +15,7 @@ import asyncio
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.runners import InMemoryRunner
@@ -148,7 +148,11 @@ def _parse_hypothesis_from_state(state: dict[str, Any]) -> Hypothesis:
     return Hypothesis.model_validate(raw)
 
 
-async def _run_pipeline(detection: DetectionIn) -> InvestigationResult:
+async def _run_pipeline(
+    detection: DetectionIn,
+    *,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> InvestigationResult:
     started_at = datetime.now(timezone.utc)
     agent = build_investigation_agent()
     runner = InMemoryRunner(agent=agent, app_name="investigation")
@@ -197,6 +201,15 @@ async def _run_pipeline(detection: DetectionIn) -> InvestigationResult:
         # Overlay measured wall time (sub-agent doesn't know its own latency).
         f.latency_ms = per_agent_latency.get(name, 0)
         findings.append(f)
+        if on_event is not None:
+            on_event({
+                "type": "signal.completed",
+                "data": {
+                    "signal": f.signal,
+                    "sql": f.sql,
+                    "row_count": len(f.rows),
+                },
+            })
 
     hypothesis = _parse_hypothesis_from_state(state)
     finished_at = datetime.now(timezone.utc)
@@ -210,7 +223,11 @@ async def _run_pipeline(detection: DetectionIn) -> InvestigationResult:
     )
 
 
-async def invoke_investigation(detection: DetectionIn) -> InvestigationResult:
+async def invoke_investigation(
+    detection: DetectionIn,
+    *,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> InvestigationResult:
     """Run the 5-sub-agent pipeline against one detection.
 
     Enforces a 30-second wall-clock cap. On timeout, raises
@@ -219,7 +236,8 @@ async def invoke_investigation(detection: DetectionIn) -> InvestigationResult:
     """
     try:
         return await asyncio.wait_for(
-            _run_pipeline(detection), timeout=INVESTIGATION_TIMEOUT_SECONDS
+            _run_pipeline(detection, on_event=on_event),
+            timeout=INVESTIGATION_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError as e:
         raise InvestigationTimeout(
