@@ -22,7 +22,7 @@ from google.adk.agents.llm_agent import LlmAgent
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
-from agents.decision.audit import audit_attach_report
+from agents.decision.audit import async_audit_attach_report
 from agents.decision.contracts import DecisionResult
 from agents.investigation.contracts import InvestigationResult
 from agents.report._provenance import validate_report_provenance
@@ -30,7 +30,7 @@ from agents.report.contracts import ExecutiveReport
 from agents.report.prompts import REPORT_PROMPT
 
 
-REPORT_TIMEOUT_SECONDS = 20.0
+REPORT_TIMEOUT_SECONDS = 60.0
 FLASH = "gemini-2.5-flash"
 
 
@@ -65,13 +65,17 @@ async def invoke_report(
     inv: InvestigationResult, dec: DecisionResult,
 ) -> ExecutiveReport:
     try:
-        return await asyncio.wait_for(
+        final = await asyncio.wait_for(
             _run_pipeline(inv, dec), timeout=REPORT_TIMEOUT_SECONDS
         )
     except asyncio.TimeoutError as e:
         raise ReportTimeout(
             f"Report exceeded {REPORT_TIMEOUT_SECONDS:.0f}s"
         ) from e
+    # Audit attach is outside the LLM timeout — it's a write operation that
+    # depends on the MCP read path and should not count against the report budget.
+    await async_audit_attach_report(dec.decision_id, final)
+    return final
 
 
 async def _run_pipeline(
@@ -120,5 +124,4 @@ async def _run_pipeline(
         "latency_ms": int((time.perf_counter() - t0) * 1000),
     })
 
-    audit_attach_report(dec.decision_id, final)
     return final
