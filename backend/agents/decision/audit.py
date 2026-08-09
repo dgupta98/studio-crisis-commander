@@ -78,6 +78,35 @@ async def _run_write(sql: str) -> None:
         c.command(sql)
 
 
+def run_impact_sql(sql: str) -> float | None:
+    """Execute an impact SQL directly via clickhouse-connect and return the first cell.
+
+    BUILD-RISK-FALLBACK: The MCP-mediated impact execution in agent.py is too slow
+    (15-20s per query due to LLM schema discovery). Impact SQLs are rendered from
+    canonical TEMPLATES with validated params (see actions.py INJECTION-DEFENSE note),
+    so direct execution is safe.
+
+    Returns:
+      - float (possibly 0.0) on success, including when ClickHouse returns NULL
+        (NULL = empty rollup tables = 0 impact, not a failure).
+      - None only when the query returns 0 rows (structural failure).
+    """
+    from data.ch_client import client
+    with client() as c:
+        rows = c.query(sql).result_rows
+    if not rows or not rows[0]:
+        return None
+    val = rows[0][0]
+    # NULL from ClickHouse (e.g. avg() of empty set * anything) means the
+    # rollup has no data — treat as 0.0 impact rather than failure.
+    if val is None:
+        return 0.0
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
 async def _run_read(sql: str) -> list[list[Any]]:
     """Fire a single SELECT through mcp-clickhouse and return the rows."""
     agent = LlmAgent(
@@ -189,6 +218,17 @@ def audit_attach_report(decision_id: str, report: BaseModel) -> AuditRow:
     return current
 
 
+async def async_audit_attach_report(decision_id: str, report: BaseModel) -> AuditRow:
+    """Async version of audit_attach_report — use from async contexts."""
+    current = await async_get_audit(decision_id)
+    if current is None:
+        raise ValueError(f"no audit row for decision_id={decision_id!r}")
+    current.report = report
+    current.updated_at = datetime.now(timezone.utc)
+    _insert_row(current)
+    return current
+
+
 def approve_decision(decision_id: str, approver: str, note: str = "") -> AuditRow:
     return _set_approval(decision_id, approver, note, "approved")
 
@@ -241,6 +281,45 @@ def get_audit(decision_id: str) -> AuditRow | None:
     return _row_to_audit(rows[0])
 
 
+async def async_get_audit(decision_id: str) -> AuditRow | None:
+    """Async version of get_audit — use from async contexts to avoid nested loops."""
+    sql = (
+        "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
+        "region, actions_json, status, threshold_usd, agent_run_json, "
+        "report_json, approval_status, approver, approval_note, "
+        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "FROM decision_audit FINAL "
+        f"WHERE decision_id = '{_sql_escape(decision_id)}' LIMIT 1"
+    )
+    rows = await _run_read(sql)
+    if not rows:
+        return None
+    return _row_to_audit(rows[0])
+
+
+async def async_approve_decision(
+    decision_id: str, approver: str, note: str = "",
+) -> AuditRow:
+    """Async version of approve_decision — use from async contexts."""
+    return await _async_set_approval(decision_id, approver, note, "approved")
+
+
+async def _async_set_approval(
+    decision_id: str, approver: str, note: str, status: ApprovalStatus,
+) -> AuditRow:
+    current = await async_get_audit(decision_id)
+    if current is None:
+        raise ValueError(f"no audit row for decision_id={decision_id!r}")
+    now = datetime.now(timezone.utc)
+    current.approval_status = status
+    current.approver = approver
+    current.approval_note = note
+    current.approved_at = now
+    current.updated_at = now
+    _insert_row(current)
+    return current
+
+
 # ---------------------------------------------------------------------
 # internals
 # ---------------------------------------------------------------------
@@ -278,7 +357,12 @@ def _insert_row(row: AuditRow) -> None:
         f" toDateTime('{row.created_at.strftime('%Y-%m-%d %H:%M:%S')}'),"
         f" toDateTime('{row.updated_at.strftime('%Y-%m-%d %H:%M:%S')}'))"
     )
-    asyncio.run(_run_write(sql))
+    # _run_write body is synchronous (ch_client.command); call it directly to
+    # avoid asyncio.run() failing when already inside a running event loop
+    # (e.g. when invoked from within an async pipeline like invoke_decision).
+    from data.ch_client import client
+    with client() as c:
+        c.command(sql)
 
 
 def _row_to_audit(cols: list[Any]) -> AuditRow:
