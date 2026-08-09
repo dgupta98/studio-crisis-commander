@@ -20,7 +20,7 @@ from pathlib import Path
 
 from agents.decision.acceptance_helpers import (
     load_one_crisis_detection,
-    reload_impact_via_mcp,
+    reload_impact,
 )
 from agents.decision.actions import (
     ACTION_TYPES, DEFAULT_THRESHOLDS_USD, compute_status, validate_params,
@@ -124,7 +124,7 @@ async def check_3_to_8(invs: list[InvestigationResult]) -> None:
             if not a.impact_sql:
                 _fail(f"§4 fixture {i} action[{j}]: impact_usd set but "
                       f"impact_sql empty — provenance broken")
-            reloaded = await reload_impact_via_mcp(a.impact_sql)
+            reloaded = await reload_impact(a.impact_sql)
             if reloaded is None:
                 # SQL succeeded once (impact_usd set), can't reload now — flag.
                 _fail(f"§4 fixture {i} action[{j}]: re-run returned no rows")

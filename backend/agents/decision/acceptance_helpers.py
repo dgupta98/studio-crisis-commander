@@ -4,8 +4,10 @@ load_one_crisis_detection: pick one non-live crisis and turn its matching
 detection into a DetectionIn. Uses MCP (never ch_client directly) so §1
 boundary grep passes.
 
-reload_impact_via_mcp: re-run an already-rendered impact SQL to confirm
-the value the LLM stored matches the query.
+reload_impact: re-run an already-rendered impact SQL to confirm the value
+the decision orchestrator stored matches a fresh query. Delegates to
+audit.run_impact_sql (already §1-exempt) — same executor the decision
+agent used, so drift is measured apples-to-apples.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from google.adk.agents.llm_agent import LlmAgent
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from agents.decision.audit import run_impact_sql
 from agents.investigation.contracts import DetectionIn
 from mcp_integration.client import build_toolset
 
@@ -55,24 +58,15 @@ async def load_one_crisis_detection() -> DetectionIn:
     )
 
 
-async def reload_impact_via_mcp(sql: str) -> float | None:
-    """Re-run an impact SQL and return the first cell as a float.
+async def reload_impact(sql: str) -> float | None:
+    """Re-run an impact SQL via the same executor the decision orchestrator used.
 
-    Returns None only on structural failure (0 rows returned).
-    A NULL cell value is treated as 0.0 — mirrors run_impact_sql behaviour so
-    §4 drift check can compare apples-to-apples.
+    Delegates to audit.run_impact_sql (already §1-exempt) instead of going
+    through LLM+MCP again — the drift check is about SQL determinism, not
+    boundary compliance, and the LLM+MCP path costs 9 extra Flash calls per
+    acceptance run (~one per fixture-action) which spikes 429 quota.
     """
-    rows = await _run_query(sql)
-    if not rows or not rows[0]:
-        return None
-    val = rows[0][0]
-    # NULL from ClickHouse (empty rollup) = 0.0 impact, same as run_impact_sql.
-    if val is None:
-        return 0.0
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
+    return run_impact_sql(sql)
 
 
 async def _run_query(sql: str) -> list[list[Any]]:
