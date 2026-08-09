@@ -30,7 +30,7 @@ from agents.report.contracts import ExecutiveReport
 from agents.report.prompts import REPORT_PROMPT
 
 
-REPORT_TIMEOUT_SECONDS = 60.0
+REPORT_TIMEOUT_SECONDS = 120.0
 FLASH = "gemini-2.5-flash"
 
 
