@@ -25,6 +25,9 @@ RunStatus = Literal["running", "completed", "failed"]
 _SENTINEL = object()   # placed into subscriber queues to signal end-of-stream
 
 
+# RunState is mutated only via PipelineRuntime methods (which hold the
+# lock). Callers of register()/get() must treat the returned reference
+# as read-only.
 @dataclass(slots=True)
 class RunState:
     run_id: str
@@ -147,7 +150,10 @@ class PipelineRuntime:
             self._drop_locked(self._order[0])
 
     def _drop_locked(self, run_id: str) -> None:
-        self._order.popleft() if self._order and self._order[0] == run_id else None
+        try:
+            self._order.remove(run_id)
+        except ValueError:
+            pass
         st = self._runs.pop(run_id, None)
         if st is None:
             return

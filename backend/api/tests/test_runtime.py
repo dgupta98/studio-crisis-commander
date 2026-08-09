@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 
 import pytest
 
@@ -153,3 +152,30 @@ async def test_mark_mode_switches_to_fallback():
     await rt.mark_mode("r", "fallback")
     st = await rt.get("r")
     assert st.mode == "fallback"
+
+
+@pytest.mark.asyncio
+async def test_eviction_signals_active_subscriber():
+    """When a run is evicted while a subscriber is tailing it, the sentinel
+    must reach the subscriber so its `async for` loop exits."""
+    rt = PipelineRuntime(max_runs=1, max_age_seconds=1000)
+    await rt.register("victim")
+
+    got: list[str] = []
+
+    async def consume():
+        async for ev in rt.subscribe("victim"):
+            got.append(ev.type)
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.05)  # let subscriber attach
+
+    # Fill past cap so `victim` is evicted on the next register.
+    # _evict_locked runs before each insert; registering "filler-2" sees
+    # len(runs)==2 > max_runs==1 and drops the oldest run ("victim").
+    await rt.register("filler-1")
+    await rt.register("filler-2")   # evicts "victim"
+
+    await asyncio.wait_for(task, timeout=1.0)  # must complete via sentinel
+    assert (await rt.get("victim")) is None
+    assert got == []                            # no events had been emitted
