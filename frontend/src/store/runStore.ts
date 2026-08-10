@@ -3,7 +3,7 @@ import type {
   SseEvent, DetectionRow, Finding, DecisionResult, ExecutiveReport,
   ApprovalStatus, AuditRow, MetricsResponse, CrisisType,
 } from '@/api/contracts'
-import { apiGet, apiPost, ApiError } from '@/api/client'
+import { apiGet, apiPost } from '@/api/client'
 import { openStream } from '@/api/sse'
 
 export type PanelState =
@@ -29,6 +29,8 @@ interface RunStore {
   mode: 'live' | 'fallback' | null
   recentDetections: DetectionRow[]
   auditRows: AuditRow[]
+  // Keyed by `${filmId}:${region}` (raw, unencoded). URL uses encodeURIComponent
+  // on region separately; do not use the encoded form for lookups.
   metrics: Record<string, MetricsResponse>
   latencyMs: number | null
 
@@ -99,6 +101,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
 
   connectStream: (runId: string) => {
     const prev = useRunStore.getState()._closeStream
+    set({ _closeStream: null })
     prev?.()
     const close = openStream(
       runId,
@@ -137,7 +140,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
       )
       set({ recentDetections: res.detections, apiReachable: true })
     } catch (e) {
-      if (e instanceof ApiError || e instanceof Error) {
+      if (e instanceof Error) {
         set({ apiReachable: false })
       } else { throw e }
     }
@@ -148,7 +151,8 @@ export const useRunStore = create<RunStore>((set, _get) => ({
       const res = await apiGet<{ rows: AuditRow[] } | AuditRow[]>(`/audit?limit=${limit}`)
       const rows = Array.isArray(res) ? res : res.rows
       set({ auditRows: rows, apiReachable: true })
-    } catch {
+    } catch (e) {
+      if (e instanceof Error) console.error('[loadAudit]', e)
       set({ apiReachable: false })
     }
   },
@@ -158,6 +162,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
       const res = await apiGet<MetricsResponse>(
         `/metrics/${filmId}/${encodeURIComponent(region)}?hours=${hours}`,
       )
+      // See RunStore.metrics for the canonical key format.
       const key = `${filmId}:${region}`
       set((s) => ({
         metrics: { ...s.metrics, [key]: res },

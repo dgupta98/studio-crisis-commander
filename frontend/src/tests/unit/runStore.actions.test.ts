@@ -36,6 +36,15 @@ describe('inject()', () => {
     await useRunStore.getState().inject({ fallback: 'force' })
     expect(postSpy).toHaveBeenCalledWith('/inject-crisis', { fallback: 'force' })
   })
+
+  it('sends both crisis_type and fallback when both are set', async () => {
+    const postSpy = vi.spyOn(client, 'apiPost')
+      .mockResolvedValue({ run_id: 'r-both' })
+    vi.spyOn(sseMod, 'openStream').mockReturnValue(() => {})
+    await useRunStore.getState().inject({ crisisType: 'COMPETITOR_RELEASE', fallback: 'force' })
+    expect(postSpy).toHaveBeenCalledWith('/inject-crisis',
+      { crisis_type: 'COMPETITOR_RELEASE', fallback: 'force' })
+  })
 })
 
 describe('approve() / deny()', () => {
