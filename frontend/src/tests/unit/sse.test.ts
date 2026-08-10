@@ -51,4 +51,16 @@ describe('openStream', () => {
     close()
     expect(MockEventSource.instances[0].closed).toBe(true)
   })
+
+  it('returned close() prevents further onEvent / onError callbacks', () => {
+    const events: unknown[] = []
+    let err: Error | null = null
+    const close = openStream('r-5', (e) => events.push(e), (e) => { err = e })
+    const es = MockEventSource.instances[0]
+    close()
+    es.emit({ seq: 1, type: 'x', data: {}, ts: 't' })
+    es.fireError()
+    expect(events).toEqual([])
+    expect(err).toBeNull()
+  })
 })

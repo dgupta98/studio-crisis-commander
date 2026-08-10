@@ -13,7 +13,9 @@ const BASE = (): string => {
 
 async function _handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = await res.text().catch(() => '')
+    const body = await res.text().catch((readErr: unknown) =>
+      `(body unreadable: ${(readErr as Error).message})`
+    )
     throw new ApiError(res.status, body)
   }
   return res.json() as Promise<T>

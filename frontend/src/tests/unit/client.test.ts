@@ -48,3 +48,10 @@ describe('apiPost', () => {
     expect(call[1].headers['content-type']).toBe('application/json')
   })
 })
+
+describe('BASE()', () => {
+  it('throws when VITE_API_URL is missing', async () => {
+    vi.stubEnv('VITE_API_URL', '')
+    await expect(apiGet('/anything')).rejects.toThrow('VITE_API_URL is not set')
+  })
+})

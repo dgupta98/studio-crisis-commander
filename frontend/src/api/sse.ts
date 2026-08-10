@@ -27,5 +27,9 @@ export function openStream(
     catch (e) { onError(new Error(`SSE parse: ${(e as Error).message}`)) }
   }
   es.onerror = () => onError(new Error('stream error — awaiting reconnect'))
-  return () => es.close()
+  return () => {
+    es.onmessage = null
+    es.onerror = null
+    es.close()
+  }
 }
