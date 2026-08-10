@@ -9,8 +9,8 @@ Live path emits:
   report.started, report.completed
   pipeline.completed
 
-On any exception, swaps to fallback (via api.fallback.replay_cached_triple)
-and emits mode=fallback events. Fallback wiring is added in Task 8.
+On any exception (or when force_fallback=True), swaps to demo-safety mode
+via api.fallback.replay_cached_triple and emits mode=fallback events.
 """
 from __future__ import annotations
 
@@ -23,8 +23,21 @@ from agents.investigation.agent import invoke_investigation
 from agents.report.agent import invoke_report
 from api.detection_source import produce_detection
 from api.events import SseEvent
+from api.fallback import CachedTriple, replay_cached_triple
 from api.runtime import PipelineRuntime
 from data.crisis_injector import inject_now
+
+
+# Populated by api.main at startup. Unit tests patch these directly.
+_cached_triple: CachedTriple | None = None
+_pacing_scale: float = 1.0
+
+
+def install_cached_triple(triple: CachedTriple, *, pacing_scale: float = 1.0) -> None:
+    """Called by api.main startup once per process."""
+    global _cached_triple, _pacing_scale
+    _cached_triple = triple
+    _pacing_scale = pacing_scale
 
 
 async def run_pipeline(
@@ -53,12 +66,16 @@ async def run_pipeline(
             asyncio.create_task(emit(payload["type"], payload["data"]))
         )
 
-    try:
-        state = await runtime.get(run_id)
-        mode = state.mode if state else "live"
-        await emit("pipeline.started",
-                   {"run_id": run_id, "mode": mode, "requested": request})
+    state = await runtime.get(run_id)
+    mode = state.mode if state else "live"
+    await emit("pipeline.started",
+               {"run_id": run_id, "mode": mode, "requested": request})
 
+    if force_fallback:
+        await _run_fallback(runtime, run_id, "forced")
+        return
+
+    try:
         # --- Detection ---
         await emit("detection.started", {})
         crisis = inject_now(
@@ -102,15 +119,31 @@ async def run_pipeline(
                    {"run_id": run_id, "latency_ms": latency_ms, "mode": mode})
         await runtime.mark_terminal(run_id, "completed")
 
-    except Exception as e:  # noqa: BLE001 - fallback handling added in Task 8
+    except Exception as e:  # noqa: BLE001
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)
         pending.clear()
         await emit("pipeline.failed",
                    {"error": f"{type(e).__name__}: {e}",
                     "stage": _infer_stage(seq.current, e)})
+        await _run_fallback(runtime, run_id, f"{type(e).__name__}")
+
+
+async def _run_fallback(
+    runtime: PipelineRuntime, run_id: str, reason: str,
+) -> None:
+    """Swap to fallback mode and replay the cached triple."""
+    if _cached_triple is None:
+        # No cached triple installed — mark failed and give up. Only happens
+        # in tests that forgot to patch _cached_triple, or in a broken deploy.
         await runtime.mark_terminal(run_id, "failed")
-        raise
+        return
+    await runtime.mark_mode(run_id, "fallback")
+    await runtime.set_decision_id(run_id, _cached_triple.decision.decision_id)
+    await replay_cached_triple(
+        runtime, run_id, _cached_triple, pacing_scale=_pacing_scale,
+    )
+    await runtime.mark_terminal(run_id, "completed")
 
 
 class _SeqGen:
@@ -127,6 +160,5 @@ class _SeqGen:
 
 
 def _infer_stage(current_seq: int, exc: Exception) -> str:
-    # Rough mapping from exception class → stage; refined in Task 8 when we
-    # care about the fallback path. For now, "unknown" is fine.
+    # Rough mapping from exception class → stage; refined later if needed.
     return type(exc).__name__
