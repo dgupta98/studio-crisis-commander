@@ -1,0 +1,48 @@
+import { tokens } from './tokens'
+
+export const tailwindTheme = {
+  colors: {
+    transparent: 'transparent',
+    current: 'currentColor',
+    white: '#ffffff',
+    black: '#000000',
+    paper: tokens.color.paper,
+    card: tokens.color.card,
+    'card-alt': tokens.color.cardAlt,
+    ink: tokens.color.ink,
+    'ink-soft': tokens.color.inkSoft,
+    accent: tokens.color.accent,
+    line: tokens.color.line,
+    'sev-info-bg': tokens.color.sev.info.bg,
+    'sev-info-fg': tokens.color.sev.info.fg,
+    'sev-warn-bg': tokens.color.sev.warn.bg,
+    'sev-warn-fg': tokens.color.sev.warn.fg,
+    'sev-crit-bg': tokens.color.sev.crit.bg,
+    'sev-crit-fg': tokens.color.sev.crit.fg,
+    'sev-replay-bg': tokens.color.sev.replay.bg,
+    'sev-replay-fg': tokens.color.sev.replay.fg,
+  },
+  fontFamily: {
+    display: tokens.type.display.split(', '),
+    body: tokens.type.body.split(', '),
+    mono: tokens.type.mono.split(', '),
+  },
+  fontSize: {
+    xs: ['0.75rem', { lineHeight: '1rem' }],
+    sm: ['0.875rem', { lineHeight: '1.25rem' }],
+    base: ['1rem', { lineHeight: '1.5rem' }],
+    lg: ['1.125rem', { lineHeight: '1.75rem' }],
+    xl: ['1.25rem', { lineHeight: '1.75rem' }],
+    '2xl': ['1.5rem', { lineHeight: '2rem' }],
+    '3xl': ['2rem', { lineHeight: '2.25rem' }],
+    '4xl': ['2.75rem', { lineHeight: '1' }],
+    '5xl': ['3.5rem', { lineHeight: '1' }],
+  },
+  letterSpacing: {
+    tighter: '-0.03em',
+    tight: '-0.02em',
+    normal: '0',
+    wide: '0.05em',
+    wider: '0.12em',
+  },
+}

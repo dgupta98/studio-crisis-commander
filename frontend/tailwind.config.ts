@@ -1,9 +1,12 @@
 import type { Config } from 'tailwindcss'
+import { tailwindTheme } from './src/theme/tailwind.tokens'
 
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
-    extend: {},   // filled in by Task 3
+    extend: {
+      ...tailwindTheme,
+    },
   },
   plugins: [],
 } satisfies Config
