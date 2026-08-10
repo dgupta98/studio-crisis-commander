@@ -3,6 +3,8 @@ import type {
   SseEvent, DetectionRow, Finding, DecisionResult, ExecutiveReport,
   ApprovalStatus, AuditRow, MetricsResponse, CrisisType,
 } from '@/api/contracts'
+import { apiGet, apiPost, ApiError } from '@/api/client'
+import { openStream } from '@/api/sse'
 
 export type PanelState =
   | { kind: 'idle' }
@@ -82,14 +84,90 @@ const INITIAL: Omit<RunStore, keyof {
 export const useRunStore = create<RunStore>((set, _get) => ({
   ...INITIAL,
 
-  // Stubs — filled in Tasks 7-8.
-  inject: async () => { throw new Error('inject: not implemented (Task 7)') },
-  connectStream: () => { throw new Error('connectStream: not implemented (Task 7)') },
-  approve: async () => { throw new Error('approve: not implemented (Task 7)') },
-  deny: async () => { throw new Error('deny: not implemented (Task 7)') },
-  loadDetections: async () => { throw new Error('loadDetections: not implemented (Task 7)') },
-  loadAudit: async () => { throw new Error('loadAudit: not implemented (Task 7)') },
-  loadMetrics: async () => { throw new Error('loadMetrics: not implemented (Task 7)') },
+  inject: async (opts) => {
+    const body: Record<string, unknown> = {}
+    if (opts?.crisisType) body.crisis_type = opts.crisisType
+    if (opts?.fallback) body.fallback = opts.fallback
+    const res = await apiPost<{ run_id: string; stream_url?: string }>(
+      '/inject-crisis', body,
+    )
+    const runId = res.run_id
+    set({ runId, streamState: 'connecting' })
+    useRunStore.getState().connectStream(runId)
+    return runId
+  },
+
+  connectStream: (runId: string) => {
+    const prev = useRunStore.getState()._closeStream
+    prev?.()
+    const close = openStream(
+      runId,
+      // onEvent — Task 8 wires the full router; for now, just record it.
+      (payload) => {
+        // The dispatch is implemented in Task 8. Keep append-only fallback here
+        // so we can still test the plumbing.
+        const evs = useRunStore.getState().events
+        set({ events: [...evs, payload as SseEvent], streamState: 'streaming' })
+      },
+      (_err) => set({ streamState: 'error' }),
+    )
+    set({ _closeStream: close })
+  },
+
+  approve: async (decisionId, note) => {
+    const res = await apiPost<{ approval_status: ApprovalStatus }>(
+      `/approve/${decisionId}`,
+      { approver: 'dashboard@demo', note: note ?? '' },
+    )
+    set({ approvalStatus: res.approval_status })
+  },
+
+  deny: async (decisionId, reason) => {
+    const res = await apiPost<{ approval_status: ApprovalStatus }>(
+      `/deny/${decisionId}`,
+      { denier: 'dashboard@demo', reason },
+    )
+    set({ approvalStatus: res.approval_status })
+  },
+
+  loadDetections: async (limit = 20) => {
+    try {
+      const res = await apiGet<{ detections: DetectionRow[] }>(
+        `/detections?limit=${limit}`,
+      )
+      set({ recentDetections: res.detections, apiReachable: true })
+    } catch (e) {
+      if (e instanceof ApiError || e instanceof Error) {
+        set({ apiReachable: false })
+      } else { throw e }
+    }
+  },
+
+  loadAudit: async (limit = 20) => {
+    try {
+      const res = await apiGet<{ rows: AuditRow[] } | AuditRow[]>(`/audit?limit=${limit}`)
+      const rows = Array.isArray(res) ? res : res.rows
+      set({ auditRows: rows, apiReachable: true })
+    } catch {
+      set({ apiReachable: false })
+    }
+  },
+
+  loadMetrics: async (filmId, region, hours = 48) => {
+    try {
+      const res = await apiGet<MetricsResponse>(
+        `/metrics/${filmId}/${encodeURIComponent(region)}?hours=${hours}`,
+      )
+      const key = `${filmId}:${region}`
+      set((s) => ({
+        metrics: { ...s.metrics, [key]: res },
+        latencyMs: res.query_latency_ms,
+        apiReachable: true,
+      }))
+    } catch {
+      set({ apiReachable: false })
+    }
+  },
 
   reset: () => {
     const { _closeStream } = useRunStore.getState()
