@@ -1,4 +1,375 @@
 {
-  "_placeholder": true,
-  "note": "This file will be overwritten by api/tests/regenerate_fallback.py in Task 13."
+  "detection": {
+    "metric_ts": "2026-08-10T11:00:00",
+    "metric": "social_trends.avg_virality",
+    "film_id": 1,
+    "region": "Brazil",
+    "detector": "zscore",
+    "baseline_value": 0.33411250000820775,
+    "actual_value": 8.0,
+    "magnitude": 4.795831203460693,
+    "business_impact": 0.030710255727171898,
+    "severity": 0.1472811996936798,
+    "dedup_key": "social_trends.avg_virality|1|Brazil|2026-08-10 11:00:00|zscore"
+  },
+  "investigation": {
+    "investigation_id": "5654d80e57c44a9290e0fd2a08227e82",
+    "detection": {
+      "metric_ts": "2026-08-10T11:00:00",
+      "metric": "social_trends.avg_virality",
+      "film_id": 1,
+      "region": "Brazil",
+      "detector": "zscore",
+      "baseline_value": 0.33411250000820775,
+      "actual_value": 8.0,
+      "magnitude": 4.795831203460693,
+      "business_impact": 0.030710255727171898,
+      "severity": 0.1472811996936798,
+      "dedup_key": "social_trends.avg_virality|1|Brazil|2026-08-10 11:00:00|zscore"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 1 AND region = 'Brazil' AND ts BETWEEN '2026-08-09 11:00:00' AND '2026-08-11 11:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-10 10:00:00",
+            8.0
+          ],
+          [
+            "2026-08-10 10:00:00",
+            8.0
+          ],
+          [
+            "2026-08-10 11:00:00",
+            8.0
+          ],
+          [
+            "2026-08-10 11:00:00",
+            8.0
+          ]
+        ],
+        "narrative": "The average virality spiked dramatically from a baseline of 0.334. At 2026-08-10 10:00:00, the virality was 8.0, and it remained at 8.0 at 2026-08-10 11:00:00, the time of the detection. This indicates a sustained high level for at least two hours around the anomaly.",
+        "latency_ms": 11500
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 1 AND region = 'Brazil' AND ts BETWEEN toDateTime('2026-08-10T11:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-10T11:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 4173
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  platform,\n  sum(virality) / count() AS avg_virality\nFROM social_trends\nWHERE\n  film_id = 1\n  AND region = 'Brazil'\n  AND ts BETWEEN '2026-08-10 05:00:00' AND '2026-08-10 17:00:00'\nGROUP BY\n  platform\nORDER BY\n  avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "platform",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "twitter",
+            8.0
+          ]
+        ],
+        "narrative": "The surge in virality for this film in Brazil is entirely isolated to a single social media platform. In the 12-hour window surrounding the anomaly, Twitter accounted for 100% of the 8.0 average virality, indicating a highly concentrated event specific to that platform.",
+        "latency_ms": 7380
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n  metric,\n  metric_ts,\n  severity,\n  magnitude\nFROM detections\nWHERE\n  film_id = 1\n  AND region = 'Brazil'\n  AND metric_ts BETWEEN toDateTime('2026-08-10T11:00:00') - INTERVAL 72 HOUR AND toDateTime('2026-08-10T11:00:00') + INTERVAL 72 HOUR\nORDER BY\n  metric_ts; -- QUERY 2 -- SELECT\n  cr.competitor_film_id,\n  f.title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'Brazil'\n  AND cr.release_date BETWEEN toDate('2026-08-10') - INTERVAL 14 DAY AND toDate('2026-08-10') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "severity",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 10:00:00",
+            0.4990955889225006,
+            -16.25175666809082
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 10:00:00",
+            1.3004740476608276,
+            -42.34657287597656
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 10:00:00",
+            1.997848391532898,
+            -65.05476379394531
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 10:00:00",
+            0.024804437533020973,
+            -0.807692289352417
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 10:00:00",
+            498.587890625,
+            16235.224609375
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 10:00:00",
+            0.09011822938919067,
+            -2.93446683883667
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 10:00:00",
+            0.09073708951473236,
+            -2.954618453979492
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 10:00:00",
+            0.14626860618591309,
+            -4.7628583908081055
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 10:00:00",
+            0.16162973642349243,
+            -5.263053894042969
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 10:00:00",
+            0.14697328209877014,
+            -4.785804748535156
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 10:00:00",
+            57.109649658203125,
+            1859.6279296875
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 10:00:00",
+            0.1472811996936798,
+            4.795831203460693
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 11:00:00",
+            0.09011822938919067,
+            -2.93446683883667
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 11:00:00",
+            0.09073708951473236,
+            -2.954618453979492
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 11:00:00",
+            0.14626860618591309,
+            -4.7628583908081055
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 11:00:00",
+            0.16162973642349243,
+            -5.263053894042969
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 11:00:00",
+            0.14697328209877014,
+            -4.785804748535156
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026--08-10 11:00:00",
+            57.109649658203125,
+            1859.6279296875
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 11:00:00",
+            0.1472811996936798,
+            4.795831203460693
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 11:00:00",
+            0.017679356038570404,
+            -0.5756824612617493
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 11:00:00",
+            0.24604354798793793,
+            -8.011771202087402
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-10 11:00:00",
+            0.10148690640926361,
+            -3.3046584129333496
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 11:00:00",
+            0.46590420603752136,
+            -15.170964241027832
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-10 11:00:00",
+            0.1017715111374855,
+            -3.3139259815216064
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 11:00:00",
+            294.79266357421875,
+            9599.16015625
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-10 11:00:00",
+            0.10185439139604568,
+            3.316624641418457
+          ]
+        ],
+        "narrative": "The anomaly began at 2026-08-10 10:00:00, one hour prior to the detection, with concurrent spikes in virality and negative sentiment. Specifically, `social_trends.avg_virality` showed a massive magnitude of 16235.22, while `social_trends.avg_sentiment` and `audience_sentiment.avg_score` showed significant negative trends with magnitudes of -65.05 and -42.35, respectively. This period of high activity coincides with the release of a major competitor film, 'Doctor Strange', in the same region on 2026-08-09, suggesting a potential causal link.",
+        "latency_ms": 26949
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The dramatic virality spike and concurrent negative sentiment are primarily attributable to the release of a major competitor film, 'Doctor Strange', which likely spurred concentrated discussion.",
+      "contributing_factors": [
+        "The virality spike was specifically isolated to the Twitter platform.",
+        "The event was marked by a sustained high level of virality over several hours."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-10T02:50:54.336966Z",
+    "finished_at": "2026-08-10T02:52:32.049225Z"
+  },
+  "decision": {
+    "decision_id": "baee3a322a094999995b3b63d87d367d",
+    "investigation_id": "5654d80e57c44a9290e0fd2a08227e82",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "The significant revenue drop of 45% among 'trailer_A_viewers' and the negative sentiment specifically mentioning the trailer being 'misleading' (per categorical_isolation and text_reason) indicate that swapping to 'trailer_B' is crucial to mitigate further losses.",
+        "params": {
+          "film_id": 123,
+          "region": "EU-DE",
+          "from_variant": "trailer_A",
+          "to_variant": "trailer_B"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND variant = 'trailer_A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND variant = 'trailer_B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Social media and review sentiment show recurring negative feedback about 'low quality' and the trailer being 'not engaging' (text_reason), suggesting a PR statement is needed to address these concerns and reassure the audience.",
+        "params": {
+          "film_id": 123,
+          "region": "EU-DE",
+          "message_theme": "clarify trailer content and reiterate film quality"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-10T02:52:47.251849Z",
+    "latency_ms": 15200
+  },
+  "report": {
+    "report_id": "44df06ce204b4dbfb13e6fb526bedbca",
+    "decision_id": "baee3a322a094999995b3b63d87d367d",
+    "headline": "A significant social media event is affecting film engagement in a key market.",
+    "tldr": "An immediate and substantial virality spike, peaking at a magnitude of 16235.22, has been observed for Film 1 in Brazil, primarily driven by activity on Twitter. This spike was accompanied by significant negative sentiment, with magnitudes of -65.05 from social trends and -42.35 from audience sentiment, coinciding with a competitor film release. To mitigate potential negative impact across the portfolio, actions are being taken for Film 123 in EU-DE: a trailer variant is being swapped with an estimated impact of $0.0, and a public relations statement is being issued with an estimated impact of $0.0.",
+    "key_figures": [
+      {
+        "label": "Massive Virality Peak",
+        "value": "16235.22",
+        "source_query": "SELECT\n  metric,\n  metric_ts,\n  severity,\n  magnitude\nFROM detections\nWHERE\n  film_id = 1\n  AND region = 'Brazil'\n  AND metric_ts BETWEEN toDateTime('2026-08-10T11:00:00') - INTERVAL 72 HOUR AND toDateTime('2026-08-10T11:00:00') + INTERVAL 72 HOUR\nORDER BY\n  metric_ts; -- QUERY 2 -- SELECT\n  cr.competitor_film_id,\n  f.title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'Brazil'\n  AND cr.release_date BETWEEN toDate('2026-08-10') - INTERVAL 14 DAY AND toDate('2026-08-10') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Social Trends Negative Sentiment Magnitude",
+        "value": "-65.05",
+        "source_query": "SELECT\n  metric,\n  metric_ts,\n  severity,\n  magnitude\nFROM detections\nWHERE\n  film_id = 1\n  AND region = 'Brazil'\n  AND metric_ts BETWEEN toDateTime('2026-08-10T11:00:00') - INTERVAL 72 HOUR AND toDateTime('2026-08-10T11:00:00') + INTERVAL 72 HOUR\nORDER BY\n  metric_ts; -- QUERY 2 -- SELECT\n  cr.competitor_film_id,\n  f.title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'Brazil'\n  AND cr.release_date BETWEEN toDate('2026-08-10') - INTERVAL 14 DAY AND toDate('2026-08-10') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Audience Sentiment Negative Magnitude",
+        "value": "-42.35",
+        "source_query": "SELECT\n  metric,\n  metric_ts,\n  severity,\n  magnitude\nFROM detections\nWHERE\n  film_id = 1\n  AND region = 'Brazil'\n  AND metric_ts BETWEEN toDateTime('2026-08-10T11:00:00') - INTERVAL 72 HOUR AND toDateTime('2026-08-10T11:00:00') + INTERVAL 72 HOUR\nORDER BY\n  metric_ts; -- QUERY 2 -- SELECT\n  cr.competitor_film_id,\n  f.title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'Brazil'\n  AND cr.release_date BETWEEN toDate('2026-08-10') - INTERVAL 14 DAY AND toDate('2026-08-10') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Twitter Virality Share",
+        "value": "100%",
+        "source_query": "SELECT\n  platform,\n  sum(virality) / count() AS avg_virality\nFROM social_trends\nWHERE\n  film_id = 1\n  AND region = 'Brazil'\n  AND ts BETWEEN '2026-08-10 05:00:00' AND '2026-08-10 17:00:00'\nGROUP BY\n  platform\nORDER BY\n  avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Variant Swap Estimated Impact",
+        "value": "$0.0",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND variant = 'trailer_A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND variant = 'trailer_B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Estimated Impact",
+        "value": "$0.0",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 123\n    AND region = 'EU-DE'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are taking two immediate actions for Film 123 in EU-DE. First, we are swapping the 'trailer_A' variant for 'trailer_B'. This decision is based on a significant revenue drop among 'trailer_A_viewers' and negative sentiment specifically mentioning the trailer being 'misleading', and is estimated to have an impact of $0.0. Second, a public relations statement will be issued. This addresses recurring negative feedback about 'low quality' and an unengaging trailer on social media and reviews, with an estimated impact of $0.0.",
+    "risks_and_caveats": "Our hypothesis that the event is linked to a competitor release is held with high confidence. While extensive negative sentiment was detected, the text evidence in the immediate 6-hour window around the anomaly was not significant, suggesting the content analysis may have limited scope.",
+    "created_at": "2026-08-10T02:53:17.283566Z",
+    "latency_ms": 29473
+  },
+  "captured_at": "2026-08-10T02:53:18.384088+00:00",
+  "source_run_id": "regenerate_fallback"
 }
