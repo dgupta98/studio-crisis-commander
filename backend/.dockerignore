@@ -1,0 +1,7 @@
+venv
+**/__pycache__
+**/*.pyc
+**/tests
+*.log
+.env
+service-account.json
