@@ -92,8 +92,8 @@ export const useRunStore = create<RunStore>((set, _get) => ({
   loadMetrics: async () => { throw new Error('loadMetrics: not implemented (Task 7)') },
 
   reset: () => {
-    const s = useRunStore.getState()
-    s._closeStream?.()
+    const { _closeStream } = useRunStore.getState()
     set({ ...INITIAL })
+    _closeStream?.()
   },
 }))
