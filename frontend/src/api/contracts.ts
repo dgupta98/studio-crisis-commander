@@ -17,7 +17,8 @@ export function isSseEvent(x: unknown): x is SseEvent {
   if (typeof x !== 'object' || x === null) return false
   const o = x as Record<string, unknown>
   return typeof o.seq === 'number' && typeof o.type === 'string'
-      && typeof o.ts === 'string' && typeof o.data === 'object'
+      && typeof o.ts === 'string'
+      && typeof o.data === 'object' && o.data !== null
 }
 
 // ─── Crisis / Detection ─────────────────────────────────────────────
@@ -92,7 +93,7 @@ export type ApprovalStatus =
 export interface RecommendedAction {
   action_type: ActionType
   rationale: string
-  params: Record<string, unknown>
+  params: Record<string, unknown>  // backend uses untyped dict; narrow per action_type when backend adds discriminated models
   impact_usd: number | null
   impact_sql: string
   impact_error: string

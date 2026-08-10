@@ -27,7 +27,12 @@ describe('api contracts', () => {
       'COMPETITOR_RELEASE',
       'BUDGET_OVERRUN',
     ]
-    expect(ok.length).toBe(4)
+    expect(ok).toEqual([
+      'SENTIMENT_COLLAPSE',
+      'REGIONAL_SENTIMENT_COLLAPSE',
+      'COMPETITOR_RELEASE',
+      'BUDGET_OVERRUN',
+    ])
   })
 
   it('the cached fallback triple parses against InvestigationResult+DecisionResult+ExecutiveReport', () => {
@@ -38,6 +43,7 @@ describe('api contracts', () => {
 
     const inv = raw.investigation as InvestigationResult
     expect(isInvestigationResult(inv)).toBe(true)
+    // Contract: investigation agent always runs all 4 signal sub-agents in parallel; if this becomes optional, relax to toBeGreaterThanOrEqual(1).
     expect(inv.findings.length).toBe(4)
     expect(['low', 'medium', 'high']).toContain(inv.hypothesis.confidence)
 
