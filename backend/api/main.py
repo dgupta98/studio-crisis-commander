@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.fallback import load_cached_triple
 from api.pipeline import install_cached_triple
+from api.routers import inject as inject_router
+from api.routers import stream as stream_router
 from api.runtime import PipelineRuntime
 
 
@@ -34,6 +36,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Studio Crisis Commander API", lifespan=lifespan)
+# Bind the runtime at module scope so ASGI clients that don't fire lifespan
+# (e.g. httpx ASGITransport in unit tests) still see app.state.runtime. The
+# lifespan handler re-binds the same instance, plus installs the triple.
+app.state.runtime = runtime
 
 _origins = os.getenv("CORS_ORIGINS", "*")
 app.add_middleware(
@@ -43,6 +49,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(inject_router.router)
+app.include_router(stream_router.router)
 
 
 @app.get("/healthz")
