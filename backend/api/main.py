@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.fallback import load_cached_triple
 from api.pipeline import install_cached_triple
+from api.routers import audit as audit_router
+from api.routers import detections as detections_router
 from api.routers import inject as inject_router
 from api.routers import stream as stream_router
 from api.runtime import PipelineRuntime
@@ -53,6 +55,8 @@ app.add_middleware(
 
 app.include_router(inject_router.router)
 app.include_router(stream_router.router)
+app.include_router(detections_router.router)
+app.include_router(audit_router.router)
 
 
 @app.get("/healthz")

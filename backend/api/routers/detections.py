@@ -1,0 +1,41 @@
+"""GET /detections — recent detection rows for the anomaly feed."""
+from __future__ import annotations
+
+import asyncio
+import time
+
+from fastapi import APIRouter, Query
+
+from data.ch_client import client
+
+
+router = APIRouter(tags=["reads"])
+
+_COLS = ("metric_ts", "metric", "film_id", "region",
+         "detector", "baseline_value", "actual_value",
+         "magnitude", "business_impact", "severity", "dedup_key")
+
+
+@router.get("/detections")
+async def detections(
+    limit: int = Query(50, ge=1, le=500),
+    since_hours: int = Query(24, ge=1, le=168),
+):
+    def _run() -> list[list]:
+        sql = (
+            f"SELECT toString(metric_ts), metric, film_id, region, "
+            f"detector, baseline_value, actual_value, magnitude, "
+            f"business_impact, severity, dedup_key "
+            f"FROM detections "
+            f"WHERE metric_ts >= now() - INTERVAL {int(since_hours)} HOUR "
+            f"ORDER BY severity DESC LIMIT {int(limit)}"
+        )
+        with client() as c:
+            return [list(r) for r in c.query(sql).result_rows]
+    t0 = time.perf_counter()
+    rows = await asyncio.to_thread(_run)
+    dt_ms = int((time.perf_counter() - t0) * 1000)
+    return {
+        "detections": [dict(zip(_COLS, r)) for r in rows],
+        "query_latency_ms": dt_ms,
+    }
