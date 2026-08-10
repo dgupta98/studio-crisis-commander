@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import type {
-  SseEvent, DetectionRow, InvestigationResult, DecisionResult,
+  SseEvent, InvestigationResult, DecisionResult,
   ExecutiveReport, CrisisType, MetricsResponse, AuditRow,
 } from '@/api/contracts'
 import {
