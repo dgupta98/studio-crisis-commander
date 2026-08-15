@@ -61,6 +61,10 @@ app.include_router(audit_router.router)
 app.include_router(metrics_router.router)
 
 
+@app.get("/health")
 @app.get("/healthz")
-def healthz():
+def health():
+    """Trivial liveness endpoint. Two paths, one handler:
+    /healthz preserves the L4 acceptance script; /health is what
+    Cloud Scheduler warms and what deploy scripts curl for readiness."""
     return {"status": "ok"}
