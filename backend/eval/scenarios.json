@@ -1,0 +1,39 @@
+[
+  {"id":"sc_001","crisis_type":"regional_sentiment_collapse","film_id":1,"region":"Brazil","magnitude":0.35,"expected_primary_cause":"regional_sentiment_collapse"},
+  {"id":"sc_002","crisis_type":"regional_sentiment_collapse","film_id":2,"region":"India","magnitude":0.42,"expected_primary_cause":"regional_sentiment_collapse"},
+  {"id":"sc_003","crisis_type":"regional_sentiment_collapse","film_id":3,"region":"Germany","magnitude":0.28,"expected_primary_cause":"regional_sentiment_collapse"},
+  {"id":"sc_004","crisis_type":"regional_sentiment_collapse","film_id":4,"region":"Japan","magnitude":0.48,"expected_primary_cause":"regional_sentiment_collapse"},
+
+  {"id":"sc_005","crisis_type":"negative_social_virality","film_id":5,"region":"US","magnitude":0.31,"expected_primary_cause":"negative_social_virality"},
+  {"id":"sc_006","crisis_type":"negative_social_virality","film_id":6,"region":"UK","magnitude":0.44,"expected_primary_cause":"negative_social_virality"},
+  {"id":"sc_007","crisis_type":"negative_social_virality","film_id":7,"region":"France","magnitude":0.26,"expected_primary_cause":"negative_social_virality"},
+  {"id":"sc_008","crisis_type":"negative_social_virality","film_id":8,"region":"Mexico","magnitude":0.49,"expected_primary_cause":"negative_social_virality"},
+
+  {"id":"sc_009","crisis_type":"refund_spike","film_id":9,"region":"US","magnitude":0.30,"expected_primary_cause":"refund_spike"},
+  {"id":"sc_010","crisis_type":"refund_spike","film_id":10,"region":"Canada","magnitude":0.38,"expected_primary_cause":"refund_spike"},
+  {"id":"sc_011","crisis_type":"refund_spike","film_id":11,"region":"Australia","magnitude":0.45,"expected_primary_cause":"refund_spike"},
+  {"id":"sc_012","crisis_type":"refund_spike","film_id":12,"region":"Brazil","magnitude":0.22,"expected_primary_cause":"refund_spike"},
+
+  {"id":"sc_013","crisis_type":"competitor_release_impact","film_id":13,"region":"US","magnitude":0.40,"expected_primary_cause":"competitor_release_impact"},
+  {"id":"sc_014","crisis_type":"competitor_release_impact","film_id":14,"region":"UK","magnitude":0.33,"expected_primary_cause":"competitor_release_impact"},
+  {"id":"sc_015","crisis_type":"competitor_release_impact","film_id":15,"region":"Germany","magnitude":0.47,"expected_primary_cause":"competitor_release_impact"},
+  {"id":"sc_016","crisis_type":"competitor_release_impact","film_id":16,"region":"Japan","magnitude":0.25,"expected_primary_cause":"competitor_release_impact"},
+
+  {"id":"sc_017","crisis_type":"trailer_variant_underperformance","film_id":17,"region":"US","magnitude":0.36,"expected_primary_cause":"trailer_variant_underperformance"},
+  {"id":"sc_018","crisis_type":"trailer_variant_underperformance","film_id":18,"region":"India","magnitude":0.29,"expected_primary_cause":"trailer_variant_underperformance"},
+  {"id":"sc_019","crisis_type":"trailer_variant_underperformance","film_id":19,"region":"Mexico","magnitude":0.43,"expected_primary_cause":"trailer_variant_underperformance"},
+  {"id":"sc_020","crisis_type":"trailer_variant_underperformance","film_id":20,"region":"France","magnitude":0.32,"expected_primary_cause":"trailer_variant_underperformance"},
+
+  {"id":"sc_021","crisis_type":"marketing_overspend_low_roi","film_id":21,"region":"US","magnitude":0.41,"expected_primary_cause":"marketing_overspend_low_roi"},
+  {"id":"sc_022","crisis_type":"marketing_overspend_low_roi","film_id":22,"region":"UK","magnitude":0.27,"expected_primary_cause":"marketing_overspend_low_roi"},
+  {"id":"sc_023","crisis_type":"marketing_overspend_low_roi","film_id":23,"region":"Canada","magnitude":0.46,"expected_primary_cause":"marketing_overspend_low_roi"},
+  {"id":"sc_024","crisis_type":"marketing_overspend_low_roi","film_id":24,"region":"Australia","magnitude":0.34,"expected_primary_cause":"marketing_overspend_low_roi"},
+
+  {"id":"sc_025","crisis_type":"streaming_completion_drop","film_id":25,"region":"US","magnitude":0.37,"expected_primary_cause":"streaming_completion_drop"},
+  {"id":"sc_026","crisis_type":"streaming_completion_drop","film_id":26,"region":"India","magnitude":0.24,"expected_primary_cause":"streaming_completion_drop"},
+  {"id":"sc_027","crisis_type":"streaming_completion_drop","film_id":27,"region":"Germany","magnitude":0.48,"expected_primary_cause":"streaming_completion_drop"},
+
+  {"id":"sc_028","crisis_type":"review_score_divergence","film_id":28,"region":"US","magnitude":0.39,"expected_primary_cause":"review_score_divergence"},
+  {"id":"sc_029","crisis_type":"review_score_divergence","film_id":29,"region":"Japan","magnitude":0.30,"expected_primary_cause":"review_score_divergence"},
+  {"id":"sc_030","crisis_type":"review_score_divergence","film_id":30,"region":"France","magnitude":0.44,"expected_primary_cause":"review_score_divergence"}
+]
