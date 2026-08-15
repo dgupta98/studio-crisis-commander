@@ -88,7 +88,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
 
   inject: async (opts) => {
     const body: Record<string, unknown> = {}
-    if (opts?.crisisType) body.crisis_type = opts.crisisType
+    if (opts?.crisisType) body.ctype = opts.crisisType
     if (opts?.fallback) body.fallback = opts.fallback
     const res = await apiPost<{ run_id: string; stream_url?: string }>(
       '/inject-crisis', body,

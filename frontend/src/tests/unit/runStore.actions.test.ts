@@ -14,12 +14,12 @@ describe('inject()', () => {
     const postSpy = vi.spyOn(client, 'apiPost')
       .mockResolvedValue({ run_id: 'r-xyz', stream_url: '/stream/investigation/r-xyz' })
     const openSpy = vi.spyOn(sseMod, 'openStream').mockReturnValue(() => {})
-    const runId = await useRunStore.getState().inject({ crisisType: 'SENTIMENT_COLLAPSE' })
+    const runId = await useRunStore.getState().inject({ crisisType: 'regional_sentiment_collapse' })
     expect(runId).toBe('r-xyz')
     expect(useRunStore.getState().runId).toBe('r-xyz')
     expect(useRunStore.getState().streamState).toBe('connecting')
     expect(postSpy).toHaveBeenCalledWith('/inject-crisis',
-      { crisis_type: 'SENTIMENT_COLLAPSE' })
+      { ctype: 'regional_sentiment_collapse' })
     expect(openSpy).toHaveBeenCalledWith('r-xyz', expect.any(Function), expect.any(Function))
   })
 
@@ -37,13 +37,15 @@ describe('inject()', () => {
     expect(postSpy).toHaveBeenCalledWith('/inject-crisis', { fallback: 'force' })
   })
 
-  it('sends both crisis_type and fallback when both are set', async () => {
+  it('sends both ctype and fallback when both are set', async () => {
     const postSpy = vi.spyOn(client, 'apiPost')
       .mockResolvedValue({ run_id: 'r-both' })
     vi.spyOn(sseMod, 'openStream').mockReturnValue(() => {})
-    await useRunStore.getState().inject({ crisisType: 'COMPETITOR_RELEASE', fallback: 'force' })
+    await useRunStore.getState().inject({
+      crisisType: 'competitor_release_impact', fallback: 'force',
+    })
     expect(postSpy).toHaveBeenCalledWith('/inject-crisis',
-      { crisis_type: 'COMPETITOR_RELEASE', fallback: 'force' })
+      { ctype: 'competitor_release_impact', fallback: 'force' })
   })
 })
 

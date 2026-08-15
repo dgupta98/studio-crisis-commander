@@ -20,18 +20,27 @@ describe('api contracts', () => {
     expect(isSseEvent(e)).toBe(true)
   })
 
-  it('CrisisType is one of the 4 known variants', () => {
+  it('CrisisType matches backend ground_truth.CrisisType(str, Enum) values', () => {
+    // Lowercase snake_case — Pydantic str-Enum coerces on value match.
     const ok: CrisisType[] = [
-      'SENTIMENT_COLLAPSE',
-      'REGIONAL_SENTIMENT_COLLAPSE',
-      'COMPETITOR_RELEASE',
-      'BUDGET_OVERRUN',
+      'regional_sentiment_collapse',
+      'trailer_variant_underperformance',
+      'competitor_release_impact',
+      'marketing_overspend_low_roi',
+      'streaming_completion_drop',
+      'refund_spike',
+      'negative_social_virality',
+      'review_score_divergence',
     ]
     expect(ok).toEqual([
-      'SENTIMENT_COLLAPSE',
-      'REGIONAL_SENTIMENT_COLLAPSE',
-      'COMPETITOR_RELEASE',
-      'BUDGET_OVERRUN',
+      'regional_sentiment_collapse',
+      'trailer_variant_underperformance',
+      'competitor_release_impact',
+      'marketing_overspend_low_roi',
+      'streaming_completion_drop',
+      'refund_spike',
+      'negative_social_virality',
+      'review_score_divergence',
     ])
   })
 

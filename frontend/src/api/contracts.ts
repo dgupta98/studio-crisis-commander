@@ -22,11 +22,17 @@ export function isSseEvent(x: unknown): x is SseEvent {
 }
 
 // ─── Crisis / Detection ─────────────────────────────────────────────
+// Wire values match backend `data.ground_truth.CrisisType(str, Enum)`
+// (lowercase snake_case). Sent as `ctype` in POST /inject-crisis.
 export type CrisisType =
-  | 'SENTIMENT_COLLAPSE'
-  | 'REGIONAL_SENTIMENT_COLLAPSE'
-  | 'COMPETITOR_RELEASE'
-  | 'BUDGET_OVERRUN'
+  | 'regional_sentiment_collapse'
+  | 'trailer_variant_underperformance'
+  | 'competitor_release_impact'
+  | 'marketing_overspend_low_roi'
+  | 'streaming_completion_drop'
+  | 'refund_spike'
+  | 'negative_social_virality'
+  | 'review_score_divergence'
 
 export interface DetectionRow {
   metric_ts: string
