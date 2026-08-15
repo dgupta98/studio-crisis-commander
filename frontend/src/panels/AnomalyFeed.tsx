@@ -1,1 +1,48 @@
-export function AnomalyFeed() { return <div>AnomalyFeed (stub)</div> }
+import { motion } from 'framer-motion'
+import { useRunStore } from '@/store/runStore'
+import { Card } from '@/components/Card'
+import { SeverityChip } from '@/components/SeverityChip'
+import { PanelStateWrapper } from '@/components/PanelStateWrapper'
+import { listStagger, traceRowEnter } from '@/motion/choreography'
+import type { DetectionRow } from '@/api/contracts'
+
+function level(severity: number): 'info' | 'warn' | 'critical' {
+  if (severity >= 8) return 'critical'
+  if (severity >= 5) return 'warn'
+  return 'info'
+}
+
+function label(severity: number): string {
+  return level(severity)
+}
+
+export function AnomalyFeed() {
+  const state = useRunStore((s) => s.panelStates.anomaly)
+  const rows = useRunStore((s) => s.recentDetections)
+
+  return (
+    <PanelStateWrapper state={state} label="Anomaly Feed">
+      <Card className="p-4">
+        <div className="text-xs uppercase tracking-wider text-ink-soft mb-3">
+          Anomaly Feed
+        </div>
+        <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
+          {rows.map((r: DetectionRow) => (
+            <motion.li
+              key={r.dedup_key}
+              variants={traceRowEnter}
+              className="flex items-center gap-3 border-b border-line pb-2"
+            >
+              <SeverityChip level={level(r.severity)}>{label(r.severity)}</SeverityChip>
+              <span className="text-sm text-ink">{r.region}</span>
+              <span className="text-xs text-ink-soft flex-1">{r.metric}</span>
+              <span className="text-xs font-mono text-ink-soft tabular-nums">
+                {r.severity.toFixed(1)}
+              </span>
+            </motion.li>
+          ))}
+        </motion.ul>
+      </Card>
+    </PanelStateWrapper>
+  )
+}
