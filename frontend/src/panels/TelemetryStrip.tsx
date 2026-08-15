@@ -7,8 +7,13 @@ export function TelemetryStrip() {
   const state = useRunStore((s) => s.panelStates.telemetry)
   const metrics = useRunStore((s) => s.metrics)
   const latency = useRunStore((s) => s.latencyMs)
+  const detection = useRunStore((s) => s.detection)
 
-  const first = Object.values(metrics)[0]
+  // Key off the active detection so sparklines stay coherent with the
+  // hero headline. `Object.values(metrics)[0]` would drift if a second
+  // film/region entered the record mid-session.
+  const key = detection ? `${detection.film_id}:${detection.region}` : null
+  const first = key ? metrics[key] : Object.values(metrics)[0]
 
   return (
     <PanelStateWrapper state={state} label="Telemetry" idleLabel="Idle — awaiting metrics">
