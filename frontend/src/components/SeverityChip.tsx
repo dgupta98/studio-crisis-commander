@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
 
-type Level = 'info' | 'warn' | 'critical' | 'replay'
+export type Level = 'info' | 'warn' | 'critical' | 'replay'
 
 const CLASS: Record<Level, string> = {
   info: 'bg-sev-info-bg text-sev-info-fg',
