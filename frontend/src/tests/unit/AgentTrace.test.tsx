@@ -28,6 +28,7 @@ describe('AgentTrace', () => {
         ev(4, 'decision.completed', { decision: { decision_id: 'd', actions: [] }}),
         ev(5, 'report.completed', { report: { report_id: 'r' }}),
         ev(6, 'pipeline.completed'),
+        ev(7, 'approval.granted', { approval_id: 'a-1' }),
       ] as never,
     })
     useRunStore.getState()._recomputePanels()
@@ -37,5 +38,6 @@ describe('AgentTrace', () => {
     expect(screen.getByText(/Decision/i)).toBeInTheDocument()
     expect(screen.getByText(/Report/i)).toBeInTheDocument()
     expect(screen.getByText('SELECT 1')).toBeInTheDocument()
+    expect(screen.getByText(/granted/i)).toBeInTheDocument()
   })
 })

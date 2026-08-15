@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
@@ -11,28 +12,33 @@ type Stage = 'Detection' | 'Investigation' | 'Decision' | 'Report' | 'Pipeline'
 function stageOf(type: string): Stage | null {
   if (type.startsWith('detection.')) return 'Detection'
   if (type.startsWith('investigation.') || type.startsWith('signal.')) return 'Investigation'
-  if (type.startsWith('decision.') || type.startsWith('action.')) return 'Decision'
+  if (type.startsWith('decision.') || type.startsWith('action.') || type.startsWith('approval.')) return 'Decision'
   if (type.startsWith('report.')) return 'Report'
   if (type.startsWith('pipeline.')) return 'Pipeline'
   return null
 }
 
-function label(ev: SseEvent): string {
+function eventLabel(ev: SseEvent): string {
   const parts = ev.type.split('.')
   return parts[parts.length - 1].replace(/_/g, ' ')
 }
+
+const STAGE_ORDER: Stage[] = ['Detection', 'Investigation', 'Decision', 'Report', 'Pipeline']
 
 export function AgentTrace() {
   const state = useRunStore((s) => s.panelStates.trace)
   const events = useRunStore((s) => s.events)
 
-  const grouped: Record<Stage, SseEvent[]> = {
-    Detection: [], Investigation: [], Decision: [], Report: [], Pipeline: [],
-  }
-  for (const e of events) {
-    const st = stageOf(e.type)
-    if (st) grouped[st].push(e)
-  }
+  const grouped = useMemo(() => {
+    const g: Record<Stage, SseEvent[]> = {
+      Detection: [], Investigation: [], Decision: [], Report: [], Pipeline: [],
+    }
+    for (const e of events) {
+      const st = stageOf(e.type)
+      if (st) g[st].push(e)
+    }
+    return g
+  }, [events])
 
   return (
     <PanelStateWrapper state={state} label="Agent Trace" idleLabel="Idle · press Inject to begin">
@@ -41,17 +47,17 @@ export function AgentTrace() {
           Live Agent Trace
         </div>
         <motion.div variants={listStagger} initial="hidden" animate="visible" className="space-y-6">
-          {(['Detection', 'Investigation', 'Decision', 'Report', 'Pipeline'] as Stage[])
+          {STAGE_ORDER
             .filter((s) => grouped[s].length > 0)
             .map((s) => (
               <motion.section key={s} variants={traceRowEnter}>
                 <h3 className="font-display text-2xl tracking-tight text-ink mb-2">{s}</h3>
-                <ul className="space-y-2">
+                <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
                   {grouped[s].map((e) => {
                     const finding = (e.data as { finding?: Finding }).finding
                     return (
-                      <li key={e.seq} className="border-l-2 border-line pl-3">
-                        <div className="text-sm text-ink capitalize">{label(e)}</div>
+                      <motion.li key={e.seq} variants={traceRowEnter} className="border-l-2 border-line pl-3">
+                        <div className="text-sm text-ink capitalize">{eventLabel(e)}</div>
                         {finding?.sql && (
                           <div className="mt-1"><SqlBlock sql={finding.sql} /></div>
                         )}
@@ -60,10 +66,10 @@ export function AgentTrace() {
                             {finding.narrative}
                           </div>
                         )}
-                      </li>
+                      </motion.li>
                     )
                   })}
-                </ul>
+                </motion.ul>
               </motion.section>
             ))}
         </motion.div>
