@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useRunStore } from '@/store/runStore'
 import * as client from '@/api/client'
 import type { SseEvent } from '@/api/contracts'
@@ -15,6 +15,7 @@ const DET = {
 }
 
 beforeEach(() => useRunStore.getState().reset())
+afterEach(() => { vi.restoreAllMocks() })
 
 describe('event routing', () => {
   it('detection.completed → sets detection, auto-fires loadMetrics', async () => {

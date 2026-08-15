@@ -144,8 +144,9 @@ export const useRunStore = create<RunStore>((set, _get) => ({
       if (e instanceof Error) {
         set({ apiReachable: false })
       } else { throw e }
+    } finally {
+      useRunStore.getState()._recomputePanels()
     }
-    useRunStore.getState()._recomputePanels()
   },
 
   loadAudit: async (limit = 20) => {
