@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { Button } from '@/components/Button'
@@ -20,18 +20,32 @@ export function InjectControls() {
   const inject = useRunStore((s) => s.inject)
   const runId = useRunStore((s) => s.runId)
   const streamState = useRunStore((s) => s.streamState)
-  const inFlight = runId !== null && streamState !== 'closed' && streamState !== 'error'
+  // `runId !== null` is not a reliable in-flight signal — it can persist after
+  // a closed/errored run. Key off the stream state directly.
+  const inFlight = streamState === 'connecting' || streamState === 'streaming'
   const [choice, setChoice] = useState<CrisisType | ''>('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Synchronous guard against rapid double-click; setBusy(true) won't reflect
+  // until the next render, so a second click races past the state check.
+  const inFlightRef = useRef(false)
+
+  // Clear stale error when a new run starts so it doesn't linger under a
+  // successful subsequent inject.
+  useEffect(() => { setErr(null) }, [runId])
 
   const fire = async () => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setBusy(true); setErr(null)
     try {
       await inject(choice ? { crisisType: choice } : undefined)
     } catch (e) {
       setErr(String(e))
-    } finally { setBusy(false) }
+    } finally {
+      inFlightRef.current = false
+      setBusy(false)
+    }
   }
 
   return (
@@ -39,6 +53,7 @@ export function InjectControls() {
       <div className="text-xs uppercase tracking-wider text-ink-soft mb-3">Inject Crisis</div>
       <div className="flex gap-2">
         <select
+          aria-label="Crisis type"
           className="border border-line rounded px-2 py-1 text-sm bg-white text-ink flex-1"
           value={choice}
           onChange={(e) => setChoice(e.target.value as CrisisType | '')}

@@ -36,4 +36,14 @@ describe('InjectControls', () => {
     render(<InjectControls />)
     expect(screen.getByRole('button', { name: /inject/i })).toBeDisabled()
   })
+
+  it('rapid double-click only fires one inject POST', async () => {
+    const post = vi.spyOn(client, 'apiPost').mockResolvedValue({ run_id: 'r-new' })
+    vi.spyOn(sseMod, 'openStream').mockReturnValue(() => {})
+    render(<InjectControls />)
+    const btn = screen.getByRole('button', { name: /inject/i })
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
+  })
 })
