@@ -9,22 +9,22 @@ import { HistoryDrawer } from '@/panels/HistoryDrawer'
 
 export function App() {
   return (
-    <div data-testid="ops-center"
-         className="min-h-screen bg-paper text-ink font-body overflow-x-hidden">
+    <main data-testid="ops-center"
+          className="min-h-screen bg-paper text-ink font-body overflow-x-hidden">
       <div className="max-w-[1920px] mx-auto p-6 space-y-4">
         <div data-testid="panel-hero"><HeroBanner /></div>
         <div data-testid="panel-telemetry"><TelemetryStrip /></div>
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
           <div data-testid="panel-trace"><AgentTrace /></div>
-          <aside className="space-y-4">
+          <div className="space-y-4">
             <div data-testid="panel-anomaly"><AnomalyFeed /></div>
             <div data-testid="panel-recommendation"><RecommendationPanel /></div>
             <div data-testid="panel-approval"><ApprovalGate /></div>
             <div data-testid="panel-inject"><InjectControls /></div>
-          </aside>
+          </div>
         </div>
         <div data-testid="panel-history"><HistoryDrawer /></div>
       </div>
-    </div>
+    </main>
   )
 }
