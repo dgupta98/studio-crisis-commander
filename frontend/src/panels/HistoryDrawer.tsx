@@ -26,7 +26,9 @@ export function HistoryDrawer() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
+          aria-expanded={open}
+          aria-controls="history-list"
+          className="w-full flex items-center justify-between rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <span className="text-xs uppercase tracking-wider text-ink-soft">
             History · {rows.length} runs
@@ -34,14 +36,17 @@ export function HistoryDrawer() {
           <span className="text-ink-soft text-sm">{open ? '▲' : '▼'}</span>
         </button>
         {open && (
-          <ul className="mt-3 space-y-2">
+          <ul id="history-list" className="mt-3 space-y-2">
             {rows.map((r) => (
               <li key={r.audit_id} className="border-b border-line pb-2 flex items-center gap-3">
                 <SeverityChip level={statusLevel(r.approval_status)}>
-                  {r.approval_status.replace('_', ' ')}
+                  {r.approval_status.replaceAll('_', ' ')}
                 </SeverityChip>
                 <span className="text-sm text-ink flex-1">{r.report_headline}</span>
-                <span className="text-xs font-mono text-ink-soft">{r.decision_id.slice(0, 8)}</span>
+                <span
+                  className="text-xs font-mono text-ink-soft"
+                  title={r.decision_id}
+                >{r.decision_id.slice(0, 8)}</span>
               </li>
             ))}
           </ul>
