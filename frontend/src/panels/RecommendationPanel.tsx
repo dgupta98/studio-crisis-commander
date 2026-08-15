@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
@@ -13,6 +13,12 @@ export function RecommendationPanel() {
   const decision = useRunStore((s) => s.decision)
   const report = useRunStore((s) => s.report)
   const [openKf, setOpenKf] = useState<number | null>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenKf(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <PanelStateWrapper state={state} label="Recommendation" idleLabel="Awaiting decision…">
@@ -45,6 +51,8 @@ export function RecommendationPanel() {
                       <button
                         type="button"
                         onClick={() => setOpenKf(openKf === i ? null : i)}
+                        aria-expanded={openKf === i}
+                        aria-haspopup="dialog"
                         className="block text-left border border-line rounded p-2 hover:bg-card-alt w-full"
                       >
                         <div className="text-xs text-ink-soft mb-1">{kf.label}</div>

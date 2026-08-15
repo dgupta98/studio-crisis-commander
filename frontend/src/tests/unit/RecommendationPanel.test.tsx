@@ -59,4 +59,18 @@ describe('RecommendationPanel', () => {
     fireEvent.click(screen.getByText('-28%'))
     expect(screen.getByText(/SELECT avg\(sentiment\)/)).toBeInTheDocument()
   })
+
+  it('clicking the same key_figure a second time closes the popover', () => {
+    useRunStore.setState({
+      runId: 'r-1', streamState: 'streaming',
+      decision: DECISION, report: REPORT,
+    })
+    useRunStore.getState()._recomputePanels()
+    render(<RecommendationPanel />)
+    const trigger = screen.getByText('-28%')
+    fireEvent.click(trigger)
+    expect(screen.getByText(/SELECT avg\(sentiment\)/)).toBeInTheDocument()
+    fireEvent.click(trigger)
+    expect(screen.queryByText(/SELECT avg\(sentiment\)/)).not.toBeInTheDocument()
+  })
 })
