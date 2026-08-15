@@ -6,14 +6,13 @@ import { PanelStateWrapper } from '@/components/PanelStateWrapper'
 import { listStagger, traceRowEnter } from '@/motion/choreography'
 import type { DetectionRow } from '@/api/contracts'
 
-function level(severity: number): 'info' | 'warn' | 'critical' {
-  if (severity >= 8) return 'critical'
-  if (severity >= 5) return 'warn'
-  return 'info'
-}
+const SEV_CRITICAL = 8
+const SEV_WARN = 5
 
-function label(severity: number): string {
-  return level(severity)
+function level(severity: number): 'info' | 'warn' | 'critical' {
+  if (severity >= SEV_CRITICAL) return 'critical'
+  if (severity >= SEV_WARN) return 'warn'
+  return 'info'
 }
 
 export function AnomalyFeed() {
@@ -27,20 +26,23 @@ export function AnomalyFeed() {
           Anomaly Feed
         </div>
         <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
-          {rows.map((r: DetectionRow) => (
+          {rows.map((r: DetectionRow) => {
+            const lvl = level(r.severity)
+            return (
             <motion.li
               key={r.dedup_key}
               variants={traceRowEnter}
               className="flex items-center gap-3 border-b border-line pb-2"
             >
-              <SeverityChip level={level(r.severity)}>{label(r.severity)}</SeverityChip>
+              <SeverityChip level={lvl}>{lvl}</SeverityChip>
               <span className="text-sm text-ink">{r.region}</span>
               <span className="text-xs text-ink-soft flex-1">{r.metric}</span>
               <span className="text-xs font-mono text-ink-soft tabular-nums">
                 {r.severity.toFixed(1)}
               </span>
             </motion.li>
-          ))}
+            )
+          })}
         </motion.ul>
       </Card>
     </PanelStateWrapper>

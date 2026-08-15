@@ -26,5 +26,9 @@ describe('AnomalyFeed', () => {
     expect(screen.getByText('Brazil')).toBeInTheDocument()
     expect(screen.getByText('Korea')).toBeInTheDocument()
     expect(screen.getByText('Germany')).toBeInTheDocument()
+    // severity threshold boundaries: >=8 critical, >=5 warn, else info
+    expect(screen.getByText('critical')).toBeInTheDocument()
+    expect(screen.getByText('warn')).toBeInTheDocument()
+    expect(screen.getByText('info')).toBeInTheDocument()
   })
 })
