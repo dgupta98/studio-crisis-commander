@@ -11,13 +11,15 @@ test('inject → detect → decision → approve — golden path (fallback mode)
   await expect(page.getByTestId('ops-center')).toBeVisible()
   await expect(page.getByTestId('panel-hero').getByText(/waiting/i)).toBeVisible()   // hero idle
 
-  // 2. Select a crisis type and inject.
-  await page.getByRole('combobox').selectOption('regional_sentiment_collapse')
+  // 2. Select a crisis type and inject. Scope combobox to the inject panel so
+  //    adding a second <select> anywhere else in the UI won't break this test.
+  const injectPanel = page.getByTestId('panel-inject')
+  await injectPanel.getByRole('combobox').selectOption('regional_sentiment_collapse')
   // Fire the inject; we don't force fallback — the timeouts below accommodate both live (~20s) and fallback (~12s) paths.
-  await page.getByRole('button', { name: /^inject$/i }).click()
+  await injectPanel.getByRole('button', { name: /^inject$/i }).click()
 
   // 3. Wait for the hero to reveal.
-  await expect(page.getByText(/Now Investigating/i)).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('panel-hero').getByText(/Now Investigating/i)).toBeVisible({ timeout: 60_000 })
 
   // 4. Wait for the recommendation to render.
   await expect(page.getByText(/Key Figures/i)).toBeVisible({ timeout: 60_000 })
