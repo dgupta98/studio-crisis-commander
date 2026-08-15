@@ -32,16 +32,17 @@ describe('§1 boundaries', () => {
       .toHaveLength(0)
   })
 
-  it('components/**.tsx MUST NOT import from api/* or store/*', () => {
+  it('components/**.tsx MUST NOT import from api/* or store/* (value imports)', () => {
     const violations: string[] = []
     for (const f of files.filter((f) => f.includes('/components/') && f.endsWith('.tsx'))) {
       const src = fs.readFileSync(f, 'utf-8')
       if (/from ['"]@\/api\/(client|sse)['"]/.test(src)) violations.push(f)
-      if (/from ['"]@\/store\/runStore['"]/.test(src)) violations.push(f)
+      // Iterate every store import; `import type { … }` is fine, value imports are not.
+      for (const m of src.matchAll(/import(\s+type)?\s+[^;]*from\s+['"]@\/store\/[^'"]+['"]/g)) {
+        if (!m[1]) violations.push(f)
+      }
     }
-    // PanelStateWrapper imports the PanelState *type* from store — that's OK.
-    const strict = violations.filter((f) => !/import\s+type\s/.test(fs.readFileSync(f, 'utf-8').match(/import[^;]+from\s+['"]@\/store[^'"]+['"]/)?.[0] ?? ''))
-    expect(strict, `components importing api/store non-type: ${strict.join(', ')}`)
+    expect(violations, `components importing api/store non-type: ${violations.join(', ')}`)
       .toHaveLength(0)
   })
 
