@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { Button } from '@/components/Button'
@@ -14,24 +14,33 @@ export function ApprovalGate() {
   const deny = useRunStore((s) => s.deny)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Synchronous re-entrancy guard: `busy` is state and only reflects on the
+  // next render, so a rapid second click would fire another POST before the
+  // first render sees busy=true.
+  const inFlightRef = useRef(false)
 
-  const doApprove = async () => {
-    if (!decision) return
+  // Fresh decision (new run) — drop any error/busy left over from prior run.
+  useEffect(() => {
+    inFlightRef.current = false
+    setBusy(false)
+    setError(null)
+  }, [decision?.decision_id])
+
+  const run = async (fn: () => Promise<void>) => {
+    if (!decision || inFlightRef.current) return
+    inFlightRef.current = true
     setBusy(true); setError(null)
-    try { await approve(decision.decision_id, 'via dashboard') }
+    try { await fn() }
     catch (e) {
       setError(e instanceof ApiError ? `${e.status}: ${e.body.slice(0, 100)}` : String(e))
-    } finally { setBusy(false) }
+    } finally {
+      inFlightRef.current = false
+      setBusy(false)
+    }
   }
 
-  const doDeny = async () => {
-    if (!decision) return
-    setBusy(true); setError(null)
-    try { await deny(decision.decision_id, 'via dashboard') }
-    catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.body.slice(0, 100)}` : String(e))
-    } finally { setBusy(false) }
-  }
+  const doApprove = () => run(() => approve(decision!.decision_id, 'via dashboard'))
+  const doDeny = () => run(() => deny(decision!.decision_id, 'via dashboard'))
 
   return (
     <PanelStateWrapper state={state} label="Approval" idleLabel="Nothing to approve">
@@ -45,10 +54,14 @@ export function ApprovalGate() {
             <Button variant="primary" onClick={doApprove} disabled={busy}>
               {busy ? '...' : 'Approve'}
             </Button>
-            <Button variant="secondary" onClick={doDeny} disabled={busy}>Deny</Button>
+            <Button variant="secondary" onClick={doDeny} disabled={busy}>
+              {busy ? '...' : 'Deny'}
+            </Button>
           </div>
         )}
-        {error && <div className="mt-2 text-xs text-accent">{error}</div>}
+        {error && (
+          <div role="alert" className="mt-2 text-xs text-accent">{error}</div>
+        )}
       </Card>
     </PanelStateWrapper>
   )

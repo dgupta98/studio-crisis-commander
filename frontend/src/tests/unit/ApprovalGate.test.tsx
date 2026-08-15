@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ApprovalGate } from '@/panels/ApprovalGate'
 import { useRunStore } from '@/store/runStore'
 import * as client from '@/api/client'
@@ -34,8 +34,9 @@ describe('ApprovalGate', () => {
     useRunStore.getState()._recomputePanels()
     render(<ApprovalGate />)
     fireEvent.click(screen.getByRole('button', { name: /approve/i }))
-    await Promise.resolve(); await Promise.resolve()
-    expect(spy).toHaveBeenCalledWith('/approve/d-42', expect.anything())
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith('/approve/d-42', expect.anything()),
+    )
   })
 
   it('approvalStatus=approved → shows approved chip, hides buttons', () => {
