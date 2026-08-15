@@ -52,12 +52,21 @@ npm run acceptance     # 5-check sweep: boundaries + tsc + build + vitest + e2e
 
 ## Deploy (Cloud Run)
 
+`gcloud run deploy --source` does not forward `--build-arg` to Cloud Build,
+so the two-step image push is the reliable path when the bundle needs a
+build-time env baked in:
+
 ```
+docker build \
+  --build-arg VITE_API_URL=https://scc-api-....run.app \
+  -t gcr.io/PROJECT_ID/scc-frontend:latest \
+  frontend/
+docker push gcr.io/PROJECT_ID/scc-frontend:latest
+
 gcloud run deploy scc-frontend \
-  --source frontend/ \
+  --image gcr.io/PROJECT_ID/scc-frontend:latest \
   --region us-east1 \
-  --allow-unauthenticated \
-  --build-arg VITE_API_URL=https://scc-api-....run.app
+  --allow-unauthenticated
 ```
 
 ## Spec
