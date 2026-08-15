@@ -49,6 +49,8 @@ interface RunStore {
   loadAudit: (limit?: number) => Promise<void>
   loadMetrics: (filmId: number, region: string, hours?: number) => Promise<void>
   reset: () => void
+  _dispatch: (ev: SseEvent) => void
+  _recomputePanels: () => void
 }
 
 const INITIAL_PANELS: Record<PanelKey, PanelState> = {
@@ -64,6 +66,7 @@ const INITIAL_PANELS: Record<PanelKey, PanelState> = {
 const INITIAL: Omit<RunStore, keyof {
   inject: never; connectStream: never; approve: never; deny: never;
   loadDetections: never; loadAudit: never; loadMetrics: never; reset: never;
+  _dispatch: never; _recomputePanels: never;
 }> = {
   runId: null,
   events: [],
@@ -101,20 +104,18 @@ export const useRunStore = create<RunStore>((set, _get) => ({
 
   connectStream: (runId: string) => {
     const prev = useRunStore.getState()._closeStream
-    set({ _closeStream: null })
+    set({ _closeStream: null })  // clear before invoking so a sync openStream throw can't leave a stale ref
     prev?.()
     const close = openStream(
       runId,
-      // onEvent — Task 8 wires the full router; for now, just record it.
-      (payload) => {
-        // The dispatch is implemented in Task 8. Keep append-only fallback here
-        // so we can still test the plumbing.
-        const evs = useRunStore.getState().events
-        set({ events: [...evs, payload as SseEvent], streamState: 'streaming' })
+      (payload) => useRunStore.getState()._dispatch(payload as SseEvent),
+      (_err) => {
+        set({ streamState: 'error' })
+        useRunStore.getState()._recomputePanels()
       },
-      (_err) => set({ streamState: 'error' }),
     )
-    set({ _closeStream: close })
+    set({ streamState: 'connecting', _closeStream: close })
+    useRunStore.getState()._recomputePanels()
   },
 
   approve: async (decisionId, note) => {
@@ -144,6 +145,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
         set({ apiReachable: false })
       } else { throw e }
     }
+    useRunStore.getState()._recomputePanels()
   },
 
   loadAudit: async (limit = 20) => {
@@ -155,6 +157,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
       if (e instanceof Error) console.error('[loadAudit]', e)
       set({ apiReachable: false })
     }
+    useRunStore.getState()._recomputePanels()
   },
 
   loadMetrics: async (filmId, region, hours = 48) => {
@@ -172,11 +175,126 @@ export const useRunStore = create<RunStore>((set, _get) => ({
     } catch {
       set({ apiReachable: false })
     }
+    useRunStore.getState()._recomputePanels()
   },
 
   reset: () => {
     const { _closeStream } = useRunStore.getState()
     set({ ...INITIAL })
     _closeStream?.()
+  },
+
+  _dispatch: (ev) => {
+    const s = useRunStore.getState()
+
+    // Dedupe by seq — server replays on reconnect (Layer 4 §6).
+    if (s.events.some((e) => e.seq === ev.seq)) return
+
+    const patch: Partial<RunStore> = { events: [...s.events, ev] }
+    if (s.streamState === 'connecting' || s.streamState === 'idle') {
+      patch.streamState = 'streaming'
+    }
+    if (!s.mode && (ev.data as { mode?: 'live' | 'fallback' })?.mode) {
+      patch.mode = (ev.data as { mode?: 'live' | 'fallback' }).mode ?? null
+    }
+
+    switch (ev.type) {
+      case 'detection.completed': {
+        const d = (ev.data as { detection?: DetectionRow }).detection
+        if (d) {
+          patch.detection = d
+          // fire-and-forget metrics fetch for the affected film/region
+          void useRunStore.getState().loadMetrics(d.film_id, d.region)
+        }
+        break
+      }
+      case 'signal.completed': {
+        const f = (ev.data as { finding?: Finding }).finding
+        if (f) patch.findings = [...s.findings, f]
+        break
+      }
+      case 'action.impact_computed': {
+        // merge impact into the matching action; keeps decision reactive
+        const p = ev.data as { action_index?: number; impact_usd?: number }
+        if (s.decision && typeof p.action_index === 'number') {
+          const actions = s.decision.actions.map((a, i) =>
+            i === p.action_index ? { ...a, impact_usd: p.impact_usd ?? a.impact_usd } : a,
+          )
+          patch.decision = { ...s.decision, actions }
+        }
+        break
+      }
+      case 'decision.completed': {
+        const d = (ev.data as { decision?: DecisionResult }).decision
+        if (d) {
+          patch.decision = d
+          patch.approvalStatus = d.status
+        }
+        break
+      }
+      case 'report.completed': {
+        const r = (ev.data as { report?: ExecutiveReport }).report
+        if (r) patch.report = r
+        break
+      }
+      case 'approval.granted':
+      case 'approval.denied': {
+        const st = (ev.data as { approval_status?: ApprovalStatus }).approval_status
+        if (st) patch.approvalStatus = st
+        break
+      }
+      case 'pipeline.completed': patch.streamState = 'closed'; break
+      case 'pipeline.failed':    patch.streamState = 'error';  break
+    }
+
+    set(patch)
+    useRunStore.getState()._recomputePanels()
+  },
+
+  _recomputePanels: () => {
+    const s = useRunStore.getState()
+    const hasRun = s.runId !== null
+    const streamError = s.streamState === 'error'
+    const streaming = s.streamState === 'streaming' || s.streamState === 'closed'
+
+    const panels: Record<PanelKey, PanelState> = {
+      hero: !hasRun ? { kind: 'idle' }
+        : streamError ? { kind: 'error', message: 'Stream disconnected', retry: s.reset }
+        : s.detection ? { kind: 'success' }
+        : { kind: 'loading', substatus: 'Detecting anomaly…' },
+
+      telemetry:
+        Object.keys(s.metrics).length > 0 ? { kind: 'success' }
+        : !hasRun ? { kind: 'idle' }
+        : { kind: 'loading', substatus: 'Fetching rolling aggregates…' },
+
+      anomaly:
+        !s.apiReachable ? { kind: 'error', message: 'API unreachable', retry: () => void s.loadDetections() }
+        : s.recentDetections.length > 0 ? { kind: 'success' }
+        : hasRun && s.detection ? { kind: 'success' }
+        : hasRun ? { kind: 'loading' }
+        : { kind: 'empty', hint: 'No anomalies in the last 6 hours — system nominal' },
+
+      trace: !hasRun ? { kind: 'idle' }
+        : streamError ? { kind: 'error', message: 'Trace stream lost',
+                          retry: () => s.connectStream(s.runId!) }
+        : { kind: 'success' },
+
+      recommendation:
+        s.decision ? { kind: 'success' }
+        : !hasRun ? { kind: 'idle' }
+        : streamError ? { kind: 'error', message: 'Decision stage failed', retry: s.reset }
+        : { kind: 'loading', substatus: streaming ? 'Awaiting decision…' : 'Waiting…' },
+
+      approval:
+        s.decision ? { kind: 'success' }
+        : { kind: 'idle' },
+
+      history:
+        !s.apiReachable ? { kind: 'error', message: 'API unreachable', retry: () => void s.loadAudit() }
+        : s.auditRows.length > 0 ? { kind: 'success' }
+        : { kind: 'empty', hint: 'No past investigations yet' },
+    }
+    set({ panelStates: panels })
   },
 }))
