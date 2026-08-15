@@ -21,7 +21,9 @@ export const panelReveal: Variants = {
   },
 }
 
-/** Individual trace row — used with listStagger as parent. */
+/** Individual trace row — used with listStagger as parent. Uses `transition`
+ *  (0.4s) rather than `reveal` (0.7s) because the perceived time per row is
+ *  compounded by the parent's staggerChildren delay. */
 export const traceRowEnter: Variants = {
   hidden: { opacity: 0, y: 12, filter: `blur(${blurEnter}px)` },
   visible: {
@@ -30,7 +32,8 @@ export const traceRowEnter: Variants = {
   },
 }
 
-/** Parent variant that staggers child reveals. */
+/** Parent variant that staggers child reveals. `hidden` is intentionally empty
+ *  — the parent only orchestrates timing; children own their own animations. */
 export const listStagger: Variants = {
   hidden: {},
   visible: {
