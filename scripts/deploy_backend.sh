@@ -38,11 +38,11 @@ gcloud run deploy "${SERVICE}" \
   --platform=managed \
   --allow-unauthenticated \
   --port=8080 \
-  --memory=1Gi \
-  --cpu=1 \
+  --memory=2Gi \
+  --cpu=2 \
   --min-instances=0 \
   --max-instances=5 \
-  --concurrency=20 \
+  --concurrency=4 \
   --timeout=300 \
   --set-env-vars="CLICKHOUSE_PORT=8443,GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${GCP_PROJECT},GOOGLE_CLOUD_LOCATION=us-east4,GEMINI_MODEL_FLASH=gemini-2.5-flash,GEMINI_MODEL_PRO=gemini-2.5-pro" \
   --set-secrets="CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest" \
