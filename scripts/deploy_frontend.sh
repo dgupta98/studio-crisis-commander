@@ -19,7 +19,7 @@ gcloud builds submit \
   --project="${GCP_PROJECT}" \
   --config=frontend/cloudbuild.yaml \
   --substitutions="_IMAGE=${IMAGE},_VITE_API_URL=${BACKEND_URL}" \
-  frontend/
+  frontend/ >&2
 
 echo "=== Deploying ${SERVICE} to Cloud Run (${REGION})" >&2
 gcloud run deploy "${SERVICE}" \

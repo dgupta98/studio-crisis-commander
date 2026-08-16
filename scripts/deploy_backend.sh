@@ -21,7 +21,7 @@ echo "=== Building ${IMAGE} via Cloud Build" >&2
 gcloud builds submit \
   --project="${GCP_PROJECT}" \
   --tag="${IMAGE}" \
-  backend/
+  backend/ >&2
 
 echo "=== Deploying ${SERVICE} to Cloud Run (${REGION})" >&2
 gcloud run deploy "${SERVICE}" \
