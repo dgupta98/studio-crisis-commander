@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Deploy frontend (scc-frontend) to Cloud Run.
+# Deploy frontend (scc-frontend) to Cloud Run — build runs in Cloud Build,
+# no local Docker daemon required.
+#
 # Usage: scripts/deploy_frontend.sh <BACKEND_URL>
 # BACKEND_URL is baked into the bundle at build time via VITE_API_URL.
 set -euo pipefail
@@ -10,15 +12,14 @@ REGION="${GCP_REGION:-us-east1}"
 SERVICE="scc-frontend"
 IMAGE="gcr.io/${GCP_PROJECT}/${SERVICE}:latest"
 
-echo "=== Building ${IMAGE} with VITE_API_URL=${BACKEND_URL}" >&2
-# Two-step (build then push) because `gcloud run deploy --source` does NOT
-# forward --build-arg to Cloud Build — see frontend/README.md Deploy section.
-docker build \
-  --build-arg "VITE_API_URL=${BACKEND_URL}" \
-  --tag "${IMAGE}" \
+echo "=== Building ${IMAGE} via Cloud Build (VITE_API_URL=${BACKEND_URL})" >&2
+# `gcloud run deploy --source` does NOT forward --build-arg to Cloud Build,
+# so we drive Cloud Build directly with a config file that injects the arg.
+gcloud builds submit \
+  --project="${GCP_PROJECT}" \
+  --config=frontend/cloudbuild.yaml \
+  --substitutions="_IMAGE=${IMAGE},_VITE_API_URL=${BACKEND_URL}" \
   frontend/
-
-docker push "${IMAGE}"
 
 echo "=== Deploying ${SERVICE} to Cloud Run (${REGION})" >&2
 gcloud run deploy "${SERVICE}" \

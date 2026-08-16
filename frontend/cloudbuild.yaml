@@ -1,0 +1,17 @@
+# Cloud Build config for the frontend image. Substitutions:
+#   _IMAGE         — full image ref, e.g. gcr.io/PROJECT/scc-frontend:latest
+#   _VITE_API_URL  — baked into the Vite bundle at build time
+#
+# Used by scripts/deploy_frontend.sh so no local Docker daemon is required —
+# the entire build runs in Cloud Build.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - VITE_API_URL=${_VITE_API_URL}
+      - -t
+      - ${_IMAGE}
+      - .
+images:
+  - ${_IMAGE}
