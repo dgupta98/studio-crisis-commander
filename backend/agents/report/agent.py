@@ -32,7 +32,7 @@ from agents.report.prompts import REPORT_PROMPT
 
 
 REPORT_TIMEOUT_SECONDS = 120.0
-FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20")
+FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash")
 
 
 class ReportProvenanceError(RuntimeError):

@@ -33,7 +33,7 @@ from agents.decision.prompts import DECISION_PROMPT
 from agents.investigation.contracts import InvestigationResult
 
 DECISION_TIMEOUT_SECONDS = 90.0
-FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20")
+FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash")
 
 
 class DecisionImpactError(RuntimeError):

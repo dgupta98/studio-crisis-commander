@@ -1,7 +1,7 @@
 """Gemini-generated review text for reviews_text (150K rows).
 
-Model: GEMINI_MODEL_FLASH env var (default gemini-2.5-flash-preview-05-20) via
-google-genai (Vertex backend, us-east1).
+Model: GEMINI_MODEL_FLASH env var (default gemini-2.5-flash) via
+google-genai (Vertex backend, us-east4).
 Batch: 25 reviews per API call → 6,000 calls.
 Cost cap: aborts if projected spend exceeds $25 (based on token counts).
 Resumable: seed/gen_state.json records last completed batch index.
@@ -164,7 +164,7 @@ def _prompt(spec: BatchSpec) -> str:
 
 def _run_batch(cl: "genai.Client", spec: BatchSpec) -> tuple[list[list], int, int]:
     resp = cl.models.generate_content(
-        model=os.environ.get("GEMINI_MODEL_FLASH", os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-preview-05-20")),
+        model=os.environ.get("GEMINI_MODEL_FLASH", os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")),
         contents=_prompt(spec),
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -196,7 +196,7 @@ def _run_batch(cl: "genai.Client", spec: BatchSpec) -> tuple[list[list], int, in
 
 def _make_client() -> "genai.Client":
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
-    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east1")
+    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east4")
     if not project:
         raise RuntimeError("GOOGLE_CLOUD_PROJECT not set.")
     return genai.Client(vertexai=True, project=project, location=location)

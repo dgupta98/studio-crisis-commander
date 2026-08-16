@@ -73,7 +73,7 @@ async def reload_impact(sql: str) -> float | None:
 async def _run_query(sql: str) -> list[list[Any]]:
     agent = LlmAgent(
         name="acceptance_query",
-        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash"),
         instruction=(
             "Call run_query with EXACTLY this SQL and return ONLY the raw "
             "JSON result the tool gives back:\n\n" + sql

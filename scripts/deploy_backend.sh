@@ -4,12 +4,19 @@
 # on stdout so callers can capture it: BACKEND_URL=$(scripts/deploy_backend.sh)
 #
 # Required Secret Manager secrets (create these once via Console or gcloud):
-#   GEMINI_API_KEY         → GEMINI_API_KEY
 #   CLICKHOUSE_HOST        → CLICKHOUSE_HOST     (e.g. abc.us-east1.gcp.clickhouse.cloud)
 #   CLICKHOUSE_USER        → CLICKHOUSE_USER
 #   CLICKHOUSE_PASSWORD    → CLICKHOUSE_PASSWORD
 #   CLICKHOUSE_DB          → CLICKHOUSE_DB       (e.g. studio_crisis)
 # CLICKHOUSE_PORT is a plain env var (8443 TLS default) — not a secret.
+#
+# Gemini calls use Vertex AI via the runtime service account (no API key needed).
+# One-time setup:
+#   gcloud services enable aiplatform.googleapis.com --project=${GCP_PROJECT}
+#   PROJECT_NUM=$(gcloud projects describe ${GCP_PROJECT} --format='value(projectNumber)')
+#   gcloud projects add-iam-policy-binding ${GCP_PROJECT} \
+#     --member="serviceAccount:${PROJECT_NUM}-compute@developer.gserviceaccount.com" \
+#     --role=roles/aiplatform.user
 set -euo pipefail
 
 : "${GCP_PROJECT:?GCP_PROJECT must be set}"
@@ -37,8 +44,8 @@ gcloud run deploy "${SERVICE}" \
   --max-instances=5 \
   --concurrency=20 \
   --timeout=300 \
-  --set-env-vars="CLICKHOUSE_PORT=8443,GEMINI_MODEL_FLASH=gemini-2.5-flash-preview-05-20,GEMINI_MODEL_PRO=gemini-2.5-pro-preview-05-06" \
-  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest,CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest" \
+  --set-env-vars="CLICKHOUSE_PORT=8443,GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${GCP_PROJECT},GOOGLE_CLOUD_LOCATION=us-east4,GEMINI_MODEL_FLASH=gemini-2.5-flash,GEMINI_MODEL_PRO=gemini-2.5-pro" \
+  --set-secrets="CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest" \
   >&2
 
 URL=$(gcloud run services describe "${SERVICE}" \

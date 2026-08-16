@@ -39,7 +39,7 @@ async def _run_proof() -> int:
     toolset = build_toolset()
     agent = LlmAgent(
         name="mcp_proof",
-        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash"),
         instruction=PROOF_INSTRUCTION,
         tools=[toolset],
     )

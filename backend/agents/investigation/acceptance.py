@@ -94,7 +94,7 @@ async def _load_crisis_detections() -> list[DetectionIn]:
 
     fetcher = LlmAgent(
         name="crisis_fetcher",
-        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash"),
         instruction=(
             "Use run_query to run this SQL exactly and return ONLY the raw "
             "JSON result the tool gives back — no commentary.\n\n"

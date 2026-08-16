@@ -39,7 +39,7 @@ async def main() -> int:
 
     agent = LlmAgent(
         name="write_smoke",
-        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash"),
         instruction=(
             "Call run_query with EACH of the following SQL statements in order. "
             "Return only 'OK' after the last one succeeds.\n"
