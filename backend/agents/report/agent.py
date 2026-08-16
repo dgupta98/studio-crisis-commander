@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -31,7 +32,7 @@ from agents.report.prompts import REPORT_PROMPT
 
 
 REPORT_TIMEOUT_SECONDS = 120.0
-FLASH = "gemini-2.5-flash"
+FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20")
 
 
 class ReportProvenanceError(RuntimeError):

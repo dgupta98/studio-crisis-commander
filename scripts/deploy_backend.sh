@@ -37,7 +37,7 @@ gcloud run deploy "${SERVICE}" \
   --max-instances=5 \
   --concurrency=20 \
   --timeout=300 \
-  --set-env-vars="CLICKHOUSE_PORT=8443" \
+  --set-env-vars="CLICKHOUSE_PORT=8443,GEMINI_MODEL_FLASH=gemini-2.5-flash-preview-05-20,GEMINI_MODEL_PRO=gemini-2.5-pro-preview-05-06" \
   --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest,CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest" \
   >&2
 

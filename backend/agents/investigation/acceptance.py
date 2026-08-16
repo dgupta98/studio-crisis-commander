@@ -6,6 +6,7 @@ Costs ~$0.10-0.15 in Gemini calls per run (3 investigations).
 from __future__ import annotations
 
 import asyncio
+import os
 import statistics
 import subprocess
 import sys
@@ -93,7 +94,7 @@ async def _load_crisis_detections() -> list[DetectionIn]:
 
     fetcher = LlmAgent(
         name="crisis_fetcher",
-        model="gemini-2.5-flash",
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
         instruction=(
             "Use run_query to run this SQL exactly and return ONLY the raw "
             "JSON result the tool gives back — no commentary.\n\n"

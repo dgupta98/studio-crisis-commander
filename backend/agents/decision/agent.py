@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -32,7 +33,7 @@ from agents.decision.prompts import DECISION_PROMPT
 from agents.investigation.contracts import InvestigationResult
 
 DECISION_TIMEOUT_SECONDS = 90.0
-FLASH = "gemini-2.5-flash"
+FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20")
 
 
 class DecisionImpactError(RuntimeError):

@@ -13,6 +13,7 @@ agent used, so drift is measured apples-to-apples.
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from google.adk.agents.llm_agent import LlmAgent
@@ -72,7 +73,7 @@ async def reload_impact(sql: str) -> float | None:
 async def _run_query(sql: str) -> list[list[Any]]:
     agent = LlmAgent(
         name="acceptance_query",
-        model="gemini-2.5-flash",
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
         instruction=(
             "Call run_query with EXACTLY this SQL and return ONLY the raw "
             "JSON result the tool gives back:\n\n" + sql

@@ -15,6 +15,8 @@ invoke_investigation()) can read it.
 
 from __future__ import annotations
 
+import os
+
 from google.adk.agents.llm_agent import LlmAgent
 
 from agents.investigation.contracts import Hypothesis, SignalFinding
@@ -28,8 +30,8 @@ from agents.investigation.prompts import (
 from mcp_integration.client import build_toolset
 
 
-FLASH = "gemini-2.5-flash"
-PRO   = "gemini-2.5-pro"
+FLASH = os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20")
+PRO   = os.environ.get("GEMINI_MODEL_PRO",   "gemini-2.5-pro-preview-05-06")
 
 
 def build_numeric_context() -> LlmAgent:

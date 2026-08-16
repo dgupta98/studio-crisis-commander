@@ -15,6 +15,7 @@ Exit 0 on success (prints tool call + tables). Non-zero on any failure.
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 
 from google.adk.agents.llm_agent import LlmAgent
@@ -38,7 +39,7 @@ async def _run_proof() -> int:
     toolset = build_toolset()
     agent = LlmAgent(
         name="mcp_proof",
-        model="gemini-2.5-flash",
+        model=os.environ.get("GEMINI_MODEL_FLASH", "gemini-2.5-flash-preview-05-20"),
         instruction=PROOF_INSTRUCTION,
         tools=[toolset],
     )
