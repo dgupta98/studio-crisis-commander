@@ -30,7 +30,7 @@ gcloud run deploy "${SERVICE}" \
   --allow-unauthenticated \
   --port=8080 \
   --memory=256Mi \
-  --cpu=0.5 \
+  --cpu=1 \
   --min-instances=0 \
   --max-instances=3 \
   --concurrency=80 \
