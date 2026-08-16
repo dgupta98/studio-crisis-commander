@@ -51,7 +51,9 @@ RULES (violations will fail validation):
        - You MUST only cite numbers that appear in a finding's `rows`. If a
          percentage or dollar figure is not in a finding row, omit it.
        - Prefer generic phrasing when specifics are unavailable
-         ("sentiment collapse in {{region}}") over inventing a specific one.
+         (e.g. "sentiment collapse in the affected region") over inventing
+         a specific one. Do NOT wrap region or variant placeholders in
+         curly braces — write the literal region string from the detection.
   5. LEAVE `impact_sql` AND `impact_usd` BLANK / null / empty — the
      orchestrator fills them by running canonical SQL. If you emit values
      here they will be stripped.
