@@ -4,11 +4,11 @@
 # on stdout so callers can capture it: BACKEND_URL=$(scripts/deploy_backend.sh)
 #
 # Required Secret Manager secrets (create these once via Console or gcloud):
-#   gemini-api-key         → GEMINI_API_KEY
-#   clickhouse-host        → CLICKHOUSE_HOST     (e.g. abc.us-east1.gcp.clickhouse.cloud)
-#   clickhouse-user        → CLICKHOUSE_USER
-#   clickhouse-password    → CLICKHOUSE_PASSWORD
-#   clickhouse-db          → CLICKHOUSE_DB       (e.g. studio_crisis)
+#   GEMINI_API_KEY         → GEMINI_API_KEY
+#   CLICKHOUSE_HOST        → CLICKHOUSE_HOST     (e.g. abc.us-east1.gcp.clickhouse.cloud)
+#   CLICKHOUSE_USER        → CLICKHOUSE_USER
+#   CLICKHOUSE_PASSWORD    → CLICKHOUSE_PASSWORD
+#   CLICKHOUSE_DB          → CLICKHOUSE_DB       (e.g. studio_crisis)
 # CLICKHOUSE_PORT is a plain env var (8443 TLS default) — not a secret.
 set -euo pipefail
 
@@ -38,7 +38,7 @@ gcloud run deploy "${SERVICE}" \
   --concurrency=20 \
   --timeout=300 \
   --set-env-vars="CLICKHOUSE_PORT=8443" \
-  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,CLICKHOUSE_HOST=clickhouse-host:latest,CLICKHOUSE_USER=clickhouse-user:latest,CLICKHOUSE_PASSWORD=clickhouse-password:latest,CLICKHOUSE_DB=clickhouse-db:latest" \
+  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest,CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest" \
   >&2
 
 URL=$(gcloud run services describe "${SERVICE}" \
