@@ -50,12 +50,24 @@ function eventLabel(ev: SseEvent): string {
     if (d.impact_error) return `impact failed: ${d.action_type ?? ''}`
     return `impact ${formatImpact(d.impact_usd)}: ${d.action_type ?? ''}`
   }
-  if (ev.type === 'investigation.tool_called' || ev.type === 'decision.tool_called') {
+  if (ev.type === 'detection.started') {
+    const c = (ev.data as { crisis?: { type?: string } }).crisis
+    return c?.type ? `injecting ${c.type.replace(/_/g, ' ')}` : 'detection started'
+  }
+  if (
+    ev.type === 'investigation.tool_called'
+    || ev.type === 'decision.tool_called'
+    || ev.type === 'report.tool_called'
+  ) {
     const d = ev.data as { author?: string; tool?: string }
     const who = d.author ? d.author.replace(/_/g, ' ') : 'agent'
     return `${who} calls ${d.tool ?? 'tool'}`
   }
-  if (ev.type === 'investigation.thought' || ev.type === 'decision.thought') {
+  if (
+    ev.type === 'investigation.thought'
+    || ev.type === 'decision.thought'
+    || ev.type === 'report.thought'
+  ) {
     const d = ev.data as { author?: string }
     const who = d.author ? d.author.replace(/_/g, ' ') : 'agent'
     return `${who} thinking…`
@@ -67,6 +79,59 @@ function eventLabel(ev: SseEvent): string {
 const STAGE_ORDER: Stage[] = ['Detection', 'Investigation', 'Decision', 'Report', 'Pipeline']
 
 function TraceDetail({ ev }: { ev: SseEvent }) {
+  if (ev.type === 'detection.started') {
+    const c = (ev.data as {
+      crisis?: {
+        type?: string
+        film_id?: number
+        region?: string
+        magnitude?: number
+        true_root_cause?: string
+        expected_recommendation?: string
+        affected_tables?: string[]
+      }
+    }).crisis
+    if (!c) return null
+    const subject = c.film_id !== undefined
+      ? `Film ${c.film_id}${c.region ? ` · ${regionLabel(c.region)}` : ''}`
+      : ''
+    return (
+      <div className="mt-1 space-y-1">
+        {c.type && (
+          <div className="text-sm text-ink">
+            <span className="text-ink-soft">Scenario · </span>
+            <span className="font-mono">{c.type}</span>
+          </div>
+        )}
+        {subject && (
+          <div className="text-sm text-ink">
+            <span className="text-ink-soft">Subject · </span>{subject}
+          </div>
+        )}
+        {typeof c.magnitude === 'number' && (
+          <div className="text-xs text-ink-soft">
+            magnitude <span className="font-mono tabular-nums text-ink">
+              {c.magnitude.toFixed(2)}
+            </span>
+          </div>
+        )}
+        {c.true_root_cause && (
+          <div className="text-xs text-ink-soft italic">
+            Ground-truth cause: {c.true_root_cause}
+          </div>
+        )}
+        {c.affected_tables && c.affected_tables.length > 0 && (
+          <div className="text-xs text-ink-soft">
+            Tables touched:{' '}
+            <span className="font-mono text-ink">
+              {c.affected_tables.join(', ')}
+            </span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (ev.type === 'detection.completed') {
     const d = (ev.data as { detection?: Partial<DetectionRow> }).detection
     if (!d) return null
@@ -190,7 +255,11 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
     )
   }
 
-  if (ev.type === 'investigation.tool_called' || ev.type === 'decision.tool_called') {
+  if (
+    ev.type === 'investigation.tool_called'
+    || ev.type === 'decision.tool_called'
+    || ev.type === 'report.tool_called'
+  ) {
     const d = ev.data as { tool?: string; args_preview?: string }
     if (!d.tool) return null
     return (
@@ -207,7 +276,11 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
     )
   }
 
-  if (ev.type === 'investigation.thought' || ev.type === 'decision.thought') {
+  if (
+    ev.type === 'investigation.thought'
+    || ev.type === 'decision.thought'
+    || ev.type === 'report.thought'
+  ) {
     const d = ev.data as { text?: string }
     if (!d.text) return null
     return (

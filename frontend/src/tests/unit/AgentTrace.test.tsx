@@ -33,10 +33,13 @@ describe('AgentTrace', () => {
     })
     useRunStore.getState()._recomputePanels()
     render(<AgentTrace />)
-    expect(screen.getByText(/Detection/i)).toBeInTheDocument()
-    expect(screen.getByText(/Investigation/i)).toBeInTheDocument()
-    expect(screen.getByText(/Decision/i)).toBeInTheDocument()
-    expect(screen.getByText(/Report/i)).toBeInTheDocument()
+    // Section headings — exact h3 match so we don't collide with row labels
+    // like "detection started" that also contain the word.
+    for (const name of ['Detection', 'Investigation', 'Decision', 'Report']) {
+      expect(
+        screen.getByRole('heading', { level: 3, name }),
+      ).toBeInTheDocument()
+    }
     expect(screen.getByText('SELECT 1')).toBeInTheDocument()
     expect(screen.getByText(/granted/i)).toBeInTheDocument()
   })

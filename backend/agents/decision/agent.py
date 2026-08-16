@@ -24,6 +24,7 @@ from google.adk.agents.llm_agent import LlmAgent
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from agents._chain_of_thought import emit_chain_of_thought
 from agents.decision.actions import (
     PARAM_SPECS, compute_status, render_action_sql, validate_params,
 )
@@ -78,51 +79,6 @@ async def invoke_decision(
         ) from e
 
 
-def _emit_chain_of_thought(
-    event: Any,
-    author: str,
-    on_event: Callable[[dict[str, Any]], None],
-) -> None:
-    """Emit tool calls + thought text from the Decision LlmAgent event stream.
-
-    Decision has no MCP tools — the only function call is ADK's output_schema
-    wrapper (name == "decision"), which we skip because the frontend already
-    renders the final actions from `action.proposed` events.
-    """
-    content = getattr(event, "content", None)
-    parts = getattr(content, "parts", None) if content else None
-    if not parts:
-        return
-    for part in parts:
-        fc = getattr(part, "function_call", None)
-        if fc is not None and fc.name and fc.name != "decision":
-            args = fc.args or {}
-            args_json = json.dumps(args, default=str, separators=(",", ":"))
-            if len(args_json) > 240:
-                args_json = args_json[:237] + "..."
-            on_event({
-                "type": "decision.tool_called",
-                "data": {
-                    "author": author,
-                    "tool": fc.name,
-                    "args_preview": args_json,
-                },
-            })
-            continue
-        text = getattr(part, "text", None)
-        if text and getattr(part, "thought", False):
-            snippet = text.strip()
-            if len(snippet) > 400:
-                snippet = snippet[:397] + "..."
-            on_event({
-                "type": "decision.thought",
-                "data": {
-                    "author": author,
-                    "text": snippet,
-                },
-            })
-
-
 def _clamp_subject_params(
     actions: list[RecommendedAction],
     det_film_id: int,
@@ -169,7 +125,11 @@ async def _run_pipeline(
         ),
     ):
         if on_event is not None:
-            _emit_chain_of_thought(event, event.author or "decision", on_event)
+            emit_chain_of_thought(
+                event, author=event.author or "decision",
+                type_prefix="decision", skip_names=("decision",),
+                on_event=on_event,
+            )
 
     reloaded = await runner.session_service.get_session(
         app_name="decision", user_id="decision-user", session_id=session.id,

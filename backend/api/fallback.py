@@ -61,6 +61,7 @@ _PACING: dict[str, float] = {
     "action.impact_computed": 0.4,
     "decision.completed": 0.3,
     "report.started": 0.0,
+    "report.thought": 0.4,
     "report.completed": 1.5,
     "pipeline.completed": 0.0,
 }
@@ -112,7 +113,21 @@ async def replay_cached_triple(
         await runtime.emit(run_id,
                            SseEvent(seq=seq.next(), type=type_, data=data))
 
-    await emit("detection.started", {"source": "cached"})
+    # Cached triple pre-dates the crisis-context payload, so synthesise
+    # a plausible one from the detection fields to keep the panel populated.
+    det = triple.detection
+    await emit("detection.started", {
+        "source": "cached",
+        "crisis": {
+            "type": det.metric,
+            "film_id": det.film_id,
+            "region": det.region,
+            "magnitude": det.magnitude,
+            "true_root_cause": "cached demo scenario",
+            "expected_recommendation": "see recommended actions below",
+            "affected_tables": [],
+        },
+    })
     await emit("detection.completed",
                {"detection": triple.detection.model_dump(mode="json"),
                 "source": "cached"})
@@ -169,6 +184,12 @@ async def replay_cached_triple(
                 "status": triple.decision.status,
                 "threshold_usd": triple.decision.threshold_usd})
     await emit("report.started", {})
+    await emit("report.thought", {
+        "author": "report",
+        "text": "Pinning each KeyFigure to a verbatim SQL string from the "
+                "investigation or decision impact queries — provenance is "
+                "validated after emission.",
+    })
     await emit("report.completed",
                {"report": triple.report.model_dump(mode="json")})
     await emit("pipeline.completed",

@@ -17,12 +17,14 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from typing import Any, Callable
 from uuid import uuid4
 
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from agents._chain_of_thought import emit_chain_of_thought
 from agents.decision.audit import async_audit_attach_report
 from agents.decision.contracts import DecisionResult
 from agents.investigation.contracts import InvestigationResult
@@ -64,6 +66,8 @@ def build_report_agent() -> LlmAgent:
 
 async def invoke_report(
     inv: InvestigationResult, dec: DecisionResult,
+    *,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> ExecutiveReport:
     """Run the report agent; retry once on ReportProvenanceError.
 
@@ -75,7 +79,8 @@ async def invoke_report(
     for attempt in range(2):
         try:
             final = await asyncio.wait_for(
-                _run_pipeline(inv, dec), timeout=REPORT_TIMEOUT_SECONDS
+                _run_pipeline(inv, dec, on_event=on_event),
+                timeout=REPORT_TIMEOUT_SECONDS,
             )
         except asyncio.TimeoutError as e:
             raise ReportTimeout(
@@ -94,6 +99,8 @@ async def invoke_report(
 
 async def _run_pipeline(
     inv: InvestigationResult, dec: DecisionResult,
+    *,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> ExecutiveReport:
     t0 = time.perf_counter()
 
@@ -106,7 +113,7 @@ async def _run_pipeline(
             "decision": dec.model_dump(mode="json"),
         },
     )
-    async for _ in runner.run_async(
+    async for event in runner.run_async(
         user_id="report-user",
         session_id=session.id,
         new_message=types.Content(
@@ -114,7 +121,12 @@ async def _run_pipeline(
             parts=[types.Part.from_text(text="Write the executive report.")],
         ),
     ):
-        pass
+        if on_event is not None:
+            emit_chain_of_thought(
+                event, author=event.author or "report",
+                type_prefix="report", skip_names=("report",),
+                on_event=on_event,
+            )
 
     reloaded = await runner.session_service.get_session(
         app_name="report", user_id="report-user", session_id=session.id,

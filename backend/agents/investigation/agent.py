@@ -21,6 +21,7 @@ from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from agents._chain_of_thought import emit_chain_of_thought
 from agents.investigation.contracts import (
     DetectionIn,
     Hypothesis,
@@ -155,52 +156,6 @@ def _parse_hypothesis_from_state(state: dict[str, Any]) -> Hypothesis:
 _OUTPUT_SCHEMA_NAMES = frozenset(_FINDING_NAMES) | {"synthesis"}
 
 
-def _emit_chain_of_thought(
-    event: Any,
-    author: str,
-    type_prefix: str,
-    on_event: Callable[[dict[str, Any]], None],
-) -> None:
-    """Extract tool calls + thought text from one ADK Event and emit them.
-
-    Emits `<prefix>.tool_called` for real function calls (skipping the
-    output_schema wrapper) and `<prefix>.thought` for reasoning text
-    (Gemini 2.5 `part.thought=True` traces). Silent on any other part.
-    """
-    content = getattr(event, "content", None)
-    parts = getattr(content, "parts", None) if content else None
-    if not parts:
-        return
-    for part in parts:
-        fc = getattr(part, "function_call", None)
-        if fc is not None and fc.name and fc.name not in _OUTPUT_SCHEMA_NAMES:
-            args = fc.args or {}
-            args_json = json.dumps(args, default=str, separators=(",", ":"))
-            if len(args_json) > 240:
-                args_json = args_json[:237] + "..."
-            on_event({
-                "type": f"{type_prefix}.tool_called",
-                "data": {
-                    "author": author or type_prefix,
-                    "tool": fc.name,
-                    "args_preview": args_json,
-                },
-            })
-            continue
-        text = getattr(part, "text", None)
-        if text and getattr(part, "thought", False):
-            snippet = text.strip()
-            if len(snippet) > 400:
-                snippet = snippet[:397] + "..."
-            on_event({
-                "type": f"{type_prefix}.thought",
-                "data": {
-                    "author": author or type_prefix,
-                    "text": snippet,
-                },
-            })
-
-
 async def _run_pipeline(
     detection: DetectionIn,
     *,
@@ -240,7 +195,10 @@ async def _run_pipeline(
                 (time.perf_counter() - turn_start[author]) * 1000
             )
         if on_event is not None:
-            _emit_chain_of_thought(event, author, "investigation", on_event)
+            emit_chain_of_thought(
+                event, author=author, type_prefix="investigation",
+                skip_names=_OUTPUT_SCHEMA_NAMES, on_event=on_event,
+            )
 
     # Session state now has state[<name>] for each sub-agent's output_key.
     reloaded = await runner.session_service.get_session(

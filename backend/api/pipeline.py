@@ -77,13 +77,26 @@ async def run_pipeline(
 
     try:
         # --- Detection ---
-        await emit("detection.started", {})
+        # Inject FIRST so detection.started can carry ground-truth context
+        # (crisis type, subject, expected root cause) — the trace panel
+        # was otherwise blank for the first ~1-3s while the detector polled.
         crisis = inject_now(
             ctype=request.get("ctype"),
             film_id=request.get("film_id"),
             region=request.get("region"),
             magnitude=request.get("magnitude"),
         )
+        await emit("detection.started", {
+            "crisis": {
+                "type": crisis.type.value,
+                "film_id": crisis.affected_film_id,
+                "region": crisis.affected_region,
+                "magnitude": crisis.magnitude,
+                "true_root_cause": crisis.true_root_cause,
+                "expected_recommendation": crisis.expected_recommendation,
+                "affected_tables": list(crisis.affected_tables),
+            },
+        })
         det, det_source = await produce_detection(crisis, poll_seconds=2.0)
         await emit("detection.completed",
                    {"detection": det.model_dump(mode="json"),
@@ -106,7 +119,7 @@ async def run_pipeline(
 
         # --- Report ---
         await emit("report.started", {})
-        report = await invoke_report(inv, dec)
+        report = await invoke_report(inv, dec, on_event=sync_emit)
         await emit("report.completed",
                    {"report": report.model_dump(mode="json")})
 
