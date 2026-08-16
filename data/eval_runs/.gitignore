@@ -1,0 +1,4 @@
+# Ignore all per-run artifacts except the frozen submission-time one.
+*.json
+!latest.json
+!.gitignore

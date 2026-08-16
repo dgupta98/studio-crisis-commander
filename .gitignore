@@ -241,3 +241,7 @@ backend/data/seed/*.csv
 
 # Superpowers brainstorming workspace (mockups, transient state)
 .superpowers/
+
+# Layer 6 eval — keep only data/eval_runs/latest.json (see data/eval_runs/.gitignore).
+data/eval_runs/*.json
+!data/eval_runs/latest.json
