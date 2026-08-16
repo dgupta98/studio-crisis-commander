@@ -50,6 +50,16 @@ function eventLabel(ev: SseEvent): string {
     if (d.impact_error) return `impact failed: ${d.action_type ?? ''}`
     return `impact ${formatImpact(d.impact_usd)}: ${d.action_type ?? ''}`
   }
+  if (ev.type === 'investigation.tool_called' || ev.type === 'decision.tool_called') {
+    const d = ev.data as { author?: string; tool?: string }
+    const who = d.author ? d.author.replace(/_/g, ' ') : 'agent'
+    return `${who} calls ${d.tool ?? 'tool'}`
+  }
+  if (ev.type === 'investigation.thought' || ev.type === 'decision.thought') {
+    const d = ev.data as { author?: string }
+    const who = d.author ? d.author.replace(/_/g, ' ') : 'agent'
+    return `${who} thinking…`
+  }
   const parts = ev.type.split('.')
   return parts[parts.length - 1].replace(/_/g, ' ')
 }
@@ -176,6 +186,33 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
       <div className="mt-1 space-y-1">
         <div className="text-sm text-ink font-medium">{r.headline}</div>
         <div className="text-sm text-ink-soft italic">{r.tldr}</div>
+      </div>
+    )
+  }
+
+  if (ev.type === 'investigation.tool_called' || ev.type === 'decision.tool_called') {
+    const d = ev.data as { tool?: string; args_preview?: string }
+    if (!d.tool) return null
+    return (
+      <div className="mt-1 space-y-1">
+        <div className="text-xs text-ink-soft">
+          Tool <span className="font-mono text-ink">{d.tool}</span>
+        </div>
+        {d.args_preview && (
+          <pre className="text-xs text-ink-soft font-mono bg-card-alt rounded px-2 py-1 overflow-x-auto">
+            {d.args_preview}
+          </pre>
+        )}
+      </div>
+    )
+  }
+
+  if (ev.type === 'investigation.thought' || ev.type === 'decision.thought') {
+    const d = ev.data as { text?: string }
+    if (!d.text) return null
+    return (
+      <div className="mt-1 text-xs text-ink-soft italic whitespace-pre-wrap">
+        {d.text}
       </div>
     )
   }

@@ -50,16 +50,47 @@ _PACING: dict[str, float] = {
     "detection.started": 0.0,
     "detection.completed": 0.5,
     "investigation.started": 0.0,
+    "investigation.thought": 0.35,
+    "investigation.tool_called": 0.25,
     "signal.completed": 1.0,
     "hypothesis.formed": 0.5,
     "investigation.completed": 0.5,
     "decision.started": 0.0,
+    "decision.thought": 0.35,
     "action.proposed": 0.2,
     "action.impact_computed": 0.4,
     "decision.completed": 0.3,
     "report.started": 0.0,
     "report.completed": 1.5,
     "pipeline.completed": 0.0,
+}
+
+
+# Representative chain-of-thought events for fallback mode. In live mode the
+# agents emit these from the ADK event stream; here we hand-craft a short
+# reel so the trace panel doesn't look dead. Keyed on sub-agent author so
+# each finding is preceded by "author calls describe_table" + a thought.
+_FALLBACK_THOUGHTS: dict[str, tuple[str, str, str]] = {
+    "numeric_context": (
+        "describe_table",
+        '{"table":"roll_marketing_daily"}',
+        "Need the daily marketing rollup to compare last-7 vs prior-7 spend.",
+    ),
+    "text_reason": (
+        "run_select_query",
+        '{"query":"SELECT ts, raw_text, sentiment_score FROM reviews_text ..."}',
+        "Pull the most negative reviews in the affected window to name the theme.",
+    ),
+    "categorical_isolation": (
+        "run_select_query",
+        '{"query":"SELECT channel, sum(spend_usd), sum(clicks) FROM roll_marketing_daily ..."}',
+        "Break spend and clicks by channel — one channel usually dominates the drop.",
+    ),
+    "temporal_context": (
+        "run_select_query",
+        '{"query":"SELECT ts, sum(sum_watch) FROM roll_streaming_hourly ..."}',
+        "Line up hourly watch minutes to see whether the drop is a step or a slide.",
+    ),
 }
 
 
@@ -87,6 +118,15 @@ async def replay_cached_triple(
                 "source": "cached"})
     await emit("investigation.started", {})
     for f in triple.investigation.findings:
+        cot = _FALLBACK_THOUGHTS.get(f.signal)
+        if cot is not None:
+            tool, args_preview, thought_text = cot
+            await emit("investigation.thought", {
+                "author": f.signal, "text": thought_text,
+            })
+            await emit("investigation.tool_called", {
+                "author": f.signal, "tool": tool, "args_preview": args_preview,
+            })
         await emit("signal.completed", {
             "finding": {
                 "signal": f.signal,
@@ -107,6 +147,11 @@ async def replay_cached_triple(
     await emit("investigation.completed",
                {"investigation": triple.investigation.model_dump(mode="json")})
     await emit("decision.started", {})
+    await emit("decision.thought", {
+        "author": "decision",
+        "text": "Ranking actions by impact-per-dollar and whether they need "
+                "human sign-off given the threshold.",
+    })
     for a in triple.decision.actions:
         await emit("action.proposed", {
             "action_type": a.action_type,
