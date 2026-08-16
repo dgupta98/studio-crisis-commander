@@ -25,7 +25,7 @@ from google.adk.runners import InMemoryRunner
 from google.genai import types
 
 from agents.decision.actions import (
-    compute_status, render_action_sql, validate_params,
+    PARAM_SPECS, compute_status, render_action_sql, validate_params,
 )
 from agents.decision.audit import audit_insert, run_impact_sql
 from agents.decision.contracts import DecisionResult, RecommendedAction
@@ -75,6 +75,27 @@ async def invoke_decision(
         raise DecisionTimeout(
             f"Decision exceeded {DECISION_TIMEOUT_SECONDS:.0f}s"
         ) from e
+
+
+def _clamp_subject_params(
+    actions: list[RecommendedAction],
+    det_film_id: int,
+    det_region: str,
+) -> None:
+    """Force film_id/region in each action's params to the detection subject.
+
+    Prompt Rule 2 tells the LLM to derive these from investigation.detection,
+    but Flash periodically emits a different film (e.g. 12345/EU-DE), which
+    (a) drives impact SQL to 0 because no rows match that film, and (b) leaks
+    the wrong subject into the Report narrative. Overriding here makes the
+    invariant deterministic without adding another LLM turn.
+    """
+    for a in actions:
+        spec = PARAM_SPECS.get(a.action_type, {})
+        if "film_id" in spec:
+            a.params["film_id"] = det_film_id
+        if "region" in spec:
+            a.params["region"] = det_region
 
 
 async def _run_pipeline(
@@ -127,7 +148,10 @@ async def _run_pipeline(
                 "data": {"action_type": a.action_type, "priority": a.priority},
             })
 
-    # --- 2. Validate params + render SQL --------------------------------
+    # --- 2. Clamp subject params, validate, render SQL ------------------
+    _clamp_subject_params(
+        proposed.actions, inv.detection.film_id, inv.detection.region,
+    )
     rendered: list[tuple[RecommendedAction, str]] = []
     for a in proposed.actions:
         try:
