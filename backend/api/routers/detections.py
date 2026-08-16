@@ -13,7 +13,8 @@ router = APIRouter(tags=["reads"])
 
 _COLS = ("metric_ts", "metric", "film_id", "region",
          "detector", "baseline_value", "actual_value",
-         "magnitude", "business_impact", "severity", "dedup_key")
+         "magnitude", "business_impact", "severity", "dedup_key",
+         "film_title")
 
 
 @router.get("/detections")
@@ -22,13 +23,17 @@ async def detections(
     since_hours: int = Query(24, ge=1, le=168),
 ):
     def _run() -> list[list]:
+        # LEFT JOIN films so the frontend can show titles in the anomaly
+        # feed. coalesce keeps the payload string-typed on JOIN miss.
         sql = (
-            f"SELECT toString(metric_ts), metric, film_id, region, "
-            f"detector, baseline_value, actual_value, magnitude, "
-            f"business_impact, severity, dedup_key "
-            f"FROM detections "
-            f"WHERE metric_ts >= now() - INTERVAL {int(since_hours)} HOUR "
-            f"ORDER BY severity DESC LIMIT {int(limit)}"
+            f"SELECT toString(d.metric_ts), d.metric, d.film_id, d.region, "
+            f"d.detector, d.baseline_value, d.actual_value, d.magnitude, "
+            f"d.business_impact, d.severity, d.dedup_key, "
+            f"coalesce(f.title, '') AS film_title "
+            f"FROM detections AS d "
+            f"LEFT JOIN films AS f ON f.film_id = d.film_id "
+            f"WHERE d.metric_ts >= now() - INTERVAL {int(since_hours)} HOUR "
+            f"ORDER BY d.severity DESC LIMIT {int(limit)}"
         )
         with client() as c:
             return [list(r) for r in c.query(sql).result_rows]

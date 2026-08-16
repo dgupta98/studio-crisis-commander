@@ -118,7 +118,10 @@ async def test_run_pipeline_sub_agent_events_pass_through():
         for sig in ("numeric_context", "text_reason", "categorical_isolation",
                     "temporal_context"):
             on_event({"type": "signal.completed",
-                      "data": {"signal": sig, "sql": "x", "row_count": 0}})
+                      "data": {"finding": {
+                          "signal": sig, "sql": "x",
+                          "narrative": "", "row_count": 0,
+                      }}})
         captured_cb["ok"] = True
         return _fake_inv()
 

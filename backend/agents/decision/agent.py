@@ -141,17 +141,24 @@ async def _run_pipeline(
 
     proposed = DecisionResult.model_validate(raw)
 
-    if on_event is not None:
-        for a in proposed.actions:
-            on_event({
-                "type": "action.proposed",
-                "data": {"action_type": a.action_type, "priority": a.priority},
-            })
-
     # --- 2. Clamp subject params, validate, render SQL ------------------
     _clamp_subject_params(
         proposed.actions, inv.detection.film_id, inv.detection.region,
     )
+
+    if on_event is not None:
+        for a in proposed.actions:
+            # Include rationale + (post-clamp) params so the AgentTrace shows
+            # *what* the Decision LLM chose and *why* while impact SQL runs.
+            on_event({
+                "type": "action.proposed",
+                "data": {
+                    "action_type": a.action_type,
+                    "priority": a.priority,
+                    "rationale": a.rationale,
+                    "params": dict(a.params),
+                },
+            })
     rendered: list[tuple[RecommendedAction, str]] = []
     for a in proposed.actions:
         try:

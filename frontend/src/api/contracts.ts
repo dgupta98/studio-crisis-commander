@@ -46,6 +46,7 @@ export interface DetectionRow {
   business_impact: number
   severity: number
   dedup_key: string
+  film_title?: string
 }
 
 // ─── Investigation ──────────────────────────────────────────────────

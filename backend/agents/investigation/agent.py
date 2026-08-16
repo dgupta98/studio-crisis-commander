@@ -202,16 +202,33 @@ async def _run_pipeline(
         f.latency_ms = per_agent_latency.get(name, 0)
         findings.append(f)
         if on_event is not None:
+            # Nest under `finding` so the frontend AgentTrace can render sql +
+            # narrative from the same shape used by the /stream contract tests.
             on_event({
                 "type": "signal.completed",
                 "data": {
-                    "signal": f.signal,
-                    "sql": f.sql,
-                    "row_count": len(f.rows),
+                    "finding": {
+                        "signal": f.signal,
+                        "sql": f.sql,
+                        "narrative": f.narrative,
+                        "row_count": len(f.rows),
+                    },
                 },
             })
 
     hypothesis = _parse_hypothesis_from_state(state)
+    if on_event is not None:
+        on_event({
+            "type": "hypothesis.formed",
+            "data": {
+                "hypothesis": {
+                    "primary_cause": hypothesis.primary_cause,
+                    "contributing_factors": list(hypothesis.contributing_factors),
+                    "confidence": hypothesis.confidence,
+                    "citations": list(hypothesis.citations),
+                },
+            },
+        })
     finished_at = datetime.now(timezone.utc)
 
     return InvestigationResult(

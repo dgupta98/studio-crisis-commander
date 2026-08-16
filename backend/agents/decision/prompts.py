@@ -42,7 +42,16 @@ RULES (violations will fail validation):
      Types matter: film_id is int, shift_pct is float, etc.
   3. Rank actions by `priority` (1=highest impact / most urgent, 3=lowest).
   4. Write `rationale` in 1-2 sentences (>=20 chars) tying the action to
-     specific findings ("EU-DE sentiment drop of 42% per numeric_context").
+     specific findings. HARD CONSTRAINTS on rationale prose:
+       - You MUST only reference the region string that appears verbatim in
+         `investigation.detection.region` (e.g. if the detection is "SEA", do
+         NOT write "EU-DE" or any other region).
+       - You MUST only reference variant IDs that appear in a finding's `rows`
+         (e.g. do NOT write "Trailer A" unless variant "A" appears in a row).
+       - You MUST only cite numbers that appear in a finding's `rows`. If a
+         percentage or dollar figure is not in a finding row, omit it.
+       - Prefer generic phrasing when specifics are unavailable
+         ("sentiment collapse in {{region}}") over inventing a specific one.
   5. LEAVE `impact_sql` AND `impact_usd` BLANK / null / empty — the
      orchestrator fills them by running canonical SQL. If you emit values
      here they will be stripped.

@@ -35,8 +35,11 @@ export function AnomalyFeed() {
               className="flex items-center gap-3 border-b border-line pb-2"
             >
               <SeverityChip level={lvl}>{lvl}</SeverityChip>
-              <span className="text-sm text-ink">{r.region}</span>
-              <span className="text-xs text-ink-soft flex-1">{r.metric}</span>
+              <span className="text-sm text-ink truncate max-w-[10rem]">
+                {r.film_title || `Film ${r.film_id}`}
+              </span>
+              <span className="text-sm text-ink-soft">{r.region}</span>
+              <span className="text-xs text-ink-soft flex-1 truncate">{r.metric}</span>
               <span className="text-xs font-mono text-ink-soft tabular-nums">
                 {r.severity.toFixed(1)}
               </span>

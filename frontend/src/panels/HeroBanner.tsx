@@ -42,7 +42,7 @@ export function HeroBanner() {
                 {humanCrisis(det.metric)}
               </h1>
               <div className="text-lg text-ink-soft mb-4">
-                Film {det.film_id} · {det.region}
+                {det.film_title ? det.film_title : `Film ${det.film_id}`} · {det.region}
               </div>
               <div className="flex items-baseline gap-6">
                 <div>

@@ -45,6 +45,9 @@ class DetectionIn(BaseModel):
     business_impact: float
     severity: float
     dedup_key: str
+    # Populated by detection_source.py via a films-JOIN when available.
+    # Optional so cached triples and older DetectionIn payloads still validate.
+    film_title: str = ""
 
 
 class SignalFinding(BaseModel):

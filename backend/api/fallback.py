@@ -51,6 +51,7 @@ _PACING: dict[str, float] = {
     "detection.completed": 0.5,
     "investigation.started": 0.0,
     "signal.completed": 1.0,
+    "hypothesis.formed": 0.5,
     "investigation.completed": 0.5,
     "decision.started": 0.0,
     "action.proposed": 0.2,
@@ -86,14 +87,33 @@ async def replay_cached_triple(
                 "source": "cached"})
     await emit("investigation.started", {})
     for f in triple.investigation.findings:
-        await emit("signal.completed",
-                   {"signal": f.signal, "sql": f.sql, "row_count": len(f.rows)})
+        await emit("signal.completed", {
+            "finding": {
+                "signal": f.signal,
+                "sql": f.sql,
+                "narrative": f.narrative,
+                "row_count": len(f.rows),
+            },
+        })
+    hyp = triple.investigation.hypothesis
+    await emit("hypothesis.formed", {
+        "hypothesis": {
+            "primary_cause": hyp.primary_cause,
+            "contributing_factors": list(hyp.contributing_factors),
+            "confidence": hyp.confidence,
+            "citations": list(hyp.citations),
+        },
+    })
     await emit("investigation.completed",
                {"investigation": triple.investigation.model_dump(mode="json")})
     await emit("decision.started", {})
     for a in triple.decision.actions:
-        await emit("action.proposed",
-                   {"action_type": a.action_type, "priority": a.priority})
+        await emit("action.proposed", {
+            "action_type": a.action_type,
+            "priority": a.priority,
+            "rationale": a.rationale,
+            "params": dict(a.params),
+        })
     for a in triple.decision.actions:
         await emit("action.impact_computed",
                    {"action_type": a.action_type,

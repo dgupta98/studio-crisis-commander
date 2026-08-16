@@ -35,6 +35,23 @@ _CRISIS_METRIC: dict[CrisisType, str] = {
 }
 
 
+def _lookup_film_title(film_id: int) -> str:
+    """One-shot title lookup so the frontend can show a movie name.
+
+    Runs in a thread — clickhouse-connect is sync. Empty string on miss."""
+    def _run() -> str:
+        with client() as c:
+            rows = c.query(
+                f"SELECT title FROM films WHERE film_id = {int(film_id)} LIMIT 1"
+            ).result_rows
+        return str(rows[0][0]) if rows else ""
+    try:
+        return _run()
+    except Exception:  # noqa: BLE001
+        # Non-fatal: title is a display nicety; ID-only fallback is fine.
+        return ""
+
+
 def synth_from_crisis(crisis: Crisis) -> DetectionIn:
     """Build a DetectionIn directly from a Crisis object (fallback path)."""
     metric = _CRISIS_METRIC.get(crisis.type, "unknown.metric")
@@ -54,6 +71,7 @@ def synth_from_crisis(crisis: Crisis) -> DetectionIn:
             f"{metric}|{crisis.affected_film_id}|{crisis.affected_region}|"
             f"{ts.isoformat(timespec='seconds')}|synth"
         ),
+        film_title=_lookup_film_title(crisis.affected_film_id),
     )
 
 
@@ -64,15 +82,18 @@ async def _select_matching_row(
 
     Runs in a thread — clickhouse-connect is sync. Returns None on 0 rows."""
     def _run() -> list[list[Any]]:
+        # LEFT JOIN films so the frontend can render a movie title alongside
+        # the film_id. Empty string on miss keeps the display graceful.
         sql = (
-            "SELECT metric_ts, metric, film_id, region, detector, "
-            "baseline_value, actual_value, magnitude, business_impact, "
-            "severity, dedup_key "
-            "FROM detections "
-            f"WHERE film_id = {int(film_id)} "
-            f"AND region = '{region}' "
-            f"AND metric_ts >= toDateTime('{since_ts.strftime('%Y-%m-%d %H:%M:%S')}') "
-            "ORDER BY metric_ts DESC LIMIT 1"
+            "SELECT d.metric_ts, d.metric, d.film_id, d.region, d.detector, "
+            "d.baseline_value, d.actual_value, d.magnitude, d.business_impact, "
+            "d.severity, d.dedup_key, coalesce(f.title, '') AS film_title "
+            "FROM detections AS d "
+            "LEFT JOIN films AS f ON f.film_id = d.film_id "
+            f"WHERE d.film_id = {int(film_id)} "
+            f"AND d.region = '{region}' "
+            f"AND d.metric_ts >= toDateTime('{since_ts.strftime('%Y-%m-%d %H:%M:%S')}') "
+            "ORDER BY d.metric_ts DESC LIMIT 1"
         )
         with client() as c:
             return [list(r) for r in c.query(sql).result_rows]
@@ -84,7 +105,7 @@ async def _select_matching_row(
         "metric_ts": r[0], "metric": r[1], "film_id": r[2], "region": r[3],
         "detector": r[4], "baseline_value": r[5], "actual_value": r[6],
         "magnitude": r[7], "business_impact": r[8], "severity": r[9],
-        "dedup_key": r[10],
+        "dedup_key": r[10], "film_title": r[11],
     }
 
 
