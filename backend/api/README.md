@@ -64,6 +64,32 @@ PYTHONPATH=. venv/bin/python -m api.tests.regenerate_fallback
 - All ClickHouse / Google credentials come from the existing `.env`
   used by Layers 1-3.
 
+## Ops notes (Cloud Run)
+
+- **Sizing:** 2 GiB / 2 vCPU / concurrency 4. A single live run loads two ADK
+  LlmAgents + the Gemini SDK + the mcp-clickhouse subprocess and peaks at
+  ~1.05 GiB. The 1 GiB default OOM-kills mid-run; because
+  `PipelineRuntime` is in-process, the browser then reconnects into a fresh
+  container and hits 404 on `/stream/investigation/{run_id}`.
+- **SSE wire format:** `events.py::SseEvent.serialize()` emits only
+  `data: <json>\n\n` — no `event: <type>` line. Named SSE events only
+  dispatch through `addEventListener('<type>', ...)`, not `onmessage`;
+  the client uses `onmessage` and routes on the `type` field inside the
+  JSON body.
+- **SSE graceful close:** the frontend (`frontend/src/api/sse.ts`) closes
+  its `EventSource` on `pipeline.completed` / `pipeline.failed` so the
+  native auto-reconnect doesn't fire `onerror` after a normal end-of-stream.
+- **Metrics query aliasing:** `routers/metrics.py` aliases `toString(ts)`
+  as `ts_str` (not `ts`) — the ClickHouse new analyzer resolves
+  `WHERE ts >= now() - INTERVAL H HOUR` against the SELECT alias, and
+  aliasing to `ts` yields `String >= DateTime` (NO_COMMON_TYPE, code 386).
+- **Decision subject clamp:** `agents/decision/agent.py::_clamp_subject_params`
+  overwrites `film_id`/`region` in each action's params with the detection
+  subject before rendering impact SQL. LLM prompt Rule 2 asks for the same,
+  but Flash periodically emits a different film — the clamp makes it
+  deterministic and prevents `impact_usd = 0` (no matching rows) and
+  hallucinated films in the Report narrative.
+
 ## Spec
 
 `docs/superpowers/specs/2026-08-09-layer-4-orchestration-api-design.md`

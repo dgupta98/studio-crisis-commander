@@ -23,11 +23,13 @@ A trailer launches worldwide. ClickHouse detects sentiment dropping 28%, EU enga
 
 ## Live Demo
 
-- **Frontend:** https://scc-frontend-<hash>.a.run.app
-- **Backend:** https://scc-api-<hash>.a.run.app
+- **Frontend:** https://scc-frontend-845114229642.us-east1.run.app
+- **Backend:** https://scc-api-845114229642.us-east1.run.app
 - **Video (3 min):** https://youtu.be/<id>
 
 Both services are Cloud Run scale-to-zero; a Cloud Scheduler job pings the backend `/health` every 4 min to keep judging cold-starts off the demo. The dashboard includes a randomized **Inject Crisis** button that introduces an unrehearsed anomaly — the pipeline detects, investigates, and recommends without any pre-scripted scenario.
+
+Backend Cloud Run sizing: 2 GiB / 2 vCPU / concurrency 4. A single live-mode pipeline holds two ADK LlmAgents, the Gemini SDK, and the mcp-clickhouse subprocess in memory — the 1 GiB default OOM-kills mid-run and loses the in-memory PipelineRuntime, which manifests as SSE reconnect loops on the client.
 
 ---
 
@@ -129,7 +131,7 @@ studio-crisis-commander/
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/studio-crisis-commander.git
+git clone https://github.com/dgupta98/studio-crisis-commander.git
 cd studio-crisis-commander
 cp .env.example .env   # fill in real values
 

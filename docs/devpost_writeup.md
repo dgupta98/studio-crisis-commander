@@ -61,6 +61,6 @@ A human approves or denies before anything crossing the impact threshold ships.
 
 ## Try it out
 
-- Live: [scc-frontend](https://scc-frontend-<hash>.a.run.app) (Cloud Run)
-- Repo: https://github.com/<owner>/studio-crisis-commander
+- Live: [scc-frontend](https://scc-frontend-845114229642.us-east1.run.app) (Cloud Run)
+- Repo: https://github.com/dgupta98/studio-crisis-commander
 - Video: https://youtu.be/<id>
