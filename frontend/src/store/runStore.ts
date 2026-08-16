@@ -244,7 +244,13 @@ export const useRunStore = create<RunStore>((set, _get) => ({
         if (st) patch.approvalStatus = st
         break
       }
-      case 'pipeline.completed': patch.streamState = 'closed'; break
+      case 'pipeline.completed':
+        patch.streamState = 'closed'
+        // Refresh both history feeds so the anomaly list + audit drawer
+        // show the run that just finished without a page reload.
+        void useRunStore.getState().loadDetections()
+        void useRunStore.getState().loadAudit()
+        break
       case 'pipeline.failed':    patch.streamState = 'error';  break
     }
 
@@ -289,7 +295,9 @@ export const useRunStore = create<RunStore>((set, _get) => ({
 
       approval:
         s.decision ? { kind: 'success' }
-        : { kind: 'idle' },
+        : s.auditRows.some((r) => r.approval_status === 'pending_approval')
+          ? { kind: 'success' }
+          : { kind: 'idle' },
 
       history:
         !s.apiReachable ? { kind: 'error', message: 'API unreachable', retry: () => void s.loadAudit() }

@@ -4,6 +4,7 @@ import { Card } from '@/components/Card'
 import { SeverityChip } from '@/components/SeverityChip'
 import { PanelStateWrapper } from '@/components/PanelStateWrapper'
 import { listStagger, traceRowEnter } from '@/motion/choreography'
+import { regionLabel } from '@/lib/regions'
 import type { DetectionRow } from '@/api/contracts'
 
 const SEV_CRITICAL = 8
@@ -18,6 +19,12 @@ function level(severity: number): 'info' | 'warn' | 'critical' {
 export function AnomalyFeed() {
   const state = useRunStore((s) => s.panelStates.anomaly)
   const rows = useRunStore((s) => s.recentDetections)
+  const current = useRunStore((s) => s.detection)
+
+  // Fall back to the live in-flight detection so the panel isn't blank
+  // between inject and the first `/detections` refresh.
+  const display: DetectionRow[] =
+    rows.length > 0 ? rows : current ? [current] : []
 
   return (
     <PanelStateWrapper state={state} label="Anomaly Feed">
@@ -26,7 +33,7 @@ export function AnomalyFeed() {
           Anomaly Feed
         </div>
         <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
-          {rows.map((r: DetectionRow) => {
+          {display.map((r: DetectionRow) => {
             const lvl = level(r.severity)
             return (
             <motion.li
@@ -38,7 +45,9 @@ export function AnomalyFeed() {
               <span className="text-sm text-ink truncate max-w-[10rem]">
                 {r.film_title || `Film ${r.film_id}`}
               </span>
-              <span className="text-sm text-ink-soft">{r.region}</span>
+              <span className="text-sm text-ink-soft truncate max-w-[9rem]">
+                {regionLabel(r.region)}
+              </span>
               <span className="text-xs text-ink-soft flex-1 truncate">{r.metric}</span>
               <span className="text-xs font-mono text-ink-soft tabular-nums">
                 {r.severity.toFixed(1)}

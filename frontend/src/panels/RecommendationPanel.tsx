@@ -6,6 +6,7 @@ import { SqlBlock } from '@/components/SqlBlock'
 import { Popover } from '@/components/Popover'
 import { PanelStateWrapper } from '@/components/PanelStateWrapper'
 import { panelReveal, listStagger, traceRowEnter } from '@/motion/choreography'
+import { humanizeMetric } from '@/lib/format'
 import type { KeyFigure, RecommendedAction } from '@/api/contracts'
 
 export function RecommendationPanel() {
@@ -56,8 +57,11 @@ export function RecommendationPanel() {
                         className="block text-left border border-line rounded p-2 hover:bg-card-alt w-full"
                       >
                         <div className="text-xs text-ink-soft mb-1">{kf.label}</div>
-                        <div className="font-body text-2xl font-semibold tabular-nums text-ink tracking-tight">
-                          {kf.value}
+                        <div
+                          className="font-body text-2xl font-semibold tabular-nums text-ink tracking-tight"
+                          title={kf.value}
+                        >
+                          {humanizeMetric(kf.value)}
                         </div>
                       </button>
                     }

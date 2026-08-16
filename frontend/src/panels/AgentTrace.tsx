@@ -5,7 +5,10 @@ import { Card } from '@/components/Card'
 import { SqlBlock } from '@/components/SqlBlock'
 import { PanelStateWrapper } from '@/components/PanelStateWrapper'
 import { listStagger, traceRowEnter } from '@/motion/choreography'
-import type { SseEvent, Finding, Hypothesis } from '@/api/contracts'
+import { regionLabel } from '@/lib/regions'
+import type {
+  SseEvent, Finding, Hypothesis, DetectionRow, ExecutiveReport,
+} from '@/api/contracts'
 
 type Stage = 'Detection' | 'Investigation' | 'Decision' | 'Report' | 'Pipeline'
 
@@ -22,11 +25,18 @@ function stageOf(type: string): Stage | null {
   return null
 }
 
+function formatImpact(usd: number | null | undefined): string {
+  if (typeof usd !== 'number') return '—'
+  if (usd === 0) return 'no measurable delta'
+  return `$${Math.round(usd).toLocaleString()}`
+}
+
 function eventLabel(ev: SseEvent): string {
   if (ev.type === 'signal.completed') {
     const sig = (ev.data as { finding?: { signal?: string } }).finding?.signal
     return sig ? `signal: ${sig.replace(/_/g, ' ')}` : 'signal completed'
   }
+  if (ev.type === 'hypothesis.formed') return 'hypothesis formed'
   if (ev.type === 'action.proposed') {
     const at = (ev.data as { action_type?: string }).action_type
     return at ? `action proposed: ${at.replace(/_/g, ' ')}` : 'action proposed'
@@ -38,11 +48,7 @@ function eventLabel(ev: SseEvent): string {
       impact_error?: string | null
     }
     if (d.impact_error) return `impact failed: ${d.action_type ?? ''}`
-    const usd =
-      typeof d.impact_usd === 'number'
-        ? `$${Math.round(d.impact_usd).toLocaleString()}`
-        : '—'
-    return `impact ${usd}: ${d.action_type ?? ''}`
+    return `impact ${formatImpact(d.impact_usd)}: ${d.action_type ?? ''}`
   }
   const parts = ev.type.split('.')
   return parts[parts.length - 1].replace(/_/g, ' ')
@@ -51,6 +57,38 @@ function eventLabel(ev: SseEvent): string {
 const STAGE_ORDER: Stage[] = ['Detection', 'Investigation', 'Decision', 'Report', 'Pipeline']
 
 function TraceDetail({ ev }: { ev: SseEvent }) {
+  if (ev.type === 'detection.completed') {
+    const d = (ev.data as { detection?: Partial<DetectionRow> }).detection
+    if (!d) return null
+    // Wire shape is authoritative in prod; tests seed a partial fixture so
+    // we guard each numeric field before .toFixed rather than crash.
+    const num = (v: number | undefined, digits: number) =>
+      typeof v === 'number' ? v.toFixed(digits) : '—'
+    const subject = d.film_title
+      ? d.film_title
+      : d.film_id !== undefined ? `Film ${d.film_id}` : 'Unknown film'
+    return (
+      <div className="mt-1 space-y-1">
+        {d.metric && (
+          <div className="text-sm text-ink">
+            <span className="text-ink-soft">Metric · </span>
+            <span className="font-mono">{d.metric}</span>
+          </div>
+        )}
+        <div className="text-sm text-ink">
+          <span className="text-ink-soft">Subject · </span>
+          {subject}{d.region ? ` · ${regionLabel(d.region)}` : ''}
+        </div>
+        <div className="flex gap-4 text-xs text-ink-soft">
+          <span>severity <span className="font-mono tabular-nums text-ink">{num(d.severity, 1)}</span></span>
+          <span>magnitude <span className="font-mono tabular-nums text-ink">{num(d.magnitude, 2)}</span></span>
+          <span>actual <span className="font-mono tabular-nums text-ink">{num(d.actual_value, 2)}</span></span>
+          <span>baseline <span className="font-mono tabular-nums text-ink">{num(d.baseline_value, 2)}</span></span>
+        </div>
+      </div>
+    )
+  }
+
   if (ev.type === 'signal.completed') {
     const finding = (ev.data as { finding?: Finding }).finding
     if (!finding) return null
@@ -109,7 +147,10 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
   }
 
   if (ev.type === 'action.impact_computed') {
-    const d = ev.data as { impact_error?: string | null }
+    const d = ev.data as {
+      impact_error?: string | null
+      impact_usd?: number | null
+    }
     if (d.impact_error) {
       return (
         <div className="mt-1 text-xs text-sev-crit-fg">
@@ -117,6 +158,40 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
         </div>
       )
     }
+    if (d.impact_usd === 0) {
+      return (
+        <div className="mt-1 text-xs text-ink-soft italic">
+          Impact SQL returned 0 — likely no view/spend delta between variants
+          in the last 7 days.
+        </div>
+      )
+    }
+    return null
+  }
+
+  if (ev.type === 'report.completed') {
+    const r = (ev.data as { report?: ExecutiveReport }).report
+    if (!r) return null
+    return (
+      <div className="mt-1 space-y-1">
+        <div className="text-sm text-ink font-medium">{r.headline}</div>
+        <div className="text-sm text-ink-soft italic">{r.tldr}</div>
+      </div>
+    )
+  }
+
+  if (ev.type === 'pipeline.completed') {
+    const d = ev.data as { latency_ms?: number; mode?: string }
+    return (
+      <div className="mt-1 text-xs text-ink-soft">
+        Mode <span className="font-mono text-ink">{d.mode ?? '—'}</span>
+        {typeof d.latency_ms === 'number' && (
+          <> · Total <span className="font-mono tabular-nums text-ink">
+            {(d.latency_ms / 1000).toFixed(2)}s
+          </span></>
+        )}
+      </div>
+    )
   }
 
   return null

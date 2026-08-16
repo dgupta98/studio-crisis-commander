@@ -4,6 +4,7 @@ import { Card } from '@/components/Card'
 import { SeverityChip } from '@/components/SeverityChip'
 import { PanelStateWrapper } from '@/components/PanelStateWrapper'
 import { heroReveal } from '@/motion/choreography'
+import { regionLabel } from '@/lib/regions'
 
 // Backend metric names are `<table>.<column>` (see backend/data/mv/refresh.py):
 //   audience_sentiment.avg_score, social_trends.avg_virality,
@@ -42,7 +43,7 @@ export function HeroBanner() {
                 {humanCrisis(det.metric)}
               </h1>
               <div className="text-lg text-ink-soft mb-4">
-                {det.film_title ? det.film_title : `Film ${det.film_id}`} · {det.region}
+                {det.film_title ? det.film_title : `Film ${det.film_id}`} · {regionLabel(det.region)}
               </div>
               <div className="flex items-baseline gap-6">
                 <div>

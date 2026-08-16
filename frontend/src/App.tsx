@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { HeroBanner } from '@/panels/HeroBanner'
 import { TelemetryStrip } from '@/panels/TelemetryStrip'
 import { AnomalyFeed } from '@/panels/AnomalyFeed'
@@ -6,8 +7,13 @@ import { RecommendationPanel } from '@/panels/RecommendationPanel'
 import { ApprovalGate } from '@/panels/ApprovalGate'
 import { InjectControls } from '@/panels/InjectControls'
 import { HistoryDrawer } from '@/panels/HistoryDrawer'
+import { useRunStore } from '@/store/runStore'
 
 export function App() {
+  const loadDetections = useRunStore((s) => s.loadDetections)
+  // AnomalyFeed reads `recentDetections`; without this bootstrap the panel
+  // stays blank until pipeline.completed refreshes it.
+  useEffect(() => { void loadDetections() }, [loadDetections])
   return (
     <main data-testid="ops-center"
           className="min-h-screen bg-paper text-ink font-body overflow-x-hidden">
