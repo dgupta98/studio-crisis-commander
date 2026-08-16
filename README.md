@@ -21,6 +21,30 @@ A trailer launches worldwide. ClickHouse detects sentiment dropping 28%, EU enga
 
 ---
 
+## Live Demo
+
+- **Frontend:** https://scc-frontend-<hash>.a.run.app
+- **Backend:** https://scc-api-<hash>.a.run.app
+- **Video (3 min):** https://youtu.be/<id>
+
+Both services are Cloud Run scale-to-zero; a Cloud Scheduler job pings the backend `/health` every 4 min to keep judging cold-starts off the demo. The dashboard includes a randomized **Inject Crisis** button that introduces an unrehearsed anomaly — the pipeline detects, investigates, and recommends without any pre-scripted scenario.
+
+---
+
+## Accuracy
+
+**N/30 crises correctly identified by primary root cause.**
+_Measured on YYYY-MM-DD via `./scripts/eval_live.py` against Cloud Run. Full artifact at `data/eval_runs/latest.json`._
+
+Run yourself:
+
+```
+./scripts/eval_replay.py                    # zero-network, uses cached triples
+./scripts/eval_live.py --backend-url …      # live, spends ~$3 in Gemini calls
+```
+
+---
+
 ## Architecture
 
 ```
@@ -156,27 +180,33 @@ gcloud run deploy studio-crisis-backend \
 
 ---
 
-## Evaluation
-
-```bash
-python eval/harness.py --scenarios 30
-# Output: correctly identified primary root cause in N/30 scenarios
-```
-
-Ground truth recorded at injection time — accuracy is exact, not estimated.
-
----
-
-## Live demo
-
-The dashboard includes a randomized **Inject Crisis** button that introduces an unrehearsed anomaly into live telemetry. The pipeline detects, investigates, and recommends without any pre-scripted scenario — genuine autonomous operation, verifiable on camera.
-
----
-
 ## Hackathon
 
 Built for [Agentic Cinema: The Blockbuster Hackathon](https://rapid-agent.devpost.com)
 Google Cloud x ClickHouse track | Deadline: September 7, 2026 @ 2:00 PM PT
+
+---
+
+## Credits
+
+- **Movie catalog:** This product uses the [TMDB API](https://www.themoviedb.org/) but is not endorsed or certified by TMDB. Attribution per TMDB terms of use.
+- **AI:** Google Gemini (via `google-genai` and `google-cloud-aiplatform`), Google ADK.
+- **Data:** ClickHouse Cloud (via `mcp-clickhouse` MCP server).
+
+Licensed MIT — see `LICENSE`.
+
+---
+
+## Submission Ceremony (Sep 6)
+
+1. `bash scripts/preflight.sh` — all 9 gates green.
+2. Final live eval → copy `N/30` and date into README `## Accuracy`.
+3. YouTube video: unlisted → public.
+4. Devpost: submit with ClickHouse track selected.
+5. `git tag v1.0-submitted && git push --tags`.
+6. Screenshot Devpost confirmation → `docs/submission_confirmation.png`.
+
+See `docs/submission_checklist.md` for the full manual gates checklist.
 
 ---
 
