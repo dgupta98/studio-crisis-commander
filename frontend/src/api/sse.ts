@@ -22,11 +22,28 @@ export function openStream(
 ): () => void {
   const url = `${BASE()}/stream/investigation/${runId}`
   const es = new EventSource(url)
+  // Native EventSource fires onerror on ANY close, including graceful
+  // server-initiated end-of-stream (readyState reverts to CONNECTING for
+  // auto-reconnect). Close ourselves on terminal events so onerror stays
+  // reserved for genuine transport failures.
+  let terminated = false
   es.onmessage = (msg) => {
-    try { onEvent(JSON.parse(msg.data)) }
-    catch (e) { onError(new Error(`SSE parse: ${(e as Error).message}`)) }
+    try {
+      const parsed = JSON.parse(msg.data)
+      onEvent(parsed)
+      const t = (parsed as { type?: string })?.type
+      if (t === 'pipeline.completed' || t === 'pipeline.failed') {
+        terminated = true
+        es.close()
+      }
+    } catch (e) {
+      onError(new Error(`SSE parse: ${(e as Error).message}`))
+    }
   }
-  es.onerror = () => onError(new Error('stream error — awaiting reconnect'))
+  es.onerror = () => {
+    if (terminated) return
+    onError(new Error('stream error — awaiting reconnect'))
+  }
   return () => {
     es.onmessage = null
     es.onerror = null

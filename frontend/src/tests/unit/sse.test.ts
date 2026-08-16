@@ -63,4 +63,24 @@ describe('openStream', () => {
     expect(events).toEqual([])
     expect(err).toBeNull()
   })
+
+  it('closes the stream on pipeline.completed and swallows the subsequent onerror', () => {
+    let err: Error | null = null
+    openStream('r-6', () => {}, (e) => { err = e })
+    const es = MockEventSource.instances[0]
+    es.emit({ seq: 9, type: 'pipeline.completed', data: {}, ts: 't' })
+    expect(es.closed).toBe(true)
+    es.fireError()  // simulate browser's post-graceful-close reconnect attempt
+    expect(err).toBeNull()
+  })
+
+  it('closes the stream on pipeline.failed and swallows the subsequent onerror', () => {
+    let err: Error | null = null
+    openStream('r-7', () => {}, (e) => { err = e })
+    const es = MockEventSource.instances[0]
+    es.emit({ seq: 9, type: 'pipeline.failed', data: {}, ts: 't' })
+    expect(es.closed).toBe(true)
+    es.fireError()
+    expect(err).toBeNull()
+  })
 })
