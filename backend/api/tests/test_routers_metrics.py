@@ -1,9 +1,29 @@
 """GET /metrics/{film}/{region} — 4 parallel timeseries + latency badge."""
 from __future__ import annotations
 
+import re
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
+
+from api.routers.metrics import (
+    _q_box_office, _q_social, _q_sentiment, _q_trailer,
+)
+
+
+def test_ts_alias_does_not_shadow_column():
+    """New ClickHouse analyzer resolves `WHERE ts >= ...` against the SELECT
+    alias when the alias name equals the column name, comparing String to
+    DateTime and raising NO_COMMON_TYPE (code 386). Guard by asserting no
+    query aliases toString(ts|date) back to `ts` — must use a distinct name."""
+    queries = [
+        _q_box_office(1, "NA", 48),
+        _q_social(1, "NA", 48),
+        _q_sentiment(1, "NA", 48),
+        _q_trailer(1, "NA", 48),
+    ]
+    for q in queries:
+        assert not re.search(r"toString\((ts|date)\)\s+AS\s+ts\b", q), q
 
 
 def test_metrics_returns_all_four_series():

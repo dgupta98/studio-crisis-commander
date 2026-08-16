@@ -12,10 +12,17 @@ from data.ch_client import client
 router = APIRouter(tags=["reads"])
 
 
+# NOTE: We alias `toString(ts)` to `ts_str` (not `ts`) — the new ClickHouse
+# analyzer resolves `WHERE ts >= now() - INTERVAL H HOUR` against the SELECT
+# alias, turning it into `String >= DateTime` and raising NO_COMMON_TYPE.
+# The JSON key stays "ts" because _run_query_sync maps columns positionally
+# via the `cols` tuple, not by SQL alias name.
+
+
 def _q_box_office(film_id: int, region: str, hours: int) -> str:
     days = max(1, hours // 24)
     return (
-        f"SELECT toString(date) AS ts, revenue_usd, tickets_sold "
+        f"SELECT toString(date) AS ts_str, revenue_usd, tickets_sold "
         f"FROM box_office_revenue "
         f"WHERE film_id = {film_id} AND region = '{region}' "
         f"AND date >= today() - INTERVAL {days} DAY "
@@ -25,7 +32,7 @@ def _q_box_office(film_id: int, region: str, hours: int) -> str:
 
 def _q_social(film_id: int, region: str, hours: int) -> str:
     return (
-        f"SELECT toString(ts) AS ts, "
+        f"SELECT toString(ts) AS ts_str, "
         f"sum_virality / greatest(n, 1) AS avg_virality, "
         f"n AS volume "
         f"FROM roll_social_hourly "
@@ -37,7 +44,7 @@ def _q_social(film_id: int, region: str, hours: int) -> str:
 
 def _q_sentiment(film_id: int, region: str, hours: int) -> str:
     return (
-        f"SELECT toString(ts) AS ts, "
+        f"SELECT toString(ts) AS ts_str, "
         f"sum_score_weighted / greatest(sum_volume, 1) AS avg_score, "
         f"sum_volume AS volume "
         f"FROM roll_sentiment_hourly "
@@ -49,7 +56,7 @@ def _q_sentiment(film_id: int, region: str, hours: int) -> str:
 
 def _q_trailer(film_id: int, region: str, hours: int) -> str:
     return (
-        f"SELECT toString(ts) AS ts, sum_views AS views, "
+        f"SELECT toString(ts) AS ts_str, sum_views AS views, "
         f"sum_completion_x_views / greatest(sum_views, 1) AS completion_rate "
         f"FROM roll_trailer_hourly "
         f"WHERE film_id = {film_id} AND region = '{region}' "
