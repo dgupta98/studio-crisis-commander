@@ -28,37 +28,42 @@ export function HeroBanner() {
     <PanelStateWrapper state={state} label="Hero" idleLabel="Waiting for anomaly · system nominal">
       {det && (
         <motion.div variants={heroReveal} initial="hidden" animate="visible">
-          <Card className="p-8 bg-card border-l-4 border-accent">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs uppercase tracking-wider text-ink-soft">
-                Now Investigating
-              </span>
-              {mode === 'fallback' && <SeverityChip level="replay">REPLAY</SeverityChip>}
-            </div>
-            <h1 className="font-display text-5xl tracking-tight leading-none mb-2">
-              {humanCrisis(det.metric)}
-            </h1>
-            <div className="text-lg text-ink-soft mb-4">
-              Film {det.film_id} · {det.region}
-            </div>
-            <div className="flex items-baseline gap-6">
-              <div>
-                <div className="text-xs uppercase tracking-wider text-ink-soft">Severity</div>
-                <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
-                  {det.severity.toFixed(1)}
+          {/* Cinema letterbox: matte black bars top+bottom around the card. */}
+          <div className="relative">
+            <div aria-hidden className="h-3 bg-black rounded-t-md" />
+            <Card className="p-8 bg-card border-l-4 border-accent rounded-none">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xs uppercase tracking-wider text-ink-soft">
+                  Now Investigating
+                </span>
+                {mode === 'fallback' && <SeverityChip level="replay">REPLAY</SeverityChip>}
+              </div>
+              <h1 className="font-display text-5xl tracking-tight leading-none mb-2">
+                {humanCrisis(det.metric)}
+              </h1>
+              <div className="text-lg text-ink-soft mb-4">
+                Film {det.film_id} · {det.region}
+              </div>
+              <div className="flex items-baseline gap-6">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-ink-soft">Severity</div>
+                  <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
+                    {det.severity.toFixed(1)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-ink-soft">Magnitude</div>
+                  <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
+                    {det.magnitude.toFixed(1)}
+                  </div>
+                </div>
+                <div className="ml-auto text-sm text-ink-soft italic">
+                  {events.length > 0 && `${events.length} events`}
                 </div>
               </div>
-              <div>
-                <div className="text-xs uppercase tracking-wider text-ink-soft">Magnitude</div>
-                <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
-                  {det.magnitude.toFixed(1)}
-                </div>
-              </div>
-              <div className="ml-auto text-sm text-ink-soft italic">
-                {events.length > 0 && `${events.length} events`}
-              </div>
-            </div>
-          </Card>
+            </Card>
+            <div aria-hidden className="h-3 bg-black rounded-b-md" />
+          </div>
         </motion.div>
       )}
     </PanelStateWrapper>
