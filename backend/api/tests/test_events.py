@@ -13,9 +13,13 @@ def test_serialize_wire_format():
     wire = ev.serialize()
     assert isinstance(wire, bytes)
     text = wire.decode("utf-8")
-    # Two lines: `event: <type>` then `data: <json>`; terminated by blank line.
-    assert text.startswith("event: pipeline.started\n")
-    assert "\ndata: " in text
+    # Single `data: <json>` line, terminated by blank line. We deliberately
+    # OMIT the `event:` line so the browser fires generic message events
+    # (EventSource.onmessage) rather than named events per type. See
+    # events.py module docstring for the reasoning.
+    assert not text.startswith("event: ")
+    assert "event: " not in text
+    assert text.startswith("data: ")
     assert text.endswith("\n\n")
     body_line = [ln for ln in text.split("\n") if ln.startswith("data: ")][0]
     body = json.loads(body_line[len("data: "):])
