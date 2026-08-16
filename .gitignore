@@ -245,3 +245,10 @@ backend/data/seed/*.csv
 # Layer 6 eval — keep only data/eval_runs/latest.json (see data/eval_runs/.gitignore).
 data/eval_runs/*.json
 !data/eval_runs/latest.json
+
+# Claude Code local settings — user-scoped, not project state
+.claude/
+
+# Playwright artifacts
+frontend/test-results/
+frontend/playwright-report/
