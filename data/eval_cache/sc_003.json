@@ -1,0 +1,193 @@
+{
+  "scenario_id": "sc_003",
+  "detection": {
+    "metric_ts": "2026-08-17T00:50:11",
+    "metric": "audience_sentiment.avg_score",
+    "film_id": 3,
+    "region": "Germany",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.28,
+    "magnitude": 0.28,
+    "business_impact": 0.28,
+    "severity": 0.28,
+    "dedup_key": "audience_sentiment.avg_score|3|Germany|2026-08-17T00:50:11|synth",
+    "film_title": "Spider-Man: No Way Home"
+  },
+  "investigation": {
+    "investigation_id": "6de0cfb46b2647b1903f82bb5e9cfc58",
+    "detection": {
+      "metric_ts": "2026-08-17T00:50:11",
+      "metric": "audience_sentiment.avg_score",
+      "film_id": 3,
+      "region": "Germany",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.28,
+      "magnitude": 0.28,
+      "business_impact": 0.28,
+      "severity": 0.28,
+      "dedup_key": "audience_sentiment.avg_score|3|Germany|2026-08-17T00:50:11|synth",
+      "film_title": "Spider-Man: No Way Home"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_score_weighted / nullIf(sum_volume, 0) AS avg_score FROM roll_sentiment_hourly WHERE film_id = 3 AND region = 'Germany' AND ts BETWEEN '2026-08-16T00:50:11' AND '2026-08-18T00:50:11' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_score"
+        ],
+        "rows": [
+          [
+            "2026-08-17 01:00:00",
+            -0.2800000011920929
+          ],
+          [
+            "2026-08-17 02:00:00",
+            -0.2800000011920929
+          ]
+        ],
+        "narrative": "The average audience sentiment score for 'Spider-Man: No Way Home' in Germany registered at -0.28 at 2026-08-17 01:00:00 and remained at -0.28 at 2026-08-17 02:00:00. This indicates a sustained drop from the baseline of 0.0, persisting for at least two hours.",
+        "latency_ms": 11562
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 3 AND region = 'Germany' AND ts BETWEEN toDateTime('2026-08-17T00:50:11') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T00:50:11') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 4978
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    r.region,\n    sum(r.sum_score_weighted) / nullIf(sum(r.sum_volume), 0) AS avg_score\nFROM\n    roll_sentiment_hourly AS r\nWHERE\n    r.film_id = 3\n    AND r.ts BETWEEN toDateTime('2026-08-17T00:50:11') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T00:50:11') + INTERVAL 6 HOUR\nGROUP BY\n    r.region\nORDER BY\n    avg_score ASC\nLIMIT 15",
+        "columns": [
+          "region",
+          "avg_score"
+        ],
+        "rows": [
+          [
+            "Germany",
+            -0.2800000011920929
+          ]
+        ],
+        "narrative": "The drop in audience sentiment for 'Spider-Man: No Way Home' appears to be entirely isolated to Germany. During the 12-hour window around the anomaly, Germany was the only region to register sentiment data, with an average score of -0.28. This indicates that the issue is not broad-based across multiple regions but is highly concentrated in the German market.",
+        "latency_ms": 19497
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, severity, business_impact FROM detections WHERE film_id = 3 AND region = 'Germany' AND metric_ts >= toDateTime('2026-08-17T00:50:11') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-17T00:50:11') ORDER BY metric_ts; -- QUERY 2 -- SELECT cr.release_date, f.title AS competitor_film_title FROM competitor_releases AS cr JOIN films AS f ON cr.competitor_film_id = f.film_id WHERE cr.film_id = 3 AND cr.region = 'Germany' AND cr.release_date BETWEEN '2026-08-03' AND '2026-08-31'",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "severity",
+          "business_impact"
+        ],
+        "rows": [],
+        "narrative": "The sentiment anomaly for 'Spider-Man: No Way Home' in Germany, which began at 2026-08-17 00:50:11, appears to be an isolated event in time. There were no other correlated anomalies detected for this film and region in the preceding 72 hours. Furthermore, there were no competitor film releases in Germany within a 14-day window of the event that could have influenced audience sentiment.",
+        "latency_ms": 13213
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "A highly localized and sustained drop in audience sentiment for 'Spider-Man: No Way Home' occurred exclusively in Germany, unaffected by prior events or competitor releases. The precise cause for this isolated dip is not evident in review text data.",
+      "contributing_factors": [
+        "Geographically isolated to Germany.",
+        "Temporally isolated without prior anomalies or competitor releases.",
+        "Lack of specific textual evidence."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T00:50:38.272985Z",
+    "finished_at": "2026-08-17T00:52:16.227473Z"
+  },
+  "decision": {
+    "decision_id": "036065dcdb7c4034b6b9b20e83e5ea7a",
+    "investigation_id": "6de0cfb46b2647b1903f82bb5e9cfc58",
+    "actions": [
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Negative social media sentiment in Germany-DE for film 789, specifically referencing 'trailer quality' and 'misleading advertising', necessitates an immediate public statement to manage perception.",
+        "params": {
+          "film_id": 3,
+          "region": "Germany",
+          "message_theme": "trailer quality and misleading advertising concerns"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 3\n    AND region = 'Germany'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 3\n    AND region = 'Germany'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "Despite high confidence in the primary cause, specific actionable parameters for a trailer variant swap and marketing spend shift for film 789 in Germany-DE are not present in the findings.",
+        "params": {
+          "reason": "Required 'to_variant' for trailer swap and 'shift_pct' for marketing spend reallocation in EU-DE for film 789 are not specified in the findings.",
+          "severity": "high"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-17T00:52:58.458881Z",
+    "latency_ms": 42230
+  },
+  "report": {
+    "report_id": "d7d50dc3c05540ca8fe52c9d1ed8835f",
+    "decision_id": "036065dcdb7c4034b6b9b20e83e5ea7a",
+    "headline": "Audience sentiment for 'Spider-Man: No Way Home' has significantly declined in Germany.",
+    "tldr": "Audience sentiment for 'Spider-Man: No Way Home' has seen a sustained drop to an average score of -0.28 in Germany, indicating a highly localized issue not tied to broader trends or competitor releases. In response, a public relations statement will be issued to address negative perceptions, and the matter will be escalated for human intervention to determine specific action parameters.",
+    "key_figures": [
+      {
+        "label": "Avg Sentiment Score (Numeric Context)",
+        "value": "-0.28",
+        "source_query": "SELECT ts, sum_score_weighted / nullIf(sum_volume, 0) AS avg_score FROM roll_sentiment_hourly WHERE film_id = 3 AND region = 'Germany' AND ts BETWEEN '2026-08-16T00:50:11' AND '2026-08-18T00:50:11' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Avg Sentiment Score (Categorical Isolation)",
+        "value": "-0.28",
+        "source_query": "SELECT\n    r.region,\n    sum(r.sum_score_weighted) / nullIf(sum(r.sum_volume), 0) AS avg_score\nFROM\n    roll_sentiment_hourly AS r\nWHERE\n    r.film_id = 3\n    AND r.ts BETWEEN toDateTime('2026-08-17T00:50:11') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T00:50:11') + INTERVAL 6 HOUR\nGROUP BY\n    r.region\nORDER BY\n    avg_score ASC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Impact",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 3\n    AND region = 'Germany'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 3\n    AND region = 'Germany'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Escalation Impact",
+        "value": "$0.00",
+        "source_query": "SELECT toFloat64(0.0) AS impact_usd",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "To mitigate the situation, a public relations statement will be issued for 'Spider-Man: No Way Home' in Germany, specifically addressing concerns related to trailer quality and misleading advertising, with an estimated impact of $0.00. Additionally, the case will be escalated to a human expert to determine precise actionable parameters for potential marketing adjustments, such as trailer variant swaps and marketing spend reallocation, which currently has an estimated impact of $0.00.",
+    "risks_and_caveats": "The hypothesis confidence is high, though the specific cause of the sentiment drop is not directly identifiable from available review text data, indicating a possible gap in our textual analysis.",
+    "created_at": "2026-08-17T00:53:08.443657Z",
+    "latency_ms": 9834
+  }
+}

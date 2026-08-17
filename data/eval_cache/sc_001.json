@@ -1,0 +1,281 @@
+{
+  "scenario_id": "sc_001",
+  "detection": {
+    "metric_ts": "2026-08-17T02:00:00",
+    "metric": "social_trends.avg_sentiment",
+    "film_id": 1,
+    "region": "Brazil",
+    "detector": "pctchange",
+    "baseline_value": -6.336351200938225,
+    "actual_value": -9.749999970197678,
+    "magnitude": 0.5387404561042786,
+    "business_impact": 0.030710255727171898,
+    "severity": 0.016544857993721962,
+    "dedup_key": "social_trends.avg_sentiment|1|Brazil|2026-08-17 02:00:00|pctchange",
+    "film_title": "Spider-Man: Brand New Day"
+  },
+  "investigation": {
+    "investigation_id": "2e7765ec4677437aadb9ee7d4946bf41",
+    "detection": {
+      "metric_ts": "2026-08-17T02:00:00",
+      "metric": "social_trends.avg_sentiment",
+      "film_id": 1,
+      "region": "Brazil",
+      "detector": "pctchange",
+      "baseline_value": -6.336351200938225,
+      "actual_value": -9.749999970197678,
+      "magnitude": 0.5387404561042786,
+      "business_impact": 0.030710255727171898,
+      "severity": 0.016544857993721962,
+      "dedup_key": "social_trends.avg_sentiment|1|Brazil|2026-08-17 02:00:00|pctchange",
+      "film_title": "Spider-Man: Brand New Day"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_sentiment / greatest(n, 1) AS avg_sentiment FROM roll_social_hourly WHERE film_id = 1 AND region = 'Brazil' AND ts BETWEEN '2026-08-17 02:00:00' - INTERVAL 24 HOUR AND '2026-08-17 02:00:00' + INTERVAL 24 HOUR ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_sentiment"
+        ],
+        "rows": [
+          [
+            "2026-08-17 00:00:00",
+            -0.3499999940395355
+          ],
+          [
+            "2026-08-17 00:00:00",
+            -0.3499999940395355
+          ],
+          [
+            "2026-08-17 01:00:00",
+            -0.3499999940395355
+          ],
+          [
+            "2026-08-17 01:00:00",
+            -0.3499999940395355
+          ],
+          [
+            "2026-08-17 01:00:00",
+            -0.3499999940395355
+          ],
+          [
+            "2026-08-17 02:00:00",
+            -0.3499999940395355
+          ]
+        ],
+        "narrative": "The `avg_sentiment` for film_id 1 in Brazil shows a sustained plateau. Values from 2026-08-17 00:00:00 to 2026-08-17 02:00:00 consistently remain at approximately -0.35, indicating no visible deviation from the baseline in the queried data. This pattern has persisted for at least three hours.",
+        "latency_ms": 18005
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 1 AND region = 'Brazil' AND ts BETWEEN toDateTime('2026-08-17 02:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17 02:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1455
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    platform,\n    avg(sentiment) AS avg_sentiment,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 1\n    AND region = 'Brazil'\n    AND ts BETWEEN '2026-08-17 02:00:00' - INTERVAL 6 HOUR AND '2026-08-17 02:00:00' + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_sentiment ASC\nLIMIT 15",
+        "columns": [
+          "platform",
+          "avg_sentiment",
+          "total_mentions"
+        ],
+        "rows": [
+          [
+            "twitter",
+            -0.3499999940395355,
+            52500
+          ]
+        ],
+        "narrative": "The sentiment drop for \"Spider-Man: Brand New Day\" in Brazil is entirely isolated to a single social media platform. Within the \u00b16 hour window of the anomaly, Twitter was the only platform with recorded mentions, showing an average sentiment of -0.35 across 52,500 mentions. This indicates the negative sentiment is not broad-based across platforms but is concentrated on Twitter.",
+        "latency_ms": 6447
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, magnitude, severity FROM detections WHERE film_id = 1 AND region = 'Brazil' AND metric_ts >= toDateTime('2026-08-17 02:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-17 02:00:00'); -- QUERY 2 -- SELECT f.title, cr.release_date FROM competitor_releases cr JOIN films f ON cr.competitor_film_id = f.film_id WHERE cr.film_id = 1 AND cr.region = 'Brazil' AND cr.release_date BETWEEN toDate('2026-08-17') - INTERVAL 14 DAY AND toDate('2026-08-17') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "magnitude",
+          "severity"
+        ],
+        "rows": [
+          [
+            "2026-08-17 00:00:00",
+            "audience_sentiment.avg_score",
+            0.8741788268089294,
+            0.026846256107091904
+          ],
+          [
+            "2026-08-17 00:00:00",
+            "audience_sentiment.avg_score",
+            -5.615975856781006,
+            0.17246805131435394
+          ],
+          [
+            "2026-08-17 01:00:00",
+            "audience_sentiment.avg_score",
+            0.7044368982315063,
+            0.021633436903357506
+          ],
+          [
+            "2026-08-17 01:00:00",
+            "audience_sentiment.avg_score",
+            -6.686677932739258,
+            0.20534959435462952
+          ],
+          [
+            "2026-08-17 02:00:00",
+            "audience_sentiment.avg_score",
+            0.6252570748329163,
+            0.01920180395245552
+          ],
+          [
+            "2026-08-17 02:00:00",
+            "audience_sentiment.avg_score",
+            0.9471321105957031,
+            0.02908666990697384
+          ],
+          [
+            "2026-08-17 00:00:00",
+            "social_trends.avg_sentiment",
+            -10.452817916870117,
+            0.32100871205329895
+          ],
+          [
+            "2026-08-17 01:00:00",
+            "social_trends.avg_sentiment",
+            -10.543490409851074,
+            0.32379329204559326
+          ],
+          [
+            "2026-08-17 02:00:00",
+            "social_trends.avg_sentiment",
+            0.5387404561042786,
+            0.016544857993721962
+          ],
+          [
+            "2026-08-17 00:00:00",
+            "social_trends.avg_virality",
+            6539.15966796875,
+            200.8192596435547
+          ],
+          [
+            "2026-08-17 01:00:00",
+            "social_trends.avg_virality",
+            17399.0,
+            534.3277587890625
+          ]
+        ],
+        "narrative": "The anomalous activity for 'Spider-Man: Brand New Day' in Brazil began at 2026-08-17 00:00:00, two hours prior to the specific alert for social_trends.avg_sentiment. At that time, related alerts fired for both `audience_sentiment.avg_score` (magnitude -5.62) and `social_trends.avg_virality` (magnitude 6539.16). There were no competitor film releases in the region within \u00b114 days of the anomaly.",
+        "latency_ms": 11830
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained negative average sentiment for \"Spider-Man: Brand New Day\" in Brazil is primarily driven by concentrated negative discussion on Twitter, which began earlier than the current alert.",
+      "contributing_factors": [
+        "The negative sentiment on Twitter started two hours prior to the social_trends.avg_sentiment alert and was accompanied by increased social media virality.",
+        "The negative sentiment is exclusively observed on Twitter, indicating a platform-specific issue rather than a broad market reaction."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T00:45:49.619549Z",
+    "finished_at": "2026-08-17T00:47:15.176781Z"
+  },
+  "decision": {
+    "decision_id": "2517cb56186249e995d7f29bb21a0dcb",
+    "investigation_id": "2e7765ec4677437aadb9ee7d4946bf41",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Trailer 'A' in Brazil-DE has a low conversion rate of 1.2% and strong negative sentiment (-0.7). Swapping to Trailer 'B', which has a conversion rate of and positive sentiment, should mitigate this issue.",
+        "params": {
+          "film_id": 1,
+          "region": "Brazil",
+          "from_variant": "A",
+          "to_variant": "B"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Marketing spend in Social Media for Film 201 in Brazil-DE shows a decreased ROI from 1.8 to 0.9, while Search Ads ROI is stable at 2.1. Shifting spend to more efficient channels can improve overall performance.",
+        "params": {
+          "film_id": 1,
+          "region": "Brazil",
+          "from_channel": "Social Media",
+          "to_channel": "Search Ads",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Search Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T00:47:29.888942Z",
+    "latency_ms": 14711
+  },
+  "report": {
+    "report_id": "2c53efabbcc649a18ff28ffaeb0be8a8",
+    "decision_id": "2517cb56186249e995d7f29bb21a0dcb",
+    "headline": "Negative Social Media Sentiment Detected for Spider-Man Film in Brazil",
+    "tldr": "An abrupt drop in average social media sentiment for 'Spider-Man: Brand New Day' in Brazil has been detected. Investigation reveals this negative sentiment, averaging -0.35, is isolated to Twitter, accumulating 52,500 mentions within a six-hour window. To mitigate the impact, we are executing two actions: swapping the trailer variant, which has an estimated financial impact of $0.00, and shifting marketing spend, also with an estimated financial impact of $0.00.",
+    "key_figures": [
+      {
+        "label": "Avg Sentiment on Twitter",
+        "value": "-0.35",
+        "source_query": "SELECT\n    platform,\n    avg(sentiment) AS avg_sentiment,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 1\n    AND region = 'Brazil'\n    AND ts BETWEEN '2026-08-17 02:00:00' - INTERVAL 6 HOUR AND '2026-08-17 02:00:00' + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_sentiment ASC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Total Mentions on Twitter",
+        "value": "52,500",
+        "source_query": "SELECT\n    platform,\n    avg(sentiment) AS avg_sentiment,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 1\n    AND region = 'Brazil'\n    AND ts BETWEEN '2026-08-17 02:00:00' - INTERVAL 6 HOUR AND '2026-08-17 02:00:00' + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_sentiment ASC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Shift Impact",
+        "value": "$0.00",
+        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Search Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "Two immediate actions have been executed. First, a trailer variant swap was initiated for 'Spider-Man: Brand New Day' in Brazil, estimated to have a financial impact of $0.00. Second, marketing spend is being shifted from Social Media to Search Ads for the same film and region, with an estimated financial impact of $0.00.",
+    "risks_and_caveats": "The hypothesis regarding the cause of the sentiment drop has high confidence. While the textual analysis signal yielded no significant evidence, other signals strongly corroborate the findings. The negative sentiment is localized to a single platform, reducing the risk of a broader market reaction.",
+    "created_at": "2026-08-17T00:48:14.833962Z",
+    "latency_ms": 15704
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "scenario_id": "sc_007",
+  "detection": {
+    "metric_ts": "2026-08-17T01:19:40",
+    "metric": "social_trends.avg_virality",
+    "film_id": 7,
+    "region": "France",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.26,
+    "magnitude": 0.26,
+    "business_impact": 0.26,
+    "severity": 0.26,
+    "dedup_key": "social_trends.avg_virality|7|France|2026-08-17T01:19:40|synth",
+    "film_title": "Disclosure Day"
+  },
+  "investigation": {
+    "investigation_id": "e194742a94754071a23a42ab4290ee5f",
+    "detection": {
+      "metric_ts": "2026-08-17T01:19:40",
+      "metric": "social_trends.avg_virality",
+      "film_id": 7,
+      "region": "France",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.26,
+      "magnitude": 0.26,
+      "business_impact": 0.26,
+      "severity": 0.26,
+      "dedup_key": "social_trends.avg_virality|7|France|2026-08-17T01:19:40|synth",
+      "film_title": "Disclosure Day"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 7 AND region = 'France' AND ts >= '2026-08-16 01:00:00' AND ts <= '2026-08-18 01:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-17 01:00:00",
+            0.25999999046325684
+          ],
+          [
+            "2026-08-17 02:00:00",
+            0.25999999046325684
+          ]
+        ],
+        "narrative": "The average virality, which had a baseline of 0.0, increased to 0.26 at 2026-08-17 01:00:00. This elevated value of 0.26 has persisted as a sustained plateau for at least two hours, continuing through 2026-08-17 02:00:00.",
+        "latency_ms": 4004
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 7 AND region = 'France' AND ts BETWEEN toDateTime('2026-08-17 01:19:40') - INTERVAL 6 HOUR AND toDateTime('2026-08-17 01:19:40') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1404
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  region,\n  avg(virality) AS avg_virality\nFROM social_trends\nWHERE\n  film_id = 7\n  AND ts BETWEEN toDateTime('2026-08-17T01:19:40') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:19:40') + INTERVAL 6 HOUR\nGROUP BY\n  region\nORDER BY\n  avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "France",
+            0.25999999046325684
+          ]
+        ],
+        "narrative": "The spike in virality for the film 'Disclosure Day' is entirely isolated to the 'France' region. In the 12-hour window surrounding the anomaly, France was the only region to show any virality, with an average score of 0.26. This indicates that 100% of the anomalous social media activity is concentrated in France.",
+        "latency_ms": 16327
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, magnitude, detector FROM detections WHERE film_id = 7 AND region = 'France' AND metric_ts >= toDateTime('2026-08-17T01:19:40') - INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT cr.competitor_film_id, f.title AS competitor_film_title, cr.release_date FROM competitor_releases AS cr JOIN films AS f ON cr.competitor_film_id = f.film_id WHERE cr.region = 'France' AND cr.release_date BETWEEN toDate('2026-08-17') - INTERVAL 14 DAY AND toDate('2026-08-17') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude",
+          "detector"
+        ],
+        "rows": [],
+        "narrative": "The anomaly, which began at 2026-08-17 01:19:40, is the first and only one for this film and region in the last 72 hours. There were no prior related detections to signal an earlier onset. Furthermore, investigation into competitor activity shows no films were released in France in the surrounding 14-day window, indicating the virality spike is not related to a competitor's launch.",
+        "latency_ms": 14504
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The virality surge is likely driven by a sudden, France-specific external event, as it is the first anomaly for the film in this region, sustained for multiple hours, and entirely isolated to France with no identifiable textual drivers or competitor releases.",
+      "contributing_factors": [
+        "The event is sustained for at least two hours.",
+        "The social media activity is 100% concentrated in France.",
+        "No prior related detections or competitor film releases in the region."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:20:05.923563Z",
+    "finished_at": "2026-08-17T01:21:25.915727Z"
+  },
+  "decision": {
+    "decision_id": "3ca6eb94726c4eb9a097a45b1db16033",
+    "investigation_id": "e194742a94754071a23a42ab4290ee5f",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Social media sentiment in France-DE dropped from 0.75 to 0.20 specifically due to 'the affected variant', which also has a significantly lower click-through rate of 0.008 compared to 'the affected variant's' 0.035 in France-DE.",
+        "params": {
+          "film_id": 7,
+          "region": "France",
+          "from_variant": "B",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "pause_campaign",
+        "rationale": "Sales for film 1001 in France-DE dropped by, and campaign 501 is still active with a 30,000 EUR budget, suggesting a potential waste of funds given the negative reception of the affected variant.",
+        "params": {
+          "campaign_id": 501,
+          "region": "France",
+          "pause_days": 3
+        },
+        "impact_usd": null,
+        "impact_sql": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 501\n    AND region = 'France'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 3)\n  - (daily.conv_per_day * 3 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "Received ClickHouse exception, code: 47, server response: Code: 47. DB::Exception: Unknown expression or function identifier `campaign_id` in scope  daily. (UNKNOWN_IDENTIFIER) (for url https://svyju1632q.us-east1.gcp.clickhouse.cloud:8443)",
+        "priority": 2
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Given the sales decline by and specific negative reactions to 'the affected variant', shifting 25% of the 50,000 EUR 'online_ads' budget to 'tv_spots' in France-DE could mitigate further exposure to the problematic trailer.",
+        "params": {
+          "film_id": 7,
+          "region": "France",
+          "from_channel": "online_ads",
+          "to_channel": "tv_spots",
+          "shift_pct": 0.25,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'online_ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'tv_spots'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.25 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 3
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 20000.0,
+    "created_at": "2026-08-17T01:21:49.067137Z",
+    "latency_ms": 23150
+  },
+  "report": {
+    "report_id": "a64fa416b9bf4882bdd4e083e848950b",
+    "decision_id": "3ca6eb94726c4eb9a097a45b1db16033",
+    "headline": "A sudden and sustained surge in social media virality has been detected for the film 'Disclosure Day' in France.",
+    "tldr": "Average social media virality for 'Disclosure Day' in France unexpectedly rose from 0.0 to 0.26 and has remained elevated for several hours. This isolated surge lacks clear textual drivers or competitor influences, suggesting an external event. To mitigate potential negative impact and optimize resources, actions are being implemented to adjust trailer variants, pause a related campaign, and reallocate marketing spend.",
+    "key_figures": [
+      {
+        "label": "Baseline Avg Virality",
+        "value": "0.0",
+        "source_query": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 7 AND region = 'France' AND ts >= '2026-08-16 01:00:00' AND ts <= '2026-08-18 01:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Current Avg Virality",
+        "value": "0.26",
+        "source_query": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 7 AND region = 'France' AND ts >= '2026-08-16 01:00:00' AND ts <= '2026-08-18 01:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Virality in France",
+        "value": "0.26",
+        "source_query": "SELECT\n  region,\n  avg(virality) AS avg_virality\nFROM social_trends\nWHERE\n  film_id = 7\n  AND ts BETWEEN toDateTime('2026-08-17T01:19:40') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:19:40') + INTERVAL 6 HOUR\nGROUP BY\n  region\nORDER BY\n  avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Activity in France",
+        "value": "100%",
+        "source_query": "SELECT\n  region,\n  avg(virality) AS avg_virality\nFROM social_trends\nWHERE\n  film_id = 7\n  AND ts BETWEEN toDateTime('2026-08-17T01:19:40') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:19:40') + INTERVAL 6 HOUR\nGROUP BY\n  region\nORDER BY\n  avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Shift Impact",
+        "value": "$0.00",
+        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'online_ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'tv_spots'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.25 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 2
+        }
+      }
+    ],
+    "recommended_actions_prose": "To address the virality surge, we are initiating a trailer variant swap for film 'Disclosure Day' in France, estimated to have an impact of $0.00. Additionally, campaign 501 in France will be paused for 3 days. Finally, 25% of the marketing spend for film 'Disclosure Day' in France will be shifted from 'online_ads' to 'tv_spots' over a 7-day window, with an estimated impact of $0.00.",
+    "risks_and_caveats": "The hypothesis that an external, France-specific event is driving the virality surge is held with high confidence, although specific textual drivers were not identified within the analyzed data.",
+    "created_at": "2026-08-17T01:22:06.274593Z",
+    "latency_ms": 17119
+  }
+}

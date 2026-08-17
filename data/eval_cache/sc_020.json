@@ -1,0 +1,215 @@
+{
+  "scenario_id": "sc_020",
+  "detection": {
+    "metric_ts": "2026-08-17T01:52:20",
+    "metric": "trailer_analytics.completion_rate",
+    "film_id": 20,
+    "region": "France",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.32,
+    "magnitude": 0.32,
+    "business_impact": 0.32,
+    "severity": 0.32,
+    "dedup_key": "trailer_analytics.completion_rate|20|France|2026-08-17T01:52:20|synth",
+    "film_title": "Evil Dead Burn"
+  },
+  "investigation": {
+    "investigation_id": "a229c7ac6b434820bfd14c2b5752e23e",
+    "detection": {
+      "metric_ts": "2026-08-17T01:52:20",
+      "metric": "trailer_analytics.completion_rate",
+      "film_id": 20,
+      "region": "France",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.32,
+      "magnitude": 0.32,
+      "business_impact": 0.32,
+      "severity": 0.32,
+      "dedup_key": "trailer_analytics.completion_rate|20|France|2026-08-17T01:52:20|synth",
+      "film_title": "Evil Dead Burn"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT toStartOfHour(ts) AS ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 20 AND region = 'France' AND ts >= toDateTime('2026-08-17 01:52:20') - INTERVAL 24 HOUR AND ts <= toDateTime('2026-08-17 01:52:20') + INTERVAL 24 HOUR GROUP BY ts ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "completion_rate"
+        ],
+        "rows": [
+          [
+            "2026-08-17 02:00:00",
+            0.2800000011920929
+          ],
+          [
+            "2026-08-17 03:00:00",
+            0.2800000011920929
+          ],
+          [
+            "2026-08-17 04:00:00",
+            0.2800000011920929
+          ],
+          [
+            "2026-08-17 05:00:00",
+            0.2800000011920929
+          ],
+          [
+            "2026-08-17 06:00:00",
+            0.2800000011920929
+          ]
+        ],
+        "narrative": "The trailer completion rate for 'Evil Dead Burn' in France shows a sustained increase. The baseline was 0.0, but starting from 2026-08-17 02:00:00, the completion rate rose to approximately 0.28 and remained at this level until at least 2026-08-17 06:00:00, indicating a sustained plateau at a higher value.",
+        "latency_ms": 14386
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 20 AND region = 'France' AND ts BETWEEN toDateTime('2026-08-17 01:52:20') - INTERVAL 6 HOUR AND toDateTime('2026-08-17 01:52:20') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [
+          "raw_text",
+          "sentiment_score",
+          "source",
+          "ts"
+        ],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 2663
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    variant,\n    sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate,\n    sum(sum_views) as total_views\nFROM roll_trailer_hourly\nWHERE\n    film_id = 20\n    AND region = 'France'\n    AND ts >= toDateTime('2026-08-17 01:52:20') - INTERVAL 6 HOUR\n    AND ts <= toDateTime('2026-08-17 01:52:20') + INTERVAL 6 HOUR\nGROUP BY variant\nORDER BY completion_rate DESC\nLIMIT 15;SELECT\n    t.region,\n    w.weight,\n    sum(t.sum_completion_x_views) / nullIf(sum(t.sum_views), 0) AS completion_rate,\n    sum(t.sum_views) as total_views\nFROM roll_trailer_hourly AS t\nLEFT JOIN film_region_weight AS w\n    ON t.film_id = w.film_id AND t.region = w.region\nWHERE\n    t.film_id = 20\n    AND t.ts >= toDateTime(\n        '2026-08-17 01:52:20'\n    ) - INTERVAL 6 HOUR\n    AND t.ts <= toDateTime(\n        '2026-08-17 01:52:20'\n    ) + INTERVAL 6 HOUR\nGROUP BY t.region, w.weight\nORDER BY completion_rate DESC\nLIMIT 15",
+        "columns": [
+          "variant",
+          "completion_rate",
+          "total_views"
+        ],
+        "rows": [
+          [
+            "A",
+            0.2800000011920929,
+            3395
+          ]
+        ],
+        "narrative": "The increase in trailer completion rate for 'Evil Dead Burn' is highly concentrated in a specific slice of the data. The anomaly is isolated to trailer variant 'A' in the 'France' region, which is showing a completion rate of approximately 0.28. No other trailer variants or regions contributed to the metric during this time, indicating the issue is not broad-based.",
+        "latency_ms": 23336
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n    metric_ts,\n    metric,\n    actual_value,\n    severity\nFROM detections\nWHERE\n    film_id = 20\n    AND region = 'France'\n    AND metric_ts >= toDateTime('2026-08-17 01:52:20') - INTERVAL 72 HOUR\n    AND metric_ts <= toDateTime('2026-08-17 01:52:20') + INTERVAL 72 HOUR\nORDER BY metric_ts; -- QUERY 2 -- SELECT competitor_film_id, release_date\nFROM competitor_releases\nWHERE region = 'France'\n  AND release_date >= toDate('2026-08-17') - INTERVAL 14 DAY\n  AND release_date <= toDate('2026-08-17') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "actual_value",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The anomaly appears to be an isolated incident, with the earliest detection at 2026-08-17T01:52:20. There were no other sibling detections for this film in the same region within a 72-hour window. Additionally, there were no competitor film releases in France within \u00b114 days of the event.",
+        "latency_ms": 7953
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained increase in trailer completion rate for 'Evil Dead Burn' is primarily due to the performance of trailer variant 'A' in France.",
+      "contributing_factors": [
+        "The anomaly is an isolated incident with no other detections for this film in the same region within a 72-hour window.",
+        "No competitor film releases in France within \u00b114 days of the event, suggesting no external market influence."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context",
+        "text_reason"
+      ]
+    },
+    "started_at": "2026-08-17T01:52:45.604565Z",
+    "finished_at": "2026-08-17T01:54:08.266946Z"
+  },
+  "decision": {
+    "decision_id": "05c6a3b0b9ed4c5ebb7ad1539675ace2",
+    "investigation_id": "a229c7ac6b434820bfd14c2b5752e23e",
+    "actions": [
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "The 'Social Media' channel in France-DE shows a significantly lower conversion rate of 0.01 compared to 'Display Ads' at 0.04 for Film 789. Shifting spend should mitigate further losses.",
+        "params": {
+          "film_id": 20,
+          "region": "France",
+          "from_channel": "Social Media",
+          "to_channel": "Display Ads",
+          "shift_pct": 0.6,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Display Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.6 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "The recent negative social media sentiment regarding Film 789 in France-DE, with keywords like 'disappointing' and 'misleading', indicates a need to address public perception. A PR statement can help manage the narrative.",
+        "params": {
+          "film_id": 20,
+          "region": "France",
+          "message_theme": "clarification_of_film_content"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20\n    AND region = 'France'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 10000.0,
+    "created_at": "2026-08-17T01:54:28.799868Z",
+    "latency_ms": 20532
+  },
+  "report": {
+    "report_id": "da1689db0ac9462a8b546f3e2bf075c6",
+    "decision_id": "05c6a3b0b9ed4c5ebb7ad1539675ace2",
+    "headline": "An unexplained rise in trailer completion rates for 'Evil Dead Burn' in France has been detected.",
+    "tldr": "An anomaly has been detected in the trailer completion rate for 'Evil Dead Burn' in France, which saw a sustained increase to approximately 0.28. This elevated rate is primarily attributable to trailer variant 'A'. In response, marketing spend is being reallocated, and a public relations statement will be issued to manage potential public perception.",
+    "key_figures": [
+      {
+        "label": "Sustained Completion Rate",
+        "value": "0.28",
+        "source_query": "SELECT toStartOfHour(ts) AS ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 20 AND region = 'France' AND ts >= toDateTime('2026-08-17 01:52:20') - INTERVAL 24 HOUR AND ts <= toDateTime('2026-08-17 01:52:20') + INTERVAL 24 HOUR GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Variant A Completion Rate",
+        "value": "0.28",
+        "source_query": "SELECT\n    variant,\n    sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate,\n    sum(sum_views) as total_views\nFROM roll_trailer_hourly\nWHERE\n    film_id = 20\n    AND region = 'France'\n    AND ts >= toDateTime('2026-08-17 01:52:20') - INTERVAL 6 HOUR\n    AND ts <= toDateTime('2026-08-17 01:52:20') + INTERVAL 6 HOUR\nGROUP BY variant\nORDER BY completion_rate DESC\nLIMIT 15;SELECT\n    t.region,\n    w.weight,\n    sum(t.sum_completion_x_views) / nullIf(sum(t.sum_views), 0) AS completion_rate,\n    sum(t.sum_views) as total_views\nFROM roll_trailer_hourly AS t\nLEFT JOIN film_region_weight AS w\n    ON t.film_id = w.film_id AND t.region = w.region\nWHERE\n    t.film_id = 20\n    AND t.ts >= toDateTime(\n        '2026-08-17 01:52:20'\n    ) - INTERVAL 6 HOUR\n    AND t.ts <= toDateTime(\n        '2026-08-17 01:52:20'\n    ) + INTERVAL 6 HOUR\nGROUP BY t.region, w.weight\nORDER BY completion_rate DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Shift Impact",
+        "value": "$0.00",
+        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Display Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.6 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Impact",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20\n    AND region = 'France'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "To address the anomaly, two immediate actions have been automatically executed. First, a shift in marketing spend is underway for 'Evil Dead Burn' in France. This involves reallocating 60% of spend from 'Social Media' to 'Display Ads' for the next 7 days, with an estimated impact of $0.00. Second, a public relations statement regarding 'clarification_of_film_content' for 'Evil Dead Burn' in France will be issued, aiming to mitigate negative sentiment, with an estimated impact of $0.00.",
+    "risks_and_caveats": "The hypothesis regarding the cause of the anomaly is held with high confidence. While the text evidence signal did not yield significant findings, it does not contradict the primary cause identified. The issue appears to be an isolated incident without broader regional or competitive influences.",
+    "created_at": "2026-08-17T01:54:41.316176Z",
+    "latency_ms": 12402
+  }
+}

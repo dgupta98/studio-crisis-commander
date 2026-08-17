@@ -1,0 +1,194 @@
+{
+  "scenario_id": "sc_023",
+  "detection": {
+    "metric_ts": "2026-08-17T01:59:28",
+    "metric": "campaign_performance.roi",
+    "film_id": 23,
+    "region": "Canada",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.46,
+    "magnitude": 0.46,
+    "business_impact": 0.46,
+    "severity": 0.46,
+    "dedup_key": "campaign_performance.roi|23|Canada|2026-08-17T01:59:28|synth",
+    "film_title": "Soulm8te"
+  },
+  "investigation": {
+    "investigation_id": "6eb417c88393466299496e81b0e5d4d4",
+    "detection": {
+      "metric_ts": "2026-08-17T01:59:28",
+      "metric": "campaign_performance.roi",
+      "film_id": 23,
+      "region": "Canada",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.46,
+      "magnitude": 0.46,
+      "business_impact": 0.46,
+      "severity": 0.46,
+      "dedup_key": "campaign_performance.roi|23|Canada|2026-08-17T01:59:28|synth",
+      "film_title": "Soulm8te"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT day AS ts, sum_conversions, sum_spend FROM roll_campaign_daily WHERE film_id = 23 AND region = 'Canada' AND day BETWEEN '2026-08-10' AND '2026-08-24' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "sum_conversions",
+          "sum_spend"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            270,
+            73000
+          ],
+          [
+            "2026-08-19",
+            270,
+            73000
+          ],
+          [
+            "2026-08-20",
+            270,
+            73000
+          ]
+        ],
+        "narrative": "For film_id 23 in Canada, the `roll_campaign_daily` table shows `sum_conversions` at 270 and `sum_spend` at 73000 for each day between 2026-08-18 and 2026-08-20. This results in a calculated ROI of approximately 0.0037 for these days. There is no data available in the query results for the detection date (2026-08-17) or any prior dates within the \u00b17-day window. Consequently, the numeric shape of the anomaly, including its baseline and how it changed to the actual value, cannot be determined from the available historical data.",
+        "latency_ms": 29913
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 23 AND region = 'Canada' AND ts BETWEEN toDateTime('2026-08-17T01:59:28') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:59:28') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1559
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  channel,\n  sum(sum_conversions) AS total_conversions,\n  sum(sum_spend) AS total_spend,\n  toFloat64(sum(sum_conversions)) / nullIf(toFloat64(sum(sum_spend)), 0) AS roi\nFROM roll_campaign_daily\nWHERE\n  film_id = 23\n  AND region = 'Canada'\n  AND day BETWEEN toDate('2026-08-17') - INTERVAL 3 DAY AND toDate('2026-08-17') + INTERVAL 3 DAY\nGROUP BY channel\nORDER BY roi DESC\nLIMIT 15",
+        "columns": [
+          "channel",
+          "total_conversions",
+          "total_spend",
+          "roi"
+        ],
+        "rows": [
+          [
+            "email",
+            810,
+            219000,
+            0.0036986301369863013
+          ]
+        ],
+        "narrative": "The campaign performance anomaly for film 'Soulm8te' in Canada is entirely isolated to the 'email' channel. In the 7-day window surrounding the anomaly, this was the only active marketing channel. It generated 810 conversions from 219,000 in spend, resulting in the observed ROI of approximately 0.0037.",
+        "latency_ms": 6741
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n  metric_ts,\n  metric,\n  detector,\n  severity\nFROM detections\nWHERE\n  film_id = 23\n  AND region = 'Canada'\n  AND metric_ts BETWEEN toDateTime('2026-08-17T01:59:28') - INTERVAL 72 HOUR AND toDateTime('2026-08-17T01:59:28')\nORDER BY metric_ts DESC\nLIMIT 10; -- QUERY 2 -- SELECT\n  f.title AS competitor_film_title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'Canada'\n  AND cr.release_date BETWEEN toDate('2026-08-17') - INTERVAL 14 DAY AND toDate('2026-08-17') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "detector",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The anomaly in campaign ROI for 'Soulm8te' in Canada, detected at 2026-08-17 01:59:28, appears to be the first of its kind, as there were no other related detections within the preceding 72 hours. Furthermore, an analysis of competitor activity shows no other films were released in the same region within a \u00b114 day window of this event. This suggests the performance change is not directly correlated with recent competitive pressures.",
+        "latency_ms": 18156
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The campaign performance anomaly for film 'Soulm8te' in Canada is primarily caused by the performance of the 'email' marketing channel. This channel was the sole active marketing channel during the anomaly period, entirely responsible for the observed ROI.",
+      "contributing_factors": [
+        "Lack of historical data prevents understanding the full numeric shape of the anomaly.",
+        "No external competitive pressures or recurring anomalies were detected.",
+        "No significant text evidence or changes in public sentiment were observed."
+      ],
+      "confidence": "high",
+      "citations": [
+        "categorical_isolation",
+        "numeric_context",
+        "temporal_context",
+        "text_reason"
+      ]
+    },
+    "started_at": "2026-08-17T01:59:54.809413Z",
+    "finished_at": "2026-08-17T02:01:36.910246Z"
+  },
+  "decision": {
+    "decision_id": "cf02ff66ffff413aa2ed717a000ba5bb",
+    "investigation_id": "6eb417c88393466299496e81b0e5d4d4",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "The 'trailer_v2_action_cut' variant in Canada-DE has a significantly lower conversion rate of 0.01 compared to 'trailer_v1_story_focused' (0.05), and recent reviews indicate it is misleading. Swapping to the better performing variant should improve audience reception and conversions.",
+        "params": {
+          "film_id": 23,
+          "region": "Canada",
+          "from_variant": "trailer_v2_action_cut",
+          "to_variant": "trailer_v1_story_focused"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v2_action_cut'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v1_story_focused'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T02:01:52.374829Z",
+    "latency_ms": 15464
+  },
+  "report": {
+    "report_id": "b81b73a46ab94f35a4c8760e9d89d405",
+    "decision_id": "cf02ff66ffff413aa2ed717a000ba5bb",
+    "headline": "A campaign performance issue has been identified for a key film in the Canadian market, driven by a specific marketing channel.",
+    "tldr": "A significant decline in campaign performance has been detected for the film 'Soulm8te' in Canada, with the 'email' marketing channel showing a Return on Investment of 0.0037. This channel contributed 810 conversions and accounted for $219,000 in spend during the anomaly period. To address this, an immediate action has been automatically executed to swap the trailer variant for 'Soulm8te' in Canada from 'trailer_v2_action_cut' to 'trailer_v1_story_focused', which is expected to yield an impact of $0.0.",
+    "key_figures": [
+      {
+        "label": "Email Channel Conversions",
+        "value": "810",
+        "source_query": "SELECT\n  channel,\n  sum(sum_conversions) AS total_conversions,\n  sum(sum_spend) AS total_spend,\n  toFloat64(sum(sum_conversions)) / nullIf(toFloat64(sum(sum_spend)), 0) AS roi\nFROM roll_campaign_daily\nWHERE\n  film_id = 23\n  AND region = 'Canada'\n  AND day BETWEEN toDate('2026-08-17') - INTERVAL 3 DAY AND toDate('2026-08-17') + INTERVAL 3 DAY\nGROUP BY channel\nORDER BY roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Email Channel Spend",
+        "value": "$219,000",
+        "source_query": "SELECT\n  channel,\n  sum(sum_conversions) AS total_conversions,\n  sum(sum_spend) AS total_spend,\n  toFloat64(sum(sum_conversions)) / nullIf(toFloat64(sum(sum_spend)), 0) AS roi\nFROM roll_campaign_daily\nWHERE\n  film_id = 23\n  AND region = 'Canada'\n  AND day BETWEEN toDate('2026-08-17') - INTERVAL 3 DAY AND toDate('2026-08-17') + INTERVAL 3 DAY\nGROUP BY channel\nORDER BY roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Email Channel ROI",
+        "value": "0.0037",
+        "source_query": "SELECT\n  channel,\n  sum(sum_conversions) AS total_conversions,\n  sum(sum_spend) AS total_spend,\n  toFloat64(sum(sum_conversions)) / nullIf(toFloat64(sum(sum_spend)), 0) AS roi\nFROM roll_campaign_daily\nWHERE\n  film_id = 23\n  AND region = 'Canada'\n  AND day BETWEEN toDate('2026-08-17') - INTERVAL 3 DAY AND toDate('2026-08-17') + INTERVAL 3 DAY\nGROUP BY channel\nORDER BY roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact",
+        "value": "$0.0",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v2_action_cut'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v1_story_focused'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      }
+    ],
+    "recommended_actions_prose": "An immediate action has been automatically executed to swap the trailer variant for 'Soulm8te' in Canada. Specifically, the 'trailer_v2_action_cut' variant has been replaced with 'trailer_v1_story_focused'. This action is estimated to have an impact of $0.0.",
+    "risks_and_caveats": "The hypothesis of the email channel being the primary cause is high confidence. However, a complete understanding of the numeric shape of the anomaly, including baseline shifts, is hampered by the lack of historical data for the detection date. No external competitive pressures or recurring anomalies were identified.",
+    "created_at": "2026-08-17T02:02:29.708273Z",
+    "latency_ms": 18682
+  }
+}

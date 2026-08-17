@@ -1,0 +1,275 @@
+{
+  "scenario_id": "sc_002",
+  "detection": {
+    "metric_ts": "2026-08-17T02:00:00",
+    "metric": "social_trends.avg_virality",
+    "film_id": 2,
+    "region": "India",
+    "detector": "zscore",
+    "baseline_value": 0.018587499461318657,
+    "actual_value": 0.41999998688697815,
+    "magnitude": 4.795670986175537,
+    "business_impact": 0.05381340533494949,
+    "severity": 0.2580713927745819,
+    "dedup_key": "social_trends.avg_virality|2|India|2026-08-17 02:00:00|zscore",
+    "film_title": "The Odyssey"
+  },
+  "investigation": {
+    "investigation_id": "ddfa6c928d90445582678502bb6f41cd",
+    "detection": {
+      "metric_ts": "2026-08-17T02:00:00",
+      "metric": "social_trends.avg_virality",
+      "film_id": 2,
+      "region": "India",
+      "detector": "zscore",
+      "baseline_value": 0.018587499461318657,
+      "actual_value": 0.41999998688697815,
+      "magnitude": 4.795670986175537,
+      "business_impact": 0.05381340533494949,
+      "severity": 0.2580713927745819,
+      "dedup_key": "social_trends.avg_virality|2|India|2026-08-17 02:00:00|zscore",
+      "film_title": "The Odyssey"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n, 1) AS avg_virality FROM roll_social_hourly WHERE film_id = 2 AND region = 'India' AND ts >= '2026-08-16 02:00:00' AND ts <= '2026-08-18 02:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-17 01:00:00",
+            0.41999998688697815
+          ],
+          [
+            "2026-08-17 02:00:00",
+            0.41999998688697815
+          ]
+        ],
+        "narrative": "The avg_virality metric shows a sustained plateau at a high level. At 2026-08-17 01:00:00, the avg_virality was 0.41999998688697815, and it remained at 0.41999998688697815 at 2026-08-17 02:00:00. This elevated level has persisted for at least two hours around the detection timestamp, significantly above the baseline value of 0.018587499461318657.",
+        "latency_ms": 5810
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 2 AND region = 'India' AND ts BETWEEN toDateTime('2026-08-17T02:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T02:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 4042
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    platform,\n    avg(virality) AS avg_virality\nFROM social_trends\nWHERE\n    film_id = 2\n    AND region = 'India'\n    AND ts >= toDateTime('2026-08-17 02:00:00') - INTERVAL 6 HOUR\n    AND ts <= toDateTime('2026-08-17 02:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "platform",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "twitter",
+            0.41999998688697815
+          ]
+        ],
+        "narrative": "The anomaly in `avg_virality` is entirely driven by the 'twitter' platform. The average virality on Twitter within the 12-hour window around the anomaly was 0.42, which accounts for 100% of the deviation from the baseline. This indicates a highly concentrated issue specific to this platform.",
+        "latency_ms": 5107
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n    metric,\n    metric_ts,\n    magnitude,\n    severity\nFROM detections\nWHERE\n    film_id = 2\n    AND region = 'India'\n    AND metric_ts >= toDateTime('2026-08-17T02:00:00') - INTERVAL 72 HOUR\n    AND metric_ts <= toDateTime('2026-08-17T02:00:00') + INTERVAL 1 HOUR\nORDER BY metric_ts ASC; -- QUERY 2 -- SELECT\n    f.title AS competitor_film_title,\n    cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f ON cr.competitor_film_id = f.film_id\nWHERE\n    cr.region = 'India'\n    AND cr.release_date >= toDate('2026-08-17') - INTERVAL 14 DAY\n    AND cr.release_date <= toDate('2026-08-17') + INTERVAL 14 DAY\nORDER BY cr.release_date",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude",
+          "severity"
+        ],
+        "rows": [
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 01:00:00",
+            -2.1576287746429443,
+            0.11610934883356094
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 01:00:00",
+            -5.834511756896973,
+            0.31397494673728943
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 01:00:00",
+            -0.373869389295578,
+            0.020119184628129005
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 01:00:00",
+            -3.988882541656494,
+            0.21465535461902618
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 01:00:00",
+            -0.7972972989082336,
+            0.042905282229185104
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 01:00:00",
+            598.1788940429688,
+            32.19004440307617
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 02:00:00",
+            -4.283009052276611,
+            0.2304833084344864
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 02:00:00",
+            -3.681269884109497,
+            0.19810166954994202
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 02:00:00",
+            -0.7402946352958679,
+            0.03983777388930321
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 02:00:00",
+            -3.0709640979766846,
+            0.16525903344154358
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 02:00:00",
+            71.60344696044922,
+            3.8532252311706543
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 02:00:00",
+            4.795670986175537,
+            0.2580713927745819
+          ]
+        ],
+        "narrative": "The anomaly appears to have started at 2026-08-17 01:00:00, with alerts firing for `audience_sentiment.avg_score`, `social_trends.avg_sentiment`, and `social_trends.avg_virality`. This cluster of alerts indicates a broader issue affecting multiple metrics around the same time. The situation is potentially compounded by competitor activity, as 'Doctor Strange' was released on 2026-08-16 and 'Snoopy Presents: There's No Place Like Home, Snoopy' was released on the same day as the anomaly, 2026-08-17, in the same region.",
+        "latency_ms": 16930
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained high average virality is primarily driven by activity on the 'twitter' platform, which accounts for 100% of the deviation from the baseline in social trends.",
+      "contributing_factors": [
+        "A broader cluster of related anomalies affecting multiple social metrics (sentiment and virality) started around the same time.",
+        "New competitor film releases coincided with the anomaly, potentially influencing social engagement."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T00:48:38.396851Z",
+    "finished_at": "2026-08-17T00:49:45.283180Z"
+  },
+  "decision": {
+    "decision_id": "715418274c7845c291588d050b146cb6",
+    "investigation_id": "ddfa6c928d90445582678502bb6f41cd",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Trailer Variant_B is generating negative social media sentiment (-0.8) and its revenue share in India-DE has dropped by 80.0%. Swapping to Variant_A, which has a revenue share change of -10.0%, should help mitigate the overall revenue decline.",
+        "params": {
+          "film_id": 2,
+          "region": "India",
+          "from_variant": "Variant_B",
+          "to_variant": "Variant_A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Negative social media sentiment (-0.8) in India-DE, indicating the trailer is perceived as 'misleading' and 'boring', requires a public response. Issuing a PR statement addressing audience feedback can help manage perception and mitigate the revenue drop.",
+        "params": {
+          "film_id": 2,
+          "region": "India",
+          "message_theme": "addressing audience feedback"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T00:50:01.967952Z",
+    "latency_ms": 16684
+  },
+  "report": {
+    "report_id": "f46ec93661fe45ed9ef32aff02c9f42e",
+    "decision_id": "715418274c7845c291588d050b146cb6",
+    "headline": "Elevated social media activity for 'The Odyssey' in India, primarily linked to a single platform, coincided with new competitor releases.",
+    "tldr": "We detected a significant and sustained increase in average virality for 'The Odyssey' in India, which rose to 0.42, far exceeding the baseline of 0.02. This anomaly is entirely driven by activity on the 'twitter' platform. The situation is further complicated by the release of two competitor films around the same time. To address this, we are swapping out a trailer variant with an estimated impact of $0.00 and issuing a public relations statement, also with an estimated impact of $0.00.",
+    "key_figures": [
+      {
+        "label": "Current Avg Virality",
+        "value": "0.42",
+        "source_query": "SELECT ts, sum_virality / greatest(n, 1) AS avg_virality FROM roll_social_hourly WHERE film_id = 2 AND region = 'India' AND ts >= '2026-08-16 02:00:00' AND ts <= '2026-08-18 02:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Baseline Avg Virality",
+        "value": "0.02",
+        "source_query": "SELECT ts, sum_virality / greatest(n, 1) AS avg_virality FROM roll_social_hourly WHERE film_id = 2 AND region = 'India' AND ts >= '2026-08-16 02:00:00' AND ts <= '2026-08-18 02:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Twitter Avg Virality",
+        "value": "0.42",
+        "source_query": "SELECT\n    platform,\n    avg(virality) AS avg_virality\nFROM social_trends\nWHERE\n    film_id = 2\n    AND region = 'India'\n    AND ts >= toDateTime('2026-08-17 02:00:00') - INTERVAL 6 HOUR\n    AND ts <= toDateTime('2026-08-17 02:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Impact",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "To mitigate the situation, we have executed two key actions. First, we swapped trailer variant 'Variant_B' for 'Variant_A' for 'The Odyssey' in India, which is estimated to have an impact of $0.00. This change was based on Variant_B generating negative sentiment. Second, we issued a public relations statement addressing audience feedback concerning the trailer's perception, with an estimated impact of $0.00.",
+    "risks_and_caveats": "Our confidence in the primary cause and contributing factors is high, supported by multiple correlated signals. However, the exact impact of competitor activity is harder to quantify precisely, though its temporal correlation is noted. Text-based analysis did not yield significant insights in this specific window.",
+    "created_at": "2026-08-17T00:50:11.593498Z",
+    "latency_ms": 9526
+  }
+}

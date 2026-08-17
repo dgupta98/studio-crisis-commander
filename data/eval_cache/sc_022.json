@@ -1,0 +1,201 @@
+{
+  "scenario_id": "sc_022",
+  "detection": {
+    "metric_ts": "2026-08-19T00:00:00",
+    "metric": "marketing_roi",
+    "film_id": 22,
+    "region": "UK",
+    "detector": "pctchange",
+    "baseline_value": 33.0,
+    "actual_value": 173.97260273972603,
+    "magnitude": 4.271896839141846,
+    "business_impact": 0.0359952487051487,
+    "severity": 0.15376798808574677,
+    "dedup_key": "marketing_roi|22|UK|2026-08-19 00:00:00|pctchange",
+    "film_title": "Leviticus"
+  },
+  "investigation": {
+    "investigation_id": "25431dfde94142cf8b7bb09eb50b1704",
+    "detection": {
+      "metric_ts": "2026-08-19T00:00:00",
+      "metric": "marketing_roi",
+      "film_id": 22,
+      "region": "UK",
+      "detector": "pctchange",
+      "baseline_value": 33.0,
+      "actual_value": 173.97260273972603,
+      "magnitude": 4.271896839141846,
+      "business_impact": 0.0359952487051487,
+      "severity": 0.15376798808574677,
+      "dedup_key": "marketing_roi|22|UK|2026-08-19 00:00:00|pctchange",
+      "film_title": "Leviticus"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT day AS ts, sum_spend / nullIf(sum_conversions, 0) AS metric_value FROM roll_campaign_daily WHERE film_id = 22 AND region = 'UK' AND day >= toDate('2026-08-19') - INTERVAL 7 DAY AND day <= toDate('2026-08-19') + INTERVAL 7 DAY ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "metric_value"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            173.97260273972603
+          ],
+          [
+            "2026-08-19",
+            173.97260273972603
+          ],
+          [
+            "2026-08-20",
+            173.97260273972603
+          ]
+        ],
+        "narrative": "The marketing_roi for film Leviticus in UK was sustained at 173.97260273972603 on August 18, 2026, August 19, 2026, and August 20, 2026. This represents a sustained plateau lasting at least three days around the detection timestamp, and is significantly higher than the baseline value of 33.0.",
+        "latency_ms": 24879
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 22 AND region = 'UK' AND ts BETWEEN toDateTime('2026-08-19T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-19T00:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00136h window.",
+        "latency_ms": 1398
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    channel,\n    sum(sum_spend) / nullIf(sum(sum_conversions), 0) AS marketing_roi\nFROM roll_campaign_daily\nWHERE\n    film_id = 22\n    AND region = 'UK'\n    AND day BETWEEN toDate('2026-08-19') - INTERVAL 3 DAY AND toDate('2026-08-19') + INTERVAL 3 DAY\nGROUP BY channel\nORDER BY marketing_roi DESC\nLIMIT 15",
+        "columns": [
+          "channel",
+          "marketing_roi"
+        ],
+        "rows": [
+          [
+            "email",
+            173.97260273972603
+          ]
+        ],
+        "narrative": "The spike in marketing ROI for 'Leviticus' in the UK is entirely isolated to the 'email' channel. The marketing ROI for the email channel is 173.97, which matches the anomalous value. This indicates a sharp increase in performance for this specific channel, as no other channels contributed to this high ROI.",
+        "latency_ms": 6252
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, magnitude, severity FROM detections WHERE film_id = 22 AND region = 'UK' AND metric_ts >= toDateTime('2026-08-19T00:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-19T00:00:00') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT f.title, cr.release_date FROM competitor_releases cr JOIN films f ON cr.competitor_film_id = f.film_id WHERE cr.region = 'UK' AND cr.release_date BETWEEN toDate('2026-08-19') - INTERVAL 14 DAY AND toDate('2026-08-19') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude",
+          "severity"
+        ],
+        "rows": [
+          [
+            "marketing_roi",
+            "2026-08-19 00:00:00",
+            4.271896839141846,
+            0.15376798808574677
+          ]
+        ],
+        "narrative": "The anomaly on marketing_roi for 'Leviticus' began on August 19, 2026. No other sibling detections were found for this film in the UK within a 72-hour window. However, there were three competitor releases in the UK within \u00b114 days of the anomaly: 'I Know Who You Are' (August 6), 'OK! Madam' (August 14), and 'Spider-Man: Across the Spider-Verse' (August 20).",
+        "latency_ms": 13516
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained high marketing ROI for 'Leviticus' is primarily due to an exceptionally effective email campaign, as the anomaly is entirely isolated to this specific channel.",
+      "contributing_factors": [],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:56:56.163176Z",
+    "finished_at": "2026-08-17T01:58:26.085355Z"
+  },
+  "decision": {
+    "decision_id": "da348e98cdf84ee1af4c4b6ff5df4f62",
+    "investigation_id": "25431dfde94142cf8b7bb09eb50b1704",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Trailer 'C' in UK has a conversion rate of and is driving a 60% increase in negative feedback, while Trailer 'A' had a conversion rate. Swapping back to 'A' should mitigate the immediate problem.",
+        "params": {
+          "film_id": 22,
+          "region": "UK",
+          "from_variant": "C",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Social media sentiment in UK shows a increase in negative mentions related to the trailer, with keywords such as 'misleading' trending, indicating a need for public messaging.",
+        "params": {
+          "film_id": 22,
+          "region": "UK",
+          "message_theme": "addressing negative sentiment around trailer/film messaging"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T01:58:38.040312Z",
+    "latency_ms": 11954
+  },
+  "report": {
+    "report_id": "03e0362266324a78a6f0f36491b298aa",
+    "decision_id": "da348e98cdf84ee1af4c4b6ff5df4f62",
+    "headline": "An unexpected surge in marketing effectiveness for 'Leviticus' in the UK has been identified.",
+    "tldr": "A significant and sustained increase in marketing ROI for the film 'Leviticus' in the UK has been detected, reaching a value of 173.97, and is primarily driven by a highly effective email campaign. Concurrently, issues related to negative trailer feedback and social media sentiment were identified, prompting immediate actions. To address these, we are swapping a poorly performing trailer variant for a proven one, with an estimated impact of $0.00, and preparing a public relations statement to mitigate negative sentiment, also with an estimated impact of $0.00.",
+    "key_figures": [
+      {
+        "label": "Sustained Marketing ROI",
+        "value": "173.97",
+        "source_query": "SELECT day AS ts, sum_spend / nullIf(sum_conversions, 0) AS metric_value FROM roll_campaign_daily WHERE film_id = 22 AND region = 'UK' AND day >= toDate('2026-08-19') - INTERVAL 7 DAY AND day <= toDate('2026-08-19') + INTERVAL 7 DAY ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Email Channel Marketing ROI",
+        "value": "173.97",
+        "source_query": "SELECT\n    channel,\n    sum(sum_spend) / nullIf(sum(sum_conversions), 0) AS marketing_roi\nFROM roll_campaign_daily\nWHERE\n    film_id = 22\n    AND region = 'UK'\n    AND day BETWEEN toDate('2026-08-19') - INTERVAL 3 DAY AND toDate('2026-08-19') + INTERVAL 3 DAY\nGROUP BY channel\nORDER BY marketing_roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Estimated Impact",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Estimated Impact",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "In response to identified issues, two key actions are being implemented. First, to address poor performance and negative feedback from Trailer 'C' for 'Leviticus' in the UK, it is being swapped with Trailer 'A'. This change is projected to have an impact of $0.00. Second, due to an increase in negative social media sentiment related to the trailer, a public relations statement will be issued. This proactive measure is estimated to have an impact of $0.00.",
+    "risks_and_caveats": "The primary hypothesis, attributing the high marketing ROI to an effective email campaign, holds high confidence. It is important to note that the immediate actions taken address separate, newly identified issues related to trailer performance and social media sentiment, rather than directly targeting the high ROI anomaly itself.",
+    "created_at": "2026-08-17T01:59:28.615298Z",
+    "latency_ms": 24136
+  }
+}

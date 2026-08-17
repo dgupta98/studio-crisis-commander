@@ -1,0 +1,210 @@
+{
+  "scenario_id": "sc_010",
+  "detection": {
+    "metric_ts": "2026-08-17T01:26:10",
+    "metric": "ticket_refunds.refund_rate",
+    "film_id": 10,
+    "region": "Canada",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.38,
+    "magnitude": 0.38,
+    "business_impact": 0.38,
+    "severity": 0.38,
+    "dedup_key": "ticket_refunds.refund_rate|10|Canada|2026-08-17T01:26:10|synth",
+    "film_title": "Masters of the Universe"
+  },
+  "investigation": {
+    "investigation_id": "bebad20c263f435fb7712afdf944c643",
+    "detection": {
+      "metric_ts": "2026-08-17T01:26:10",
+      "metric": "ticket_refunds.refund_rate",
+      "film_id": 10,
+      "region": "Canada",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.38,
+      "magnitude": 0.38,
+      "business_impact": 0.38,
+      "severity": 0.38,
+      "dedup_key": "ticket_refunds.refund_rate|10|Canada|2026-08-17T01:26:10|synth",
+      "film_title": "Masters of the Universe"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT toStartOfHour(ts) AS ts, sum(refund_count) AS metric_value FROM ticket_refunds WHERE film_id = 10 AND region = 'Canada' AND ts >= toStartOfHour(toDateTime('2026-08-17T01:26:10')) - INTERVAL 24 HOUR AND ts < toStartOfHour(toDateTime('2026-08-17T01:26:10')) + INTERVAL 24 HOUR GROUP BY ts ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "metric_value"
+        ],
+        "rows": [
+          [
+            "2026-08-17 02:00:00",
+            190
+          ],
+          [
+            "2026-08-17 03:00:00",
+            190
+          ],
+          [
+            "2026-08-17 04:00:00",
+            190
+          ],
+          [
+            "2026-08-17 05:00:00",
+            190
+          ],
+          [
+            "2026-08-17 06:00:00",
+            190
+          ]
+        ],
+        "narrative": "The refund_count for film 10 in Canada shows a sustained high level starting shortly after the detection timestamp. The data for hours prior to 2026-08-17 02:00:00 (including the detection hour of 2026-08-17 01:00:00) indicates zero refunds. From 2026-08-17 02:00:00 onwards, the refund_count increased sharply to 190 and has remained at this level for at least five consecutive hours, through 2026-08-17 06:00:00. This represents a sustained plateau of 190 refunds per hour. Note that the detection.actual_value of 0.38 for ticket_refunds.refund_rate is a calculated rate, while the values retrieved here are raw hourly refund counts.",
+        "latency_ms": 10262
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 10 AND region = 'Canada' AND ts BETWEEN toDateTime('2026-08-17T01:26:10') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:26:10') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1714
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    tr.region,\n    sum(tr.refund_count) AS total_refunds\nFROM ticket_refunds AS tr\nWHERE\n    tr.film_id = 10\n    AND tr.ts >= toDateTime('2026-08-17T01:26:10') - INTERVAL 6 HOUR\n    AND tr.ts <= toDateTime('2026-08-17T01:26:10') + INTERVAL 6 HOUR\nGROUP BY\n    tr.region\nORDER BY\n    total_refunds DESC\nLIMIT 15;",
+        "columns": [
+          "region",
+          "total_refunds"
+        ],
+        "rows": [
+          [
+            "Canada",
+            950
+          ]
+        ],
+        "narrative": "The elevated ticket refund rate for 'Masters of the Universe' is exclusively driven by Canada. In the 12-hour window surrounding the detection, Canada accounted for all 950 refunds recorded for the film. This indicates the issue is highly isolated to this single region.",
+        "latency_ms": 38922
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, actual_value, severity FROM detections WHERE film_id = 10 AND region = 'Canada' AND metric_ts >= toDateTime('2026-08-17T01:26:10') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-17T01:26:10') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, region, release_date, competitor_film_id FROM competitor_releases WHERE region = 'Canada' AND release_date >= toDate('2026-08-17T01:26:10') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-17T01:26:10') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "actual_value",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The ticket refund rate anomaly for 'Masters of the Universe' in Canada appears to be an isolated incident in time. There were no other metric alerts for this film and region within the 72 hours surrounding the detection. Additionally, there were no competitor film releases in Canada within two weeks of the anomaly, suggesting that market competition is not a factor.",
+        "latency_ms": 6643
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "A localized event or policy change specific to Canada likely initiated the sudden and sustained increase in ticket refunds for film 10, beginning sharply after the detection timestamp and remaining elevated.",
+      "contributing_factors": [
+        "The refund activity is exclusively concentrated in Canada.",
+        "The anomaly is an isolated incident with no prior related alerts or competitor film releases.",
+        "There is no significant negative customer sentiment in reviews to explain the refunds."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:26:35.002782Z",
+    "finished_at": "2026-08-17T01:28:45.978569Z"
+  },
+  "decision": {
+    "decision_id": "f9e7cafe5740402d94aef74f85031506",
+    "investigation_id": "bebad20c263f435fb7712afdf944c643",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Trailer the affected variant in Canada is underperforming with 80000 views per day and 0.02 conversion rate, while the affected variant achieves 150000 views per day and 0.05 conversion rate. Negative reviews for Canada also cite the affected variant as confusing.",
+        "params": {
+          "film_id": 10,
+          "region": "Canada",
+          "from_variant": "Variant B",
+          "to_variant": "Variant A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND variant = 'Variant B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND variant = 'Variant A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Marketing spend for Trailer the affected variant in Canada is concentrated on Social Media with 50000 spend, showing high CPC. Shifting this spend will optimize the reach for the new trailer variant.",
+        "params": {
+          "film_id": 10,
+          "region": "Canada",
+          "from_channel": "Social Media",
+          "to_channel": "Search Ads",
+          "shift_pct": 0.5,
+          "window_days": 30
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 30 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND channel = 'Search Ads'\n    AND day >= today() - INTERVAL 30 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T01:28:59.485405Z",
+    "latency_ms": 13506
+  },
+  "report": {
+    "report_id": "4faf4030890740deb0b71cefb2f70634",
+    "decision_id": "f9e7cafe5740402d94aef74f85031506",
+    "headline": "An unexpected surge in ticket refunds for the film 'Masters of the Universe' has been observed in Canada.",
+    "tldr": "A significant increase in the ticket refund rate for 'Masters of the Universe' in Canada has been detected, with 950 refunds recorded in the past 12 hours. This follows a sustained period where the hourly refund count increased sharply to 190. To address this, we are swapping the trailer variant and reallocating marketing spend to improve audience engagement and reduce refund instances.",
+    "key_figures": [
+      {
+        "label": "Total Refunds in Canada",
+        "value": "950",
+        "source_query": "SELECT\n    tr.region,\n    sum(tr.refund_count) AS total_refunds\nFROM ticket_refunds AS tr\nWHERE\n    tr.film_id = 10\n    AND tr.ts >= toDateTime('2026-08-17T01:26:10') - INTERVAL 6 HOUR\n    AND tr.ts <= toDateTime('2026-08-17T01:26:10') + INTERVAL 6 HOUR\nGROUP BY\n    tr.region\nORDER BY\n    total_refunds DESC\nLIMIT 15;",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Hourly Refund Plateau",
+        "value": "190",
+        "source_query": "SELECT toStartOfHour(ts) AS ts, sum(refund_count) AS metric_value FROM ticket_refunds WHERE film_id = 10 AND region = 'Canada' AND ts >= toStartOfHour(toDateTime('2026-08-17T01:26:10')) - INTERVAL 24 HOUR AND ts < toStartOfHour(toDateTime('2026-08-17T01:26:10')) + INTERVAL 24 HOUR GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND variant = 'Variant B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND variant = 'Variant A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Shift Impact",
+        "value": "$0.00",
+        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 30 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND channel = 'Search Ads'\n    AND day >= today() - INTERVAL 30 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 10\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are taking immediate action to address the issue. First, we are swapping the trailer variant for 'Masters of the Universe' in Canada from 'Variant B' to 'Variant A' due to underperformance and negative feedback, with an estimated financial impact of $0.00. Second, we are shifting 50% of the marketing spend for the film in Canada from 'Social Media' to 'Search Ads' over the next 30 days to optimize reach for the new trailer variant, also with an estimated financial impact of $0.00.",
+    "risks_and_caveats": "The hypothesis for the cause of the refund surge is assessed with high confidence. However, there was no significant textual evidence from reviews found in the surrounding time window, which might have provided additional qualitative insights into the customer sentiment behind the refunds.",
+    "created_at": "2026-08-17T01:29:15.594027Z",
+    "latency_ms": 15999
+  }
+}

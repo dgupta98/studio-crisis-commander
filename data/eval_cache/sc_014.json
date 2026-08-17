@@ -1,0 +1,243 @@
+{
+  "scenario_id": "sc_014",
+  "detection": {
+    "metric_ts": "2026-08-20T00:00:00",
+    "metric": "box_office_revenue.revenue_usd",
+    "film_id": 14,
+    "region": "UK",
+    "detector": "zscore",
+    "baseline_value": 11166.666666666666,
+    "actual_value": 134000.0,
+    "magnitude": 3.316624879837036,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "box_office_revenue.revenue_usd|14|UK|2026-08-20 00:00:00|zscore",
+    "film_title": "The Novices"
+  },
+  "investigation": {
+    "investigation_id": "f44ec8886f394dafbb80c089ed09f49e",
+    "detection": {
+      "metric_ts": "2026-08-20T00:00:00",
+      "metric": "box_office_revenue.revenue_usd",
+      "film_id": 14,
+      "region": "UK",
+      "detector": "zscore",
+      "baseline_value": 11166.666666666666,
+      "actual_value": 134000.0,
+      "magnitude": 3.316624879837036,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "box_office_revenue.revenue_usd|14|UK|2026-08-20 00:00:00|zscore",
+      "film_title": "The Novices"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 14 AND region = 'UK' AND date >= '2026-08-13' AND date <= '2026-08-27' ORDER BY date LIMIT 100",
+        "columns": [
+          "date",
+          "revenue_usd"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            134000
+          ],
+          [
+            "2026-08-19",
+            134000
+          ],
+          [
+            "2026-08-20",
+            134000
+          ]
+        ],
+        "narrative": "The box_office_revenue.revenue_usd for film 14 in the UK shows a sustained plateau. The value remained at 134000.0 from 2026-08-18 to 2026-08-20, which is significantly higher than the baseline value of 11166.67. This high level has persisted for at least three days.",
+        "latency_ms": 4930
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 14 AND region = 'UK' AND ts BETWEEN toDateTime('2026-08-20T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-20T00:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1756
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    t1.region,\n    sum(t1.revenue_usd) AS total_revenue,\n    t2.weight\nFROM box_office_revenue AS t1\nLEFT JOIN film_region_weight AS t2 ON t1.film_id = t2.film_id AND t1.region = t2.region\nWHERE\n    t1.film_id = 14\n    AND t1.date BETWEEN '2026-08-17' AND '2026-08-23'\nGROUP BY\n    t1.region,\n    t2.weight\nORDER BY\n    total_revenue DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "total_revenue",
+          "weight"
+        ],
+        "rows": [
+          [
+            "UK",
+            402000,
+            0.07039710879325867
+          ]
+        ],
+        "narrative": "The spike in box office revenue for 'The Novices' is exclusively concentrated in the UK. In the week surrounding the anomaly, the UK was the sole source of revenue, accounting for 100% of the 402,000 USD total. This sharp increase is highly localized and not indicative of a broader, multi-region trend.",
+        "latency_ms": 5935
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, magnitude, detector FROM detections WHERE film_id = 14 AND region = 'UK' AND metric_ts >= toDateTime('2026-08-20T00:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-20T00:00:00') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, region, release_date, competitor_film_id FROM competitor_releases WHERE region = 'UK' AND release_date >= toDate('2026-08-20') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-20') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude",
+          "detector"
+        ],
+        "rows": [
+          [
+            "box_office_revenue.revenue_usd",
+            "2026-08-19 00:00:00",
+            4.795831680297852,
+            "zscore"
+          ],
+          [
+            "box_office_revenue.revenue_usd",
+            "2026-08-20 00:00:00",
+            3.316624879837036,
+            "zscore"
+          ]
+        ],
+        "narrative": "The anomaly in `box_office_revenue.revenue_usd` for film 'The Novices' in the UK first began on 2026-08-19, with a z-score magnitude of 4.80, followed by the current detection on 2026-08-20. No other metrics for this film and region fired during this 72-hour window. There were three competitor films released in the UK within \u00b114 days of the anomaly: film 57 on 2026-08-20, film 95 on 2026-08-14, and film 118 on 2026-08-06. The release of a competitor on the same day as the detection could be a contributing factor.",
+        "latency_ms": 17634
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained increase in box office revenue for film 14 in the UK, beginning around August 18th, is strongly correlated with the release of a competitor film in the UK on August 20th.",
+      "contributing_factors": [
+        "The revenue anomaly is exclusively concentrated in the UK.",
+        "The high revenue level has persisted for at least three days."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:38:56.346067Z",
+    "finished_at": "2026-08-17T01:40:11.344662Z"
+  },
+  "decision": {
+    "decision_id": "057f226d706e4d0499633a984fdf67e1",
+    "investigation_id": "f44ec8886f394dafbb80c089ed09f49e",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Categorical isolation shows Trailer Variant 'B' has a CTR of 0.005 in UK-DE, significantly lower than Variant 'A's 0.014. Swapping to Variant 'A' directly addresses this underperformance.",
+        "params": {
+          "film_id": 14,
+          "region": "UK",
+          "from_variant": "B",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "pause_campaign",
+        "rationale": "The CTR drop coincided with the launch of campaign 500 in UK-DE, which is amplifying negative sentiment around the problematic Trailer Variant 'B'. Pausing the campaign will prevent further negative exposure.",
+        "params": {
+          "campaign_id": 500,
+          "region": "UK",
+          "pause_days": 7
+        },
+        "impact_usd": null,
+        "impact_sql": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 500\n    AND region = 'UK'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "Received ClickHouse exception, code: 47, server response: Code: 47. DB::Exception: Unknown expression or function identifier `campaign_id` in scope  daily. (UNKNOWN_IDENTIFIER) (for url https://svyju1632q.us-east1.gcp.clickhouse.cloud:8443)",
+        "priority": 2
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Social media sentiment in UK-DE mentions \"misleading marketing\", indicating a need to proactively address public perception. A PR statement can help mitigate brand damage.",
+        "params": {
+          "film_id": 14,
+          "region": "UK",
+          "message_theme": "addressing negative sentiment"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 3
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 20000.0,
+    "created_at": "2026-08-17T01:40:25.509121Z",
+    "latency_ms": 14164
+  },
+  "report": {
+    "report_id": "453b30ab280e41059079bccb4a293cf8",
+    "decision_id": "057f226d706e4d0499633a984fdf67e1",
+    "headline": "A significant and sustained increase in box office revenue for \"The Novices\" has been observed in the United Kingdom.",
+    "tldr": "The film \"The Novices\" is experiencing an unexpected surge in box office revenue in the UK, with daily revenue reaching 134000.0 USD, significantly above the baseline of 11166.67 USD. This anomaly, which began on August 19th, is highly localized to the UK and coincides with a competitor film's release. We are implementing actions including swapping a trailer variant, pausing a related campaign, and issuing a PR statement to address potential causes and capitalize on the situation.",
+    "key_figures": [
+      {
+        "label": "Current Daily UK Revenue",
+        "value": "134000.0 USD",
+        "source_query": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 14 AND region = 'UK' AND date >= '2026-08-13' AND date <= '2026-08-27' ORDER BY date LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Baseline Daily UK Revenue",
+        "value": "11166.67 USD",
+        "source_query": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 14 AND region = 'UK' AND date >= '2026-08-13' AND date <= '2026-08-27' ORDER BY date LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Total UK Revenue (Anomaly Week)",
+        "value": "402000 USD",
+        "source_query": "SELECT\n    t1.region,\n    sum(t1.revenue_usd) AS total_revenue,\n    t2.weight\nFROM box_office_revenue AS t1\nLEFT JOIN film_region_weight AS t2 ON t1.film_id = t2.film_id AND t1.region = t2.region\nWHERE\n    t1.film_id = 14\n    AND t1.date BETWEEN '2026-08-17' AND '2026-08-23'\nGROUP BY\n    t1.region,\n    t2.weight\nORDER BY\n    total_revenue DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated Impact from Trailer Swap",
+        "value": "0.0 USD",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated Impact from Campaign Pause",
+        "value": "Undetermined",
+        "source_query": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 500\n    AND region = 'UK'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      },
+      {
+        "label": "Estimated Impact from PR Statement",
+        "value": "0.0 USD",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 2
+        }
+      }
+    ],
+    "recommended_actions_prose": "To address the situation, three actions are recommended. First, we will swap trailer variant 'B' for variant 'A' for film 14 in the UK, aiming for an estimated impact of 0.0 USD. Second, campaign 500 in the UK will be paused for seven days; its financial impact is currently undetermined due to a system error. Finally, a PR statement addressing negative sentiment will be issued for film 14 in the UK, with an estimated impact of 0.0 USD.",
+    "risks_and_caveats": "The hypothesis regarding competitor influence is held with high confidence. However, the specific financial impact of the campaign pause action is currently undetermined due to a data processing error.",
+    "created_at": "2026-08-17T01:40:49.205385Z",
+    "latency_ms": 23606
+  }
+}

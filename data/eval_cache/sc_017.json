@@ -1,0 +1,219 @@
+{
+  "scenario_id": "sc_017",
+  "detection": {
+    "metric_ts": "2026-08-17T01:44:25",
+    "metric": "trailer_analytics.completion_rate",
+    "film_id": 17,
+    "region": "US",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.36,
+    "magnitude": 0.36,
+    "business_impact": 0.36,
+    "severity": 0.36,
+    "dedup_key": "trailer_analytics.completion_rate|17|US|2026-08-17T01:44:25|synth",
+    "film_title": "Spider-Man: Homecoming"
+  },
+  "investigation": {
+    "investigation_id": "f35a08d8531140d4b9f4dd816cabb9dc",
+    "detection": {
+      "metric_ts": "2026-08-17T01:44:25",
+      "metric": "trailer_analytics.completion_rate",
+      "film_id": 17,
+      "region": "US",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.36,
+      "magnitude": 0.36,
+      "business_impact": 0.36,
+      "severity": 0.36,
+      "dedup_key": "trailer_analytics.completion_rate|17|US|2026-08-17T01:44:25|synth",
+      "film_title": "Spider-Man: Homecoming"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 17 AND region = 'US' AND ts >= toDateTime('2026-08-16 01:44:25') AND ts <= toDateTime('2026-08-18 01:44:25') GROUP BY ts ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "completion_rate"
+        ],
+        "rows": [
+          [
+            "2026-08-17 02:00:00",
+            0.23999999463558197
+          ],
+          [
+            "2026-08-17 03:00:00",
+            0.23999999463558197
+          ],
+          [
+            "2026-08-17 04:00:00",
+            0.23999999463558197
+          ],
+          [
+            "2026-08-17 05:00:00",
+            0.23999999463558197
+          ],
+          [
+            "2026-08-17 06:00:00",
+            0.23999999463558197
+          ]
+        ],
+        "narrative": "The baseline completion rate was 0.0. Around the detection time of 2026-08-17T01:44:25, where the actual value was observed at 0.36, the hourly completion rate from 02:00:00 to 06:00:00 on 2026-08-17 consistently averaged approximately 0.24. This represents a sustained elevated plateau significantly above the baseline, persisting for at least 4 hours within the queried window.",
+        "latency_ms": 10695
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 17 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-16 19:44:25') AND toDateTime('2026-08-17 07:44:25') ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1350
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    variant,\n    sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate,\n    sum(sum_views) AS views\nFROM roll_trailer_hourly\nWHERE film_id = 17\n    AND region = 'US'\n    AND ts BETWEEN toDateTime('2026-08-16 19:44:25') AND toDateTime('2026-08-17 07:44:25')\nGROUP BY variant\nORDER BY completion_rate DESC\nLIMIT 15;WITH regional_completion AS (\n    SELECT\n        r.region,\n        sum(r.sum_completion_x_views) / nullIf(sum(r.sum_views), 0) AS avg_completion_rate,\n        sum(r.sum_views) AS total_views\n    FROM roll_trailer_hourly r\n    WHERE\n        r.film_id = 17\n        AND r.ts >= toDateTime('2026-08-16 19:44:25')\n        AND r.ts <= toDateTime('2026-08-17 07:44:25')\n    GROUP BY r.region\n)\nSELECT\n    rc.region,\n    rc.avg_completion_rate,\n    rc.total_views\nFROM regional_completion rc\nORDER BY rc.avg_completion_rate DESC\nLIMIT 15",
+        "columns": [
+          "variant",
+          "completion_rate",
+          "views"
+        ],
+        "rows": [
+          [
+            "A",
+            0.23999999463558197,
+            3200
+          ]
+        ],
+        "narrative": "The anomaly in trailer completion rate for 'Spider-Man: Homecoming' does not appear to be isolated to a specific categorical slice. An analysis by trailer variant within the US region revealed only a single variant, 'A', with a completion rate of 0.24. A subsequent query to isolate the issue by region also showed data for the US region only, making a regional comparison impossible. Therefore, the elevated completion rate appears to be broad-based across the available data, rather than concentrated in a particular variant or region.",
+        "latency_ms": 20706
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, actual_value, baseline_value, severity FROM detections WHERE film_id = 17 AND region = 'US' AND metric_ts >= toDateTime('2026-08-17T01:44:25') - INTERVAL 72 HOUR ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT f.title AS competitor_film, cr.release_date FROM competitor_releases AS cr JOIN films AS f ON cr.competitor_film_id = f.film_id WHERE cr.film_id = 17 AND cr.region = 'US' AND cr.release_date BETWEEN toDate('2026-08-17') - INTERVAL 14 DAY AND toDate('2026-08-17') + INTERVAL 14 DAY ORDER BY cr.release_date",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "actual_value",
+          "baseline_value",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The anomaly, first detected at 2026-08-17T01:44:25, appears to be an isolated event. There were no other detections for this film and region in the preceding 72 hours. Additionally, there were no competitor film releases in the US market within a \u00b114 day window of the anomaly, suggesting no competitive pressures influenced this metric.",
+        "latency_ms": 13617
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained, broad-based elevation in the trailer completion rate for 'Spider-Man: Homecoming' in the US suggests an internal system or operational change, given the lack of evidence pointing to external factors, specific content variants, or user feedback.",
+      "contributing_factors": [
+        "Sustained elevated plateau over several hours.",
+        "Anomaly is broad-based across available data, not isolated to a specific variant.",
+        "No prior similar detections or competitive events in the surrounding timeframe."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:44:50.363800Z",
+    "finished_at": "2026-08-17T01:46:29.698099Z"
+  },
+  "decision": {
+    "decision_id": "0c9bdb6d819a47589c66cf4e27da604d",
+    "investigation_id": "f35a08d8531140d4b9f4dd816cabb9dc",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "the affected variant in US-DE has a bounce rate and conversion, significantly underperforming Variant A which has a bounce rate and conversion. Swapping to Variant A should improve engagement and conversion rates.",
+        "params": {
+          "film_id": 17,
+          "region": "US",
+          "from_variant": "C",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 17\n    AND region = 'US'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 17\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 17\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Social media sentiment in US-DE surged by negatively, citing 'misleading trailer' and 'wrong genre'. An immediate PR statement can clarify the film's genre and address audience concerns in US-DE.",
+        "params": {
+          "film_id": 17,
+          "region": "US",
+          "message_theme": "genre_clarification"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 17\n    AND region = 'US'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 17\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T01:46:52.206593Z",
+    "latency_ms": 22508
+  },
+  "report": {
+    "report_id": "f08a2d84456b4f1fba9582336d82c5df",
+    "decision_id": "0c9bdb6d819a47589c66cf4e27da604d",
+    "headline": "An unusual increase in trailer completion rates has been detected for 'Spider-Man: Homecoming' in the US region.",
+    "tldr": "The trailer completion rate for 'Spider-Man: Homecoming' in the US experienced an unexpected surge, rising from a baseline of 0.0 to a detected actual value of 0.36. This elevated rate then stabilized at approximately 0.24 for several hours, suggesting an internal system change as the primary cause. To address the issue, two immediate actions have been auto-executed: a trailer variant swap and the issuance of a public relations statement.",
+    "key_figures": [
+      {
+        "label": "Baseline Completion Rate",
+        "value": "0.0",
+        "source_query": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 17 AND region = 'US' AND ts >= toDateTime('2026-08-16 01:44:25') AND ts <= toDateTime('2026-08-18 01:44:25') GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Detected Peak Completion Rate",
+        "value": "0.36",
+        "source_query": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 17 AND region = 'US' AND ts >= toDateTime('2026-08-16 01:44:25') AND ts <= toDateTime('2026-08-18 01:44:25') GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Sustained Hourly Completion Rate",
+        "value": "0.24",
+        "source_query": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 17 AND region = 'US' AND ts >= toDateTime('2026-08-16 01:44:25') AND ts <= toDateTime('2026-08-18 01:44:25') GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated Impact from Trailer Swap",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 17\n    AND region = 'US'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 17\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 17\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated Impact from PR Statement",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 17\n    AND region = 'US'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 17\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "Two immediate actions have been automatically executed. First, a trailer variant swap was initiated for 'Spider-Man: Homecoming' in the US, changing from variant 'C' to 'A'. This decision was based on the rationale that the affected variant was significantly underperforming, and swapping to variant 'A' should improve engagement and conversion rates, with an estimated impact of $0.00. Second, a public relations statement was issued for 'Spider-Man: Homecoming' in the US to clarify the film's genre. This was prompted by a surge in negative social media sentiment citing 'misleading trailer' and 'wrong genre', with an estimated impact of $0.00.",
+    "risks_and_caveats": "Our hypothesis regarding an internal system or operational change as the primary cause holds high confidence. However, textual evidence for negative sentiment was not significant within the immediate window, and comprehensive regional comparisons were not possible due to data limitations.",
+    "created_at": "2026-08-17T01:47:09.542345Z",
+    "latency_ms": 17242
+  }
+}

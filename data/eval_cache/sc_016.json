@@ -1,0 +1,216 @@
+{
+  "scenario_id": "sc_016",
+  "detection": {
+    "metric_ts": "2026-08-20T00:00:00",
+    "metric": "box_office_revenue.revenue_usd",
+    "film_id": 16,
+    "region": "Japan",
+    "detector": "zscore",
+    "baseline_value": 12500.0,
+    "actual_value": 150000.0,
+    "magnitude": 3.316624879837036,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "box_office_revenue.revenue_usd|16|Japan|2026-08-20 00:00:00|zscore",
+    "film_title": "Colony"
+  },
+  "investigation": {
+    "investigation_id": "bddce3ce5e2841e282001e0a7878a5bb",
+    "detection": {
+      "metric_ts": "2026-08-20T00:00:00",
+      "metric": "box_office_revenue.revenue_usd",
+      "film_id": 16,
+      "region": "Japan",
+      "detector": "zscore",
+      "baseline_value": 12500.0,
+      "actual_value": 150000.0,
+      "magnitude": 3.316624879837036,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "box_office_revenue.revenue_usd|16|Japan|2026-08-20 00:00:00|zscore",
+      "film_title": "Colony"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 16 AND region = 'Japan' AND date BETWEEN '2026-08-13' AND '2026-08-27' ORDER BY date LIMIT 100;",
+        "columns": [
+          "date",
+          "revenue_usd"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            150000
+          ],
+          [
+            "2026-08-19",
+            150000
+          ],
+          [
+            "2026-08-20",
+            150000
+          ]
+        ],
+        "narrative": "The box office revenue for 'Colony' in 'Japan' shows a sustained plateau at 150000 USD from at least 2026-08-18 through 2026-08-20. This value is significantly higher than the reported baseline of 12500 USD, indicating a substantial and consistent increase in revenue. The deviation has persisted for at least three days at this elevated level.",
+        "latency_ms": 4009
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 16 AND region = 'Japan' AND ts BETWEEN toDateTime('2026-08-20T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-20T00:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1439
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    t1.region as region,\n    SUM(t1.revenue_usd) AS total_revenue\nFROM box_office_revenue AS t1\nWHERE (t1.film_id = 16) AND (t1.date BETWEEN toDate('2026-08-17') AND toDate('2026-08-23'))\nGROUP BY\n    t1.region\nORDER BY\n    total_revenue DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "total_revenue"
+        ],
+        "rows": [
+          [
+            "Japan",
+            450000
+          ]
+        ],
+        "narrative": "The box office revenue spike for 'Colony' is entirely isolated to Japan. Within the 7-day window bracketing the anomaly, Japan is the sole region reporting revenue, accumulating 450,000 USD. This indicates the factors driving the revenue increase are specific to the Japanese market and not part of a broader, multi-regional trend for the film.",
+        "latency_ms": 5881
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, magnitude\nFROM detections\nWHERE film_id = 16\n  AND region = 'Japan'\n  AND metric_ts >= toDateTime('2026-08-20T00:00:00') - INTERVAL 72 HOUR\n  AND metric_ts <= toDateTime('2026-08-20T00:00:00') + INTERVAL 72 HOUR\nORDER BY metric_ts;\n-- QUERY 2 --\nSELECT f.title, cr.release_date FROM competitor_releases cr JOIN films f ON cr.competitor_film_id = f.film_id WHERE cr.region = 'Japan' AND cr.release_date BETWEEN date('2026-08-20') - INTERVAL 14 DAY AND date('2026-08-20') + INTERVAL 14 DAY;",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "box_office_revenue.revenue_usd",
+            "2026-08-19 00:00:00",
+            4.795831680297852
+          ],
+          [
+            "box_office_revenue.revenue_usd",
+            "2026-08-20 00:00:00",
+            3.316624879837036
+          ]
+        ],
+        "narrative": "The anomaly began on 2026-08-19 with a prior detection on the same metric, box_office_revenue.revenue_usd, with a magnitude of 4.8. No other sibling detections on other metrics were found for this film and region within the last 72 hours. A competitor film, 'The Fantastic 4: First Steps,' was released on the same day as the anomaly, 2026-08-20, while another, 'Siping,' was released three days prior.",
+        "latency_ms": 15184
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The sustained high box office revenue for 'Colony' in Japan appears to be linked to the release of competitor films, 'Siping' and 'The Fantastic 4: First Steps,' which may have increased overall cinema attendance or positioned 'Colony' as an attractive alternative in the Japanese market.",
+      "contributing_factors": [
+        "The revenue spike for 'Colony' is entirely isolated to Japan.",
+        "The revenue deviation has persisted for at least three days at this elevated level."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:42:23.360679Z",
+    "finished_at": "2026-08-17T01:43:37.866768Z"
+  },
+  "decision": {
+    "decision_id": "1ba5fce324f54b8784efb6113eb4af82",
+    "investigation_id": "bddce3ce5e2841e282001e0a7878a5bb",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "The underperformance of the affected variant, with a conversion rate of 0.04 in Japan-DE, strongly suggests swapping it for the affected variant, which has a conversion rate of 0.08 in other regions, to improve conversion rates.",
+        "params": {
+          "film_id": 16,
+          "region": "Japan",
+          "from_variant": "B",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Negative social media sentiment in Japan-DE regarding 'confusing plot' and 'misleading scenes' warrants an immediate public relations statement to clarify the content of Film 505.",
+        "params": {
+          "film_id": 16,
+          "region": "Japan",
+          "message_theme": "clarify misleading content"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T01:43:49.569524Z",
+    "latency_ms": 11702
+  },
+  "report": {
+    "report_id": "d38783db1f13412ab06bb2627f3b6d14",
+    "decision_id": "1ba5fce324f54b8784efb6113eb4af82",
+    "headline": "Box office revenue for 'Colony' in Japan has significantly increased, coinciding with competitor releases.",
+    "tldr": "A significant and sustained increase in box office revenue for the film 'Colony' in Japan has been detected, with daily revenue reaching 150000 USD, substantially higher than the baseline of 12500 USD. This surge, which has persisted for at least three days and is isolated to the Japanese market, is hypothesized to be related to recent competitor film releases. To capitalize on this increased attention and optimize performance, a trailer variant will be swapped, with an estimated impact of 0.0 USD, and a public relations statement will be issued, also with an estimated impact of 0.0 USD.",
+    "key_figures": [
+      {
+        "label": "Actual Daily Revenue",
+        "value": "150000 USD",
+        "source_query": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 16 AND region = 'Japan' AND date BETWEEN '2026-08-13' AND '2026-08-27' ORDER BY date LIMIT 100;",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Baseline Daily Revenue",
+        "value": "12500 USD",
+        "source_query": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 16 AND region = 'Japan' AND date BETWEEN '2026-08-13' AND '2026-08-27' ORDER BY date LIMIT 100;",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Japan Weekly Revenue",
+        "value": "450000 USD",
+        "source_query": "SELECT\n    t1.region as region,\n    SUM(t1.revenue_usd) AS total_revenue\nFROM box_office_revenue AS t1\nWHERE (t1.film_id = 16) AND (t1.date BETWEEN toDate('2026-08-17') AND toDate('2026-08-23'))\nGROUP BY\n    t1.region\nORDER BY\n    total_revenue DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated Trailer Swap Impact",
+        "value": "0.0 USD",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated PR Statement Impact",
+        "value": "0.0 USD",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 16\n    AND region = 'Japan'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "Two actions have been recommended. First, an underperforming trailer variant ('B') for 'Colony' in Japan, with a conversion rate of 0.04, will be swapped for variant 'A', which has shown a conversion rate of 0.08 in other regions, to improve conversion rates. The estimated impact of this action is 0.0 USD. Second, a public relations statement will be issued for 'Colony' in Japan to clarify misleading content, addressing negative social media sentiment regarding 'confusing plot' and 'misleading scenes'. The estimated impact of this action is 0.0 USD.",
+    "risks_and_caveats": "The hypothesis linking the revenue surge to competitor releases is assessed with high confidence. However, no significant textual evidence from audience reviews was found in the immediate time window to further corroborate specific audience sentiments or reasons for the increased attendance.",
+    "created_at": "2026-08-17T01:44:24.963899Z",
+    "latency_ms": 17956
+  }
+}

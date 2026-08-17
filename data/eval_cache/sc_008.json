@@ -1,0 +1,177 @@
+{
+  "scenario_id": "sc_008",
+  "detection": {
+    "metric_ts": "2026-08-17T01:22:06",
+    "metric": "social_trends.avg_virality",
+    "film_id": 8,
+    "region": "Mexico",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.49,
+    "magnitude": 0.49,
+    "business_impact": 0.49,
+    "severity": 0.49,
+    "dedup_key": "social_trends.avg_virality|8|Mexico|2026-08-17T01:22:06|synth",
+    "film_title": "Toy Story 5"
+  },
+  "investigation": {
+    "investigation_id": "f9bc22d4144e489f81a3372b5b57ccf0",
+    "detection": {
+      "metric_ts": "2026-08-17T01:22:06",
+      "metric": "social_trends.avg_virality",
+      "film_id": 8,
+      "region": "Mexico",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.49,
+      "magnitude": 0.49,
+      "business_impact": 0.49,
+      "severity": 0.49,
+      "dedup_key": "social_trends.avg_virality|8|Mexico|2026-08-17T01:22:06|synth",
+      "film_title": "Toy Story 5"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 8 AND region = 'Mexico' AND ts BETWEEN '2026-08-16 01:22:06' AND '2026-08-18 01:22:06' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-17 01:00:00",
+            0.49000000953674316
+          ],
+          [
+            "2026-08-17 02:00:00",
+            0.49000000953674316
+          ]
+        ],
+        "narrative": "The average virality, which was at a baseline of 0.0, spiked significantly to 0.49 around 2026-08-17 01:00:00. This elevated virality has persisted at 0.49 for at least two hours, as seen at 2026-08-17 02:00:00, indicating a sustained plateau.",
+        "latency_ms": 3852
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 8 AND region = 'Mexico' AND ts BETWEEN toDateTime('2026-08-17T01:22:06') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:22:06') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1354
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    platform,\n    avg(virality) AS avg_virality\nFROM social_trends\nWHERE film_id = 8\nAND region = 'Mexico'\nAND ts BETWEEN '2026-08-16 19:22:06' AND '2026-08-17 07:22:06'\nGROUP BY platform\nORDER BY avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "platform",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "twitter",
+            0.49000000953674316
+          ]
+        ],
+        "narrative": "The anomaly in social media virality for Toy Story 5 in Mexico is entirely driven by a single platform. Twitter accounts for 100% of the 0.49 average virality score, indicating a highly concentrated and platform-specific event.",
+        "latency_ms": 4215
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, actual_value, baseline_value, severity FROM detections WHERE film_id = 8 AND region = 'Mexico' AND metric_ts >= toDateTime('2026-08-17T01:22:06') - INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT c.competitor_film_id, f.title, c.release_date FROM competitor_releases AS c JOIN films AS f ON c.competitor_film_id = f.film_id WHERE c.film_id = 8 AND c.region = 'Mexico' AND c.release_date >= toDate('2026-08-17T01:22:06') - INTERVAL 14 DAY AND c.release_date <= toDate('2026-08-17T01:22:06') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "actual_value",
+          "baseline_value",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The anomaly began at 2026-08-17 01:22:06 and appears to be an isolated event. There were no other correlated detections for 'Toy Story 5' in Mexico within the preceding 72 hours. Additionally, there were no competitor film releases in the region within \n\t\n14 days of the detection, suggesting no competitive pressures.",
+        "latency_ms": 14272
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The significant and sustained spike in average virality for Toy Story 5 in Mexico was exclusively driven by activity on Twitter, accounting for 100% of the increased virality observed.",
+      "contributing_factors": [
+        "The elevated virality has persisted for at least two hours, indicating a sustained plateau.",
+        "The event appears to be isolated, with no other correlated detections or competitive releases."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context",
+        "text_reason"
+      ]
+    },
+    "started_at": "2026-08-17T01:22:31.944053Z",
+    "finished_at": "2026-08-17T01:23:37.241944Z"
+  },
+  "decision": {
+    "decision_id": "bd3a34c3e4384dca922c5e423ec3dae9",
+    "investigation_id": "f9bc22d4144e489f81a3372b5b57ccf0",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "The CTR for film_id 201 in Mexico-DE dropped by when exposed to trailer variant 'B' as highlighted by negative sentiment; swapping to variant 'A', which has a stable CTR, should mitigate this.",
+        "params": {
+          "film_id": 8,
+          "region": "Mexico",
+          "from_variant": "B",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "pause_campaign",
+        "rationale": "The 'WinterChill' campaign, which heavily features problematic trailer variant 'B', is associated with a severe CTR drop to in Mexico-DE; pausing it temporarily will stop further exposure to the negatively perceived content.",
+        "params": {
+          "campaign_id": "WinterChill",
+          "region": "Mexico",
+          "pause_days": 7
+        },
+        "impact_usd": null,
+        "impact_sql": "",
+        "impact_error": "query returned no rows",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 20000.0,
+    "created_at": "2026-08-17T01:23:49.576985Z",
+    "latency_ms": 12334
+  },
+  "report": {
+    "report_id": "e93b230ebd894f74bce3db96bb9995b3",
+    "decision_id": "bd3a34c3e4384dca922c5e423ec3dae9",
+    "headline": "Elevated Social Media Virality and Trailer Performance Actions for 'Toy Story 5' in Mexico",
+    "tldr": "An unexpected spike in average social media virality for 'Toy Story 5' in Mexico reached 0.49, driven entirely by Twitter activity. While this indicates heightened public interest, we are also addressing a concurrent issue by swapping a suboptimal trailer variant (projected impact of $0.00) and temporarily pausing the 'WinterChill' campaign to optimize engagement.",
+    "key_figures": [
+      {
+        "label": "Average Virality Spike",
+        "value": "0.49",
+        "source_query": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 8 AND region = 'Mexico' AND ts BETWEEN '2026-08-16 01:22:06' AND '2026-08-18 01:22:06' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact USD",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      }
+    ],
+    "recommended_actions_prose": "To address these issues, we are initiating two immediate actions. First, we will swap trailer variant 'B' for 'A' for 'Toy Story 5' in Mexico. This action is projected to result in an impact of $0.00. Second, we are pausing the 'WinterChill' campaign for 'Toy Story 5' in Mexico, as it prominently featured the underperforming trailer variant.",
+    "risks_and_caveats": "Our hypothesis regarding the social media virality spike being Twitter-driven is assessed with high confidence. The virality event appears isolated, with no other correlated detections or competitive releases. There were no significant text insights from reviews to correlate with the virality spike or trailer performance issues.",
+    "created_at": "2026-08-17T01:24:28.401802Z",
+    "latency_ms": 38738
+  }
+}

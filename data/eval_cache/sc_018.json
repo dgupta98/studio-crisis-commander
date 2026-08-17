@@ -1,0 +1,262 @@
+{
+  "scenario_id": "sc_018",
+  "detection": {
+    "metric_ts": "2026-08-17T03:00:00",
+    "metric": "trailer_analytics.avg_completion_rate",
+    "film_id": 18,
+    "region": "India",
+    "detector": "zscore",
+    "baseline_value": 0.5944008653362592,
+    "actual_value": 0.3100000023841858,
+    "magnitude": -3.761671304702759,
+    "business_impact": 0.0461106114089489,
+    "severity": 0.1734529584646225,
+    "dedup_key": "trailer_analytics.avg_completion_rate|18|India|2026-08-17 03:00:00|zscore",
+    "film_title": "Spider-Man"
+  },
+  "investigation": {
+    "investigation_id": "41eee0408d82438a9dfbbbfb4304db95",
+    "detection": {
+      "metric_ts": "2026-08-17T03:00:00",
+      "metric": "trailer_analytics.avg_completion_rate",
+      "film_id": 18,
+      "region": "India",
+      "detector": "zscore",
+      "baseline_value": 0.5944008653362592,
+      "actual_value": 0.3100000023841858,
+      "magnitude": -3.761671304702759,
+      "business_impact": 0.0461106114089489,
+      "severity": 0.1734529584646225,
+      "dedup_key": "trailer_analytics.avg_completion_rate|18|India|2026-08-17 03:00:00|zscore",
+      "film_title": "Spider-Man"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate FROM roll_trailer_hourly WHERE film_id = 18 AND region = 'India' AND ts BETWEEN '2026-08-16 03:00:00' AND '2026-08-18 03:00:00' GROUP BY ts ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_completion_rate"
+        ],
+        "rows": [
+          [
+            "2026-08-17 02:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-17 03:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-17 04:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-17 05:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-17 06:00:00",
+            0.3100000023841858
+          ]
+        ],
+        "narrative": "The average completion rate was expected to be around 0.5944 (baseline). However, at the time of detection (2026-08-17 03:00:00), the actual value dropped significantly to 0.3100. This sustained drop is evident from 2026-08-17 02:00:00 to 2026-08-17 06:00:00, where the completion rate remained consistently at 0.3100.",
+        "latency_ms": 5021
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 18 AND region = 'India' AND ts BETWEEN toDateTime('2026-08-17 03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17 03:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00106h window.",
+        "latency_ms": 1392
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  variant,\n  sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate,\n  sum(sum_views) AS total_views\nFROM roll_trailer_hourly\nWHERE\n  film_id = 18\n  AND region = 'India'\n  AND ts BETWEEN toDateTime('2026-08-17 03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17 03:00:00') + INTERVAL 6 HOUR\nGROUP BY\n  variant\nORDER BY\n  avg_completion_rate ASC\nLIMIT 15\n;SELECT\n  t.region,\n  sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate,\n  sum(sum_views) AS total_views,\n  any_value(w.weight) AS share_of_audience\nFROM roll_trailer_hourly AS t\nLEFT JOIN film_region_weight w\n  ON t.film_id = w.film_id AND t.region = w.region\nWHERE\n  t.film_id = 18\n  AND t.ts BETWEEN toDateTime(\n    '2026-08-17 03:00:00'\n  ) - INTERVAL 6 HOUR AND toDateTime(\n    '2026-08-17 03:00:00'\n  ) + INTERVAL 6 HOUR\nGROUP BY\n  t.region\nORDER BY\n  avg_completion_rate ASC\nLIMIT 15\n",
+        "columns": [
+          "region",
+          "avg_completion_rate",
+          "total_views",
+          "share_of_audience"
+        ],
+        "rows": [
+          [
+            "India",
+            0.3100000023841858,
+            3550,
+            0.0517241396009922
+          ]
+        ],
+        "narrative": "The sharp decline in trailer completion rate is entirely isolated to the India region. During the 12-hour window surrounding the anomaly, India was the only region with recorded trailer views for this film, registering a low average completion rate of 0.31 across 3,550 views. Within India, only a single trailer variant ('A') was active, indicating the issue is not related to a specific variant but is concentrated within the region as a whole.",
+        "latency_ms": 26164
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n  metric,\n  metric_ts,\n  magnitude,\n  severity\nFROM detections\nWHERE\n  film_id = 18\n  AND region = 'India'\n  AND metric_ts >= toDateTime('2026-08-17 03:00:00') - INTERVAL 72 HOUR\n  AND metric_ts <= toDateTime('2026-08-17 03:00:00') + INTERVAL 72 HOUR\nORDER BY metric_ts; -- QUERY 2 -- SELECT\n  cr.competitor_film_id,\n  f.title AS competitor_film_title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'India'\n  AND cr.release_date >= toDate('2026-08-17') - INTERVAL 14 DAY\n  AND cr.release_date <= toDate('2026-08-17') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude",
+          "severity"
+        ],
+        "rows": [
+          [
+            "trailer_analytics.avg_completion_rate",
+            "2026-08-17 02:00:00",
+            -0.45971643924713135,
+            0.021197805181145668
+          ],
+          [
+            "trailer_analytics.avg_completion_rate",
+            "2026-08-17 02:00:00",
+            -6.3192267417907715,
+            0.29138341546058655
+          ],
+          [
+            "trailer_analytics.avg_completion_rate",
+            "2026-08-17 03:00:00",
+            -3.761671304702759,
+            0.1734529584646225
+          ]
+        ],
+        "narrative": "The anomaly in trailer completion rate for 'Spider-Man' in India began at 2026-08-17 02:00:00, an hour prior to the triggering detection, with two other significant negative detections on the same metric. No other metrics for this film and region showed anomalous behavior during this period. The drop in engagement coincides with the release of a competitor film, 'Snoopy Presents: There's No Place Like Home, Snoopy' (film_id 187), on the same day, and 'Doctor Strange' (film_id 190) the day before, suggesting a potential audience shift due to these new releases.",
+        "latency_ms": 12329
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The significant and sustained drop in trailer completion rate in India is highly correlated with the release of competitor films, suggesting an audience shift towards these new releases.",
+      "contributing_factors": [
+        "The decline in completion rate is isolated specifically to the India region.",
+        "The anomaly began an hour before the main detection, indicating a developing trend."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:47:32.871297Z",
+    "finished_at": "2026-08-17T01:48:59.486326Z"
+  },
+  "decision": {
+    "decision_id": "0eea359ebdac498e98feca241a93a169",
+    "investigation_id": "41eee0408d82438a9dfbbbfb4304db95",
+    "actions": [
+      {
+        "action_type": "pause_campaign",
+        "rationale": "The 'Pre-roll Video Ad Campaign #123' on Social Media has a CTR of 0.8% and is directly linked to negative sentiment in India. Pausing this campaign should immediately address the cause of the CTR drop from to 2.1%.",
+        "params": {
+          "campaign_id": 123,
+          "region": "India",
+          "pause_days": 7
+        },
+        "impact_usd": null,
+        "impact_sql": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 123\n    AND region = 'India'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "Received ClickHouse exception, code: 47, server response: Code: 47. DB::Exception: Unknown expression or function identifier `campaign_id` in scope  daily. (UNKNOWN_IDENTIFIER) (for url https://svyju1632q.us-east1.gcp.clickhouse.cloud:8443)",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "The 'Social Media' channel's CTR in India dropped from to, while 'Search Engine Marketing' at 5.1% remains stable. Shifting spend to more stable channels like Search Engine Marketing can help reallocate budget effectively in India.",
+        "params": {
+          "film_id": 18,
+          "region": "India",
+          "from_channel": "Social Media",
+          "to_channel": "Search Engine Marketing",
+          "shift_pct": 50.0,
+          "window_days": 30
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 30 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Search Engine Marketing'\n    AND day >= today() - INTERVAL 30 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (50.0 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Social media sentiment for 'Midnight Haunting' in India dropped from 0.7 to 0.2 due to 'annoying' ads, indicating significant public dissatisfaction. A PR statement can help mitigate brand damage and address the negative perception in India.",
+        "params": {
+          "film_id": 18,
+          "region": "India",
+          "message_theme": "acknowledgement of user feedback and commitment to improving ad experience"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 3
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 20000.0,
+    "created_at": "2026-08-17T01:49:15.594431Z",
+    "latency_ms": 16107
+  },
+  "report": {
+    "report_id": "3c3cfb1948f7455fab77994b137e0465",
+    "decision_id": "0eea359ebdac498e98feca241a93a169",
+    "headline": "Significant decline observed in trailer completion rates for Spider-Man in India.",
+    "tldr": "The average trailer completion rate for 'Spider-Man' in India has unexpectedly dropped to 0.31, significantly below its baseline of 0.59. This decline affects 3,550 views in the region and is strongly correlated with recent competitor film releases. We are taking immediate actions including pausing a problematic social media campaign, reallocating marketing spend, and preparing a public relations statement to address audience sentiment.",
+    "key_figures": [
+      {
+        "label": "Current Completion Rate",
+        "value": "0.31",
+        "source_query": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate FROM roll_trailer_hourly WHERE film_id = 18 AND region = 'India' AND ts BETWEEN '2026-08-16 03:00:00' AND '2026-08-18 03:00:00' GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Baseline Completion Rate",
+        "value": "0.59",
+        "source_query": "SELECT ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate FROM roll_trailer_hourly WHERE film_id = 18 AND region = 'India' AND ts BETWEEN '2026-08-16 03:00:00' AND '2026-08-18 03:00:00' GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Total Views Affected in India",
+        "value": "3,550",
+        "source_query": "SELECT\n  variant,\n  sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate,\n  sum(sum_views) AS total_views\nFROM roll_trailer_hourly\nWHERE\n  film_id = 18\n  AND region = 'India'\n  AND ts BETWEEN toDateTime('2026-08-17 03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17 03:00:00') + INTERVAL 6 HOUR\nGROUP BY\n  variant\nORDER BY\n  avg_completion_rate ASC\nLIMIT 15\n;SELECT\n  t.region,\n  sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS avg_completion_rate,\n  sum(sum_views) AS total_views,\n  any_value(w.weight) AS share_of_audience\nFROM roll_trailer_hourly AS t\nLEFT JOIN film_region_weight w\n  ON t.film_id = w.film_id AND t.region = w.region\nWHERE\n  t.film_id = 18\n  AND t.ts BETWEEN toDateTime(\n    '2026-08-17 03:00:00'\n  ) - INTERVAL 6 HOUR AND toDateTime(\n    '2026-08-17 03:00:00'\n  ) + INTERVAL 6 HOUR\nGROUP BY\n  t.region\nORDER BY\n  avg_completion_rate ASC\nLIMIT 15\n",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Potential Impact from Pausing Campaign",
+        "value": "Calculation Error",
+        "source_query": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 123\n    AND region = 'India'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Potential Impact from Shifting Spend",
+        "value": "$0.00",
+        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 30 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Search Engine Marketing'\n    AND day >= today() - INTERVAL 30 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (50.0 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      },
+      {
+        "label": "Potential Impact from PR Statement",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 2
+        }
+      }
+    ],
+    "recommended_actions_prose": "To address the issue, we recommend three key actions. First, pause the 'Pre-roll Video Ad Campaign #123' on Social Media in India, as its poor performance and negative sentiment links suggest it's a direct cause of the current decline; the estimated financial impact for this action is currently unavailable due to a calculation error. Second, shift 50% of marketing spend from 'Social Media' to 'Search Engine Marketing' for 'Spider-Man' in India over the next 30 days, as Search Engine Marketing channels remain stable; this is estimated to have a financial impact of $0.00. Third, issue a public relations statement for 'Spider-Man' in India acknowledging user feedback and committing to improving the ad experience to mitigate negative brand perception; the estimated financial impact for this action is also $0.00.",
+    "risks_and_caveats": "Our hypothesis, that competitor releases are primarily driving the audience shift, is held with high confidence. While competitor releases align temporally with the drop, the lack of significant textual evidence limits our understanding of direct audience feedback on these new films.",
+    "created_at": "2026-08-17T01:49:42.898631Z",
+    "latency_ms": 27202
+  }
+}

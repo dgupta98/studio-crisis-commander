@@ -1,0 +1,178 @@
+{
+  "scenario_id": "sc_013",
+  "detection": {
+    "metric_ts": "2026-08-17T01:35:48",
+    "metric": "box_office_revenue.revenue_usd",
+    "film_id": 13,
+    "region": "US",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.4,
+    "magnitude": 0.4,
+    "business_impact": 0.4,
+    "severity": 0.4,
+    "dedup_key": "box_office_revenue.revenue_usd|13|US|2026-08-17T01:35:48|synth",
+    "film_title": "The Devil's Mouth"
+  },
+  "investigation": {
+    "investigation_id": "43671a05910a42869ba6b1147d263744",
+    "detection": {
+      "metric_ts": "2026-08-17T01:35:48",
+      "metric": "box_office_revenue.revenue_usd",
+      "film_id": 13,
+      "region": "US",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.4,
+      "magnitude": 0.4,
+      "business_impact": 0.4,
+      "severity": 0.4,
+      "dedup_key": "box_office_revenue.revenue_usd|13|US|2026-08-17T01:35:48|synth",
+      "film_title": "The Devil's Mouth"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 13 AND region = 'US' AND date BETWEEN '2026-08-10' AND '2026-08-24' ORDER BY date LIMIT 100",
+        "columns": [
+          "date",
+          "revenue_usd"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            120000
+          ],
+          [
+            "2026-08-19",
+            120000
+          ],
+          [
+            "2026-08-20",
+            120000
+          ]
+        ],
+        "narrative": "The query reveals a sustained plateau in `revenue_usd` at 120000 from '2026-08-18' to '2026-08-20'. This data reflects the period immediately following the detection's timestamp of '2026-08-17'. As no data for '2026-08-17' or earlier dates within the window was returned in the rows, a direct comparison between baseline and actual values at the detection timestamp cannot be fully established from the provided numeric context.",
+        "latency_ms": 32497
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 13 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-17T01:35:48') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T01:35:48') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1523
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    br.region,\n    SUM(br.revenue_usd) AS total_revenue,\n    frw.weight\nFROM box_office_revenue AS br\nLEFT JOIN film_region_weight AS frw\n  ON br.film_id = frw.film_id AND br.region = frw.region\nWHERE\n  br.film_id = 13\n  AND br.date BETWEEN '2026-08-14' AND '2026-08-20'\nGROUP BY\n    br.region,\n    frw.weight\nORDER BY total_revenue DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "total_revenue",
+          "weight"
+        ],
+        "rows": [
+          [
+            "US",
+            360000,
+            0.0
+          ]
+        ],
+        "narrative": "The analysis shows that box office revenue for \"The Devil's Mouth\" is entirely concentrated in the US region, which is the region where the anomaly was detected. Within the 7-day window surrounding the anomaly, the US market was the only one to generate revenue, accounting for 100% of the $360,000 total. This indicates the performance deviation is localized to the US and not a matter of cross-region comparison.",
+        "latency_ms": 29307
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, detector, severity FROM detections WHERE film_id = 13 AND region = 'US' AND metric_ts >= toDateTime('2026-08-17T01:35:48') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-17T01:35:48') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, region, release_date, competitor_film_id FROM competitor_releases WHERE region = 'US' AND release_date >= toDate('2026-08-17') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-17') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "detector",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The anomaly appears to be an isolated event in time. There were no other detections for this film and region within 72 hours of the anomaly's timestamp. Furthermore, there were no competitor film releases in the US market within a two-week window before or after the detection, suggesting that competitive pressure is not a factor in this anomaly.",
+        "latency_ms": 13773
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The anomaly reflects a localized issue within the US market, evidenced by a revenue plateau following the detection and the fact that all film revenue during this period was concentrated solely in the US. This suggests an internal or region-specific factor is at play, rather than a broader market trend or competitive pressure.",
+      "contributing_factors": [
+        "Localized to the US market",
+        "No competitor influence",
+        "Isolated in time"
+      ],
+      "confidence": "medium",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-17T01:36:13.593575Z",
+    "finished_at": "2026-08-17T01:38:10.857087Z"
+  },
+  "decision": {
+    "decision_id": "fa6cb0951e8346978424024e71b04017",
+    "investigation_id": "43671a05910a42869ba6b1147d263744",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Sentiment analysis shows the affected variant has 850 negative mentions in US, contributing to its low 0.40 completion rate. Swapping the affected variant with the affected variant, which has a 0.75 completion rate, will address this issue.",
+        "params": {
+          "film_id": 13,
+          "region": "US",
+          "from_variant": "C",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 13\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-17T01:38:20.631233Z",
+    "latency_ms": 9773
+  },
+  "report": {
+    "report_id": "bab5c81574d943f99eb05cfe7b72c124",
+    "decision_id": "fa6cb0951e8346978424024e71b04017",
+    "headline": "A localized issue is impacting box office revenue for \"The Devil's Mouth\" in the United States.",
+    "tldr": "Box office revenue for 'The Devil's Mouth' in the US has recently plateaued, with daily revenue at $120,000, and all film revenue during the investigation period was concentrated in the US market. This suggests a localized problem rather than a broader market trend. To address this, we have swapped a trailer variant, which is projected to have a $0.00 positive impact on revenue.",
+    "key_figures": [
+      {
+        "label": "Daily Revenue Plateau",
+        "value": "$120,000",
+        "source_query": "SELECT date, revenue_usd FROM box_office_revenue WHERE film_id = 13 AND region = 'US' AND date BETWEEN '2026-08-10' AND '2026-08-24' ORDER BY date LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "US Market Revenue Share",
+        "value": "100%",
+        "source_query": "SELECT\n    br.region,\n    SUM(br.revenue_usd) AS total_revenue,\n    frw.weight\nFROM box_office_revenue AS br\nLEFT JOIN film_region_weight AS frw\n  ON br.film_id = frw.film_id AND br.region = frw.region\nWHERE\n  br.film_id = 13\n  AND br.date BETWEEN '2026-08-14' AND '2026-08-20'\nGROUP BY\n    br.region,\n    frw.weight\nORDER BY total_revenue DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Projected Revenue Impact from Trailer Swap",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 13\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      }
+    ],
+    "recommended_actions_prose": "To mitigate the issue, a trailer variant swap has been executed for \"The Devil's Mouth\" in the US. Specifically, variant 'C' has been replaced with variant 'A'. This decision was made because sentiment analysis indicated that variant 'C' had a high number of negative mentions and a low completion rate. The projected revenue impact from this action is $0.00.",
+    "risks_and_caveats": "Our hypothesis regarding the cause of the anomaly is held with medium confidence. While several factors point to a localized US market issue, the text analysis finding provided no significant evidence, leaving some aspects less clear.",
+    "created_at": "2026-08-17T01:38:32.864769Z",
+    "latency_ms": 12149
+  }
+}

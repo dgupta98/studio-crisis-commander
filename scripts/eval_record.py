@@ -94,8 +94,11 @@ async def main() -> int:
                 print(f"  [{i}/{len(scenarios)}] {scn.id} OK ({dt:.1f}s)",
                       file=sys.stderr)
             except Exception as e:  # noqa: BLE001
-                print(f"  [{i}/{len(scenarios)}] {scn.id} FAIL: {e}",
-                      file=sys.stderr)
+                # httpx transport errors (RemoteProtocolError, ReadError) often
+                # stringify to "" when a Cloud Run instance dies mid-stream.
+                # Log the type so a bare-error tail cluster is diagnosable.
+                print(f"  [{i}/{len(scenarios)}] {scn.id} FAIL: "
+                      f"{type(e).__name__}: {e}", file=sys.stderr)
     return 0
 
 

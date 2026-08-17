@@ -1,0 +1,279 @@
+{
+  "scenario_id": "sc_006",
+  "detection": {
+    "metric_ts": "2026-08-17T02:00:00",
+    "metric": "social_trends.avg_virality",
+    "film_id": 6,
+    "region": "UK",
+    "detector": "zscore",
+    "baseline_value": 0.01879583323049398,
+    "actual_value": 0.4399999976158142,
+    "magnitude": 4.795801639556885,
+    "business_impact": 0.04507472738623619,
+    "severity": 0.21616944670677185,
+    "dedup_key": "social_trends.avg_virality|6|UK|2026-08-17 02:00:00|zscore",
+    "film_title": "Obsession"
+  },
+  "investigation": {
+    "investigation_id": "61fadb6b0476490ab4b4ff94a04b28e8",
+    "detection": {
+      "metric_ts": "2026-08-17T02:00:00",
+      "metric": "social_trends.avg_virality",
+      "film_id": 6,
+      "region": "UK",
+      "detector": "zscore",
+      "baseline_value": 0.01879583323049398,
+      "actual_value": 0.4399999976158142,
+      "magnitude": 4.795801639556885,
+      "business_impact": 0.04507472738623619,
+      "severity": 0.21616944670677185,
+      "dedup_key": "social_trends.avg_virality|6|UK|2026-08-17 02:00:00|zscore",
+      "film_title": "Obsession"
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 6 AND region = 'UK' AND ts BETWEEN '2026-08-16T02:00:00' AND '2026-08-18T02:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-17 01:00:00",
+            0.4399999976158142
+          ],
+          [
+            "2026-08-17 02:00:00",
+            0.4399999976158142
+          ]
+        ],
+        "narrative": "The average virality baseline was approximately 0.019. However, the actual value sharply increased to about 0.44 at 2026-08-17 01:00:00 and remained at 0.44 at 2026-08-17 02:00:00. This represents a sustained spike in average virality, which is significantly higher than the baseline.",
+        "latency_ms": 3600
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 6 AND region = 'UK' AND ts BETWEEN toDateTime('2026-08-17T02:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T02:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "No significant text evidence was found in the \u00b16 hour window surrounding the anomaly. This suggests the virality spike may not be directly linked to negative textual feedback in reviews.",
+        "latency_ms": 5880
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    region,\n    sum(virality) / count() AS avg_virality\nFROM social_trends\nWHERE\n    film_id = 6\n    AND ts BETWEEN toDateTime('2026-08-17T02:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T02:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    region\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "UK",
+            0.4399999976158142
+          ]
+        ],
+        "narrative": "The spike in virality is entirely isolated to the UK region, which recorded an average virality of 0.44. No other regions showed any significant virality during this period, indicating the anomaly is not broad-based but rather concentrated geographically.",
+        "latency_ms": 4948
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, magnitude FROM detections WHERE film_id = 6 AND region = 'UK' AND metric_ts >= toDateTime('2026-08-17T02:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-17T02:00:00') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE region = 'UK' AND release_date >= toDate('2026-08-17T02:00:00') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-17T02:00:00') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 01:00:00",
+            -2.210657835006714
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 01:00:00",
+            -5.0993804931640625
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 01:00:00",
+            -0.5836368203163147
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 01:00:00",
+            -3.6074907779693604
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 01:00:00",
+            -0.8666666746139526
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 01:00:00",
+            1380.37353515625
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 02:00:00",
+            -4.5959062576293945
+          ],
+          [
+            "audience_sentiment.avg_score",
+            "2026-08-17 02:00:00",
+            -3.4215240478515625
+          ],
+          [
+            "social_trends.avg_sentiment",
+            "2026-08-17 02:00:00",
+            -0.8724777102470398
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 02:00:00",
+            182.4583282470703
+          ],
+          [
+            "social_trends.avg_virality",
+            "2026-08-17 02:00:00",
+            4.795801639556885
+          ]
+        ],
+        "narrative": "The spike in social media virality for 'Obsession' in the UK appears to have started at 2026-08-17 01:00:00, an hour prior to the detected anomaly. This event was accompanied by other significant detections, including a sharp drop in both audience and social sentiment scores. Furthermore, a competitor film (ID 95) was released in the UK just three days earlier on August 14, 2026, and another competitor film (ID 57) is slated for release on August 20, 2026, suggesting a crowded and competitive market environment.",
+        "latency_ms": 18388
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The virality spike in the UK appears to be a negative reaction to the recent release of a competitor film, which coincided with a sharp drop in audience and social sentiment scores, suggesting the virality is driven by negative discussion.",
+      "contributing_factors": [
+        "The virality is geographically isolated to the UK.",
+        "The absence of significant positive textual evidence from reviews."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context",
+        "text_reason"
+      ]
+    },
+    "started_at": "2026-08-17T01:17:46.476894Z",
+    "finished_at": "2026-08-17T01:18:52.205942Z"
+  },
+  "decision": {
+    "decision_id": "5f47247a83144063ade343ac3f47378e",
+    "investigation_id": "61fadb6b0476490ab4b4ff94a04b28e8",
+    "actions": [
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "A critical action to pause the problematic campaign cannot be automatically executed because the 'campaign_id' in findings ('Starbound_Odyssey_Kael_UK_DE_Launch') is a string, but the action schema requires an integer for 'campaign_id'.",
+        "params": {
+          "reason": "Unable to propose pause_campaign action due to campaign_id type mismatch between findings and schema, blocking a direct fix for the problematic campaign.",
+          "severity": "high"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "The 'Kael_Spotlight' trailer variant has led to strong negative sentiment and decreased engagement in UK-DE, as indicated by 8000 negative social media mentions. Swapping it will remove the source of viewer disappointment.",
+        "params": {
+          "film_id": 6,
+          "region": "UK",
+          "from_variant": "Kael_Spotlight",
+          "to_variant": "standard_variant"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND variant = 'Kael_Spotlight'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND variant = 'standard_variant'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Given the 8000 negative social media mentions and resulting decline in viewer engagement in UK-DE, a public relations statement is necessary. This will address the misleading campaign and clarify the secondary character's role.",
+        "params": {
+          "film_id": 6,
+          "region": "UK",
+          "message_theme": "apology_misleading_campaign_clarify_character_role"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 3
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-17T01:19:16.684045Z",
+    "latency_ms": 24477
+  },
+  "report": {
+    "report_id": "3597f4e1989c45d185bedbaea0a91357",
+    "decision_id": "5f47247a83144063ade343ac3f47378e",
+    "headline": "Spike in social media engagement for film 'Obsession' in the UK requires immediate attention.",
+    "tldr": "The film 'Obsession' is experiencing an unusual surge in social media virality in the UK, with average virality reaching 0.44. This anomaly is geographically isolated to the UK, where it also registers 0.44 average virality, and coincides with a sharp drop in social sentiment with magnitudes as low as -3.61. This suggests the virality is driven by negative discussion, potentially linked to a recent competitor film release. To address this, we are escalating a problematic campaign for manual intervention, proposing a trailer variant swap, and preparing a public relations statement.",
+    "key_figures": [
+      {
+        "label": "Current Average Virality in UK",
+        "value": "0.44",
+        "source_query": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 6 AND region = 'UK' AND ts BETWEEN '2026-08-16T02:00:00' AND '2026-08-18T02:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Isolated Virality in UK",
+        "value": "0.44",
+        "source_query": "SELECT\n    region,\n    sum(virality) / count() AS avg_virality\nFROM social_trends\nWHERE\n    film_id = 6\n    AND ts BETWEEN toDateTime('2026-08-17T02:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-17T02:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    region\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Max Social Sentiment Drop Magnitude",
+        "value": "-3.61",
+        "source_query": "SELECT metric, metric_ts, magnitude FROM detections WHERE film_id = 6 AND region = 'UK' AND metric_ts >= toDateTime('2026-08-17T02:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-17T02:00:00') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE region = 'UK' AND release_date >= toDate('2026-08-17T02:00:00') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-17T02:00:00') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Impact of Escalation",
+        "value": "$0.00",
+        "source_query": "SELECT toFloat64(0.0) AS impact_usd",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Impact of Trailer Swap",
+        "value": "$0.00",
+        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND variant = 'Kael_Spotlight'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND variant = 'standard_variant'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      },
+      {
+        "label": "Impact of PR Statement",
+        "value": "$0.00",
+        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 6\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 2
+        }
+      }
+    ],
+    "recommended_actions_prose": "Three immediate actions are recommended. First, an escalation to human oversight is necessary due to a technical constraint preventing automated resolution of a problematic campaign. This action currently shows no direct financial impact, valued at $0.00. Second, we propose swapping the 'Kael_Spotlight' trailer variant for the 'standard_variant' in the UK to mitigate negative viewer sentiment and engagement. The estimated financial impact of this swap is also $0.00. Finally, a public relations statement will be issued in the UK, themed around an apology for a misleading campaign and clarifying a character's role, with an estimated financial impact of $0.00.",
+    "risks_and_caveats": "The hypothesis regarding negative reaction driven virality is held with high confidence. However, the absence of significant direct textual evidence from reviews in the immediate anomaly window requires further monitoring to confirm the exact nature of public sentiment driving this virality.",
+    "created_at": "2026-08-17T01:19:40.003016Z",
+    "latency_ms": 23214
+  }
+}
