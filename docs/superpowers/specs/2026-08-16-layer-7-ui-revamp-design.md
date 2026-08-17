@@ -631,15 +631,14 @@ Whichever hypothesis is confirmed drives the fix. Fix lands as part of the `<Tel
 
 ---
 
-## Plan decomposition note (for writing-plans)
+## Plan structure
 
-Given ~100-124 hrs total, a single implementation plan would be unwieldy. Recommend splitting into ordered sub-plans, each producing working software:
+Single monolithic implementation plan (user decision, 2026-08-16), covering all phases 1-5 in one document. Tasks follow the phase order from §8.2 so that early phases produce working intermediates:
 
-- **Sub-plan A — Backend delta** (Phase 1, ~12-16h): endpoints + latency capture. Standalone deployable.
-- **Sub-plan B — Foundation** (Phase 2, ~16-20h): routing shell, primitives, stores. Standalone: navigable app with placeholder pages.
-- **Sub-plan C — Dashboard** (Phase 3.1 + telemetry fix, ~16-22h): working Dashboard route.
-- **Sub-plan D — Movies** (Phase 3.2 + 3.3, ~30-36h): working Movies Index + Detail routes.
-- **Sub-plan E — Landing** (Phase 3.4, ~20-24h): working Landing route.
-- **Sub-plan F — Polish & cutover** (Phase 4 + 5, ~8-10h + video/Devpost refresh): submission-ready.
+- **Phase 1** (Tasks 1-N) — Backend delta must complete + redeploy before Phase 2.
+- **Phase 2** (Foundation) unlocks all screen work.
+- **Phase 3** screen tasks (Dashboard → Movies → Movie Detail → Landing) can proceed serially.
+- **Phase 4** (Polish + testing) after all screens land.
+- **Phase 5** (Cutover + Devpost/video) as final tasks.
 
-Each sub-plan should have its own writing-plans pass, executed in order (A blocks B blocks C+D+E which block F).
+Frequent commit checkpoints at every phase boundary so the plan can be paused/resumed without losing progress.
