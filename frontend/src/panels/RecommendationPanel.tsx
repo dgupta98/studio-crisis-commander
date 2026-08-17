@@ -22,7 +22,7 @@ export function RecommendationPanel() {
   }, [])
 
   return (
-    <PanelStateWrapper state={state} label="Recommendation" idleLabel="Awaiting decision…">
+    <PanelStateWrapper state={state} label="Recommendation" idleLabel="Actions appear once a decision is proposed · press Inject to begin">
       <motion.div variants={panelReveal} initial="hidden" animate="visible">
         <Card className="p-6">
           <div className="text-xs uppercase tracking-wider text-ink-soft mb-3">

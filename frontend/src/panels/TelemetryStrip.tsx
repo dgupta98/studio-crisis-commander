@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { Sparkline } from '@/components/Sparkline'
@@ -30,8 +31,21 @@ export function TelemetryStrip() {
   const metrics = useRunStore((s) => s.metrics)
   const latency = useRunStore((s) => s.latencyMs)
   const detection = useRunStore((s) => s.detection)
+  const recent = useRunStore((s) => s.recentDetections)
+  const loadMetrics = useRunStore((s) => s.loadMetrics)
 
-  const key = detection ? `${detection.film_id}:${detection.region}` : null
+  // Cold-load fallback: without an active detection, use the most recent
+  // completed one so the panel isn't blank while Anomaly Feed shows history.
+  const effective = detection ?? (recent.length > 0 ? recent[0] : null)
+
+  useEffect(() => {
+    if (!effective) return
+    const key = `${effective.film_id}:${effective.region}`
+    if (metrics[key]) return
+    void loadMetrics(effective.film_id, effective.region)
+  }, [effective, metrics, loadMetrics])
+
+  const key = effective ? `${effective.film_id}:${effective.region}` : null
   const first = key ? metrics[key] : Object.values(metrics)[0]
 
   const series: Series[] = first
@@ -43,59 +57,71 @@ export function TelemetryStrip() {
       ]
     : []
   const allEmpty = series.length > 0 && series.every((s) => s.data.length === 0)
-  const fired = detection ? firedFamily(detection.metric) : null
+  const fired = effective ? firedFamily(effective.metric) : null
+  const isHistorical = detection === null && effective !== null
+
+  // Bypass idle wrapper when we have a historical detection to render from —
+  // otherwise the panel showed "Idle — awaiting metrics" on cold load while
+  // Anomaly Feed was fully populated.
+  const body = (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs uppercase tracking-wider text-ink-soft">
+          Telemetry{isHistorical && ' · last run'}
+        </span>
+        {latency !== null && (
+          <span className="font-mono text-xs text-ink-soft">
+            ClickHouse · {latency} ms
+          </span>
+        )}
+      </div>
+      {first && !allEmpty && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {series.map((s) => (
+            <Sparkline key={s.label} data={s.data} label={s.label} />
+          ))}
+        </div>
+      )}
+      {first && allEmpty && effective && (
+        <div className="rounded border border-line p-3">
+          <div className="text-xs uppercase tracking-wider text-ink-soft mb-1">
+            Fired signal
+          </div>
+          <div className="font-mono text-sm text-ink">{effective.metric}</div>
+          <div className="mt-2 flex items-baseline gap-4 text-sm">
+            <div>
+              <span className="text-ink-soft">actual · </span>
+              <span className="font-mono tabular-nums">
+                {effective.actual_value.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-ink-soft">baseline · </span>
+              <span className="font-mono tabular-nums">
+                {effective.baseline_value.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-ink-soft">magnitude · </span>
+              <span className="font-mono tabular-nums">
+                {effective.magnitude.toFixed(2)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-ink-soft italic">
+            No rollup timeseries for this film/region — the fired metric lives outside
+            the four charted families{fired ? '' : ' (e.g. refunds, streaming, spend)'}.
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+
+  if (effective) return body
 
   return (
     <PanelStateWrapper state={state} label="Telemetry" idleLabel="Idle — awaiting metrics">
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs uppercase tracking-wider text-ink-soft">Telemetry</span>
-          {latency !== null && (
-            <span className="font-mono text-xs text-ink-soft">
-              ClickHouse · {latency} ms
-            </span>
-          )}
-        </div>
-        {first && !allEmpty && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {series.map((s) => (
-              <Sparkline key={s.label} data={s.data} label={s.label} />
-            ))}
-          </div>
-        )}
-        {first && allEmpty && detection && (
-          <div className="rounded border border-line p-3">
-            <div className="text-xs uppercase tracking-wider text-ink-soft mb-1">
-              Fired signal
-            </div>
-            <div className="font-mono text-sm text-ink">{detection.metric}</div>
-            <div className="mt-2 flex items-baseline gap-4 text-sm">
-              <div>
-                <span className="text-ink-soft">actual · </span>
-                <span className="font-mono tabular-nums">
-                  {detection.actual_value.toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <span className="text-ink-soft">baseline · </span>
-                <span className="font-mono tabular-nums">
-                  {detection.baseline_value.toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <span className="text-ink-soft">magnitude · </span>
-                <span className="font-mono tabular-nums">
-                  {detection.magnitude.toFixed(2)}
-                </span>
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-ink-soft italic">
-              No rollup timeseries for this film/region — the fired metric lives outside
-              the four charted families{fired ? '' : ' (e.g. refunds, streaming, spend)'}.
-            </div>
-          </div>
-        )}
-      </Card>
+      {body}
     </PanelStateWrapper>
   )
 }

@@ -24,49 +24,65 @@ export function HeroBanner() {
   const det = useRunStore((s) => s.detection)
   const mode = useRunStore((s) => s.mode)
   const events = useRunStore((s) => s.events)
+  const recent = useRunStore((s) => s.recentDetections)
+
+  // Cold-load fallback: without an active run, hydrate from the most recent
+  // completed detection so the top of the page shows a real headline instead
+  // of an "idle" placeholder (which paired oddly with a populated feed).
+  const historical = !det && recent.length > 0 ? recent[0] : null
+  const displayDet = det ?? historical
+  const isHistorical = det === null && historical !== null
+
+  if (displayDet) {
+    return (
+      <motion.div variants={heroReveal} initial="hidden" animate="visible">
+        <div className="relative">
+          <div aria-hidden className="h-3 bg-black rounded-t-md" />
+          <Card className="p-8 bg-card border-l-4 border-accent rounded-none">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-xs uppercase tracking-wider text-ink-soft">
+                {isHistorical ? 'Last Investigation' : 'Now Investigating'}
+              </span>
+              {mode === 'fallback' && <SeverityChip level="replay">REPLAY</SeverityChip>}
+              {isHistorical && (
+                <span className="text-xs uppercase tracking-wider text-ink-soft italic">
+                  · press Inject to start a new one
+                </span>
+              )}
+            </div>
+            <h1 className="font-display text-5xl tracking-tight leading-none mb-2">
+              {humanCrisis(displayDet.metric)}
+            </h1>
+            <div className="text-lg text-ink-soft mb-4">
+              {displayDet.film_title ? displayDet.film_title : `Film ${displayDet.film_id}`} · {regionLabel(displayDet.region)}
+            </div>
+            <div className="flex items-baseline gap-6">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-ink-soft">Severity</div>
+                <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
+                  {displayDet.severity.toFixed(1)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-ink-soft">Magnitude</div>
+                <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
+                  {displayDet.magnitude.toFixed(1)}
+                </div>
+              </div>
+              <div className="ml-auto text-sm text-ink-soft italic">
+                {!isHistorical && events.length > 0 && `${events.length} events`}
+              </div>
+            </div>
+          </Card>
+          <div aria-hidden className="h-3 bg-black rounded-b-md" />
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <PanelStateWrapper state={state} label="Hero" idleLabel="Waiting for anomaly · system nominal">
-      {det && (
-        <motion.div variants={heroReveal} initial="hidden" animate="visible">
-          {/* Cinema letterbox: matte black bars top+bottom around the card. */}
-          <div className="relative">
-            <div aria-hidden className="h-3 bg-black rounded-t-md" />
-            <Card className="p-8 bg-card border-l-4 border-accent rounded-none">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-xs uppercase tracking-wider text-ink-soft">
-                  Now Investigating
-                </span>
-                {mode === 'fallback' && <SeverityChip level="replay">REPLAY</SeverityChip>}
-              </div>
-              <h1 className="font-display text-5xl tracking-tight leading-none mb-2">
-                {humanCrisis(det.metric)}
-              </h1>
-              <div className="text-lg text-ink-soft mb-4">
-                {det.film_title ? det.film_title : `Film ${det.film_id}`} · {regionLabel(det.region)}
-              </div>
-              <div className="flex items-baseline gap-6">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-ink-soft">Severity</div>
-                  <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
-                    {det.severity.toFixed(1)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-ink-soft">Magnitude</div>
-                  <div className="font-body text-4xl font-semibold tabular-nums tracking-tight">
-                    {det.magnitude.toFixed(1)}
-                  </div>
-                </div>
-                <div className="ml-auto text-sm text-ink-soft italic">
-                  {events.length > 0 && `${events.length} events`}
-                </div>
-              </div>
-            </Card>
-            <div aria-hidden className="h-3 bg-black rounded-b-md" />
-          </div>
-        </motion.div>
-      )}
+      <div />
     </PanelStateWrapper>
   )
 }

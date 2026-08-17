@@ -170,7 +170,9 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
     return (
       <>
         {finding.sql && (
-          <div className="mt-1"><SqlBlock sql={finding.sql} /></div>
+          <div className="mt-1 min-w-0 max-w-full overflow-hidden">
+            <SqlBlock sql={finding.sql} />
+          </div>
         )}
         {finding.narrative && (
           <div className="mt-1 text-sm text-ink-soft italic">
@@ -213,7 +215,7 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
           <div className="text-sm text-ink-soft italic">{d.rationale}</div>
         )}
         {d.params && Object.keys(d.params).length > 0 && (
-          <pre className="text-xs text-ink-soft font-mono bg-card-alt rounded px-2 py-1 overflow-x-auto">
+          <pre className="text-xs text-ink-soft font-mono bg-card-alt rounded px-2 py-1 whitespace-pre-wrap break-all max-w-full">
             {JSON.stringify(d.params, null, 2)}
           </pre>
         )}
@@ -268,7 +270,7 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
           Tool <span className="font-mono text-ink">{d.tool}</span>
         </div>
         {d.args_preview && (
-          <pre className="text-xs text-ink-soft font-mono bg-card-alt rounded px-2 py-1 overflow-x-auto">
+          <pre className="text-xs text-ink-soft font-mono bg-card-alt rounded px-2 py-1 whitespace-pre-wrap break-all max-w-full">
             {d.args_preview}
           </pre>
         )}

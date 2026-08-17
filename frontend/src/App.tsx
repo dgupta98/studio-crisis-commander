@@ -21,8 +21,11 @@ export function App() {
         <div data-testid="panel-hero"><HeroBanner /></div>
         <div data-testid="panel-telemetry"><TelemetryStrip /></div>
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
-          <div data-testid="panel-trace"><AgentTrace /></div>
-          <div className="space-y-4">
+          {/* min-w-0: CSS grid items default to min-width:auto, which would
+              let long SQL/JSON in the trace push the whole column past its
+              3fr allocation. */}
+          <div data-testid="panel-trace" className="min-w-0"><AgentTrace /></div>
+          <div className="space-y-4 min-w-0">
             <div data-testid="panel-anomaly"><AnomalyFeed /></div>
             <div data-testid="panel-recommendation"><RecommendationPanel /></div>
             <div data-testid="panel-approval"><ApprovalGate /></div>

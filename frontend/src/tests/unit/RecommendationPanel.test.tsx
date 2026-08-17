@@ -33,7 +33,7 @@ const REPORT = {
 describe('RecommendationPanel', () => {
   it('idle → placeholder', () => {
     render(<RecommendationPanel />)
-    expect(screen.getByText(/awaiting|idle/i)).toBeInTheDocument()
+    expect(screen.getByText(/press Inject to begin/i)).toBeInTheDocument()
   })
 
   it('renders headline + tldr + action rows + key_figures', () => {
