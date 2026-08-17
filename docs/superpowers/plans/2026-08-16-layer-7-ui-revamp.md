@@ -113,27 +113,37 @@ from unittest.mock import patch
 
 import pytest
 
-from data.ground_truth import Crisis
+from data.ground_truth import Crisis, CrisisType
+from api.contracts import DetectionIn
 from api.detection_source import synth_from_crisis
 
 
-def test_synth_from_crisis_populates_latency_ms():
-    crisis = Crisis(
-        crisis_id="test-123",
-        crisis_type="box_office_drop",
-        film_id=1,
-        region="US",
-        magnitude=0.4,
-        start_ts="2026-08-16T00:00:00Z",
-        end_ts="2026-08-16T00:05:00Z",
+def _crisis() -> Crisis:
+    # NOTE: real Crisis schema (backend/data/ground_truth.py) — do NOT invent fields
+    return Crisis(
+        injection_timestamp=datetime.now(timezone.utc).replace(microsecond=0),
+        is_live=True,
+        type=CrisisType.REGIONAL_SENTIMENT_COLLAPSE,
+        affected_film_id=42,
+        affected_region="Brazil",
+        magnitude=8.5,
+        affected_tables=["audience_sentiment"],
+        true_root_cause="synthetic",
+        expected_recommendation="issue_pr_statement",
+        resolution_window_hours=24,
     )
-    now = datetime(2026, 8, 16, 0, 0, 30, tzinfo=timezone.utc)
-    with patch("api.detection_source._utc_now", return_value=now):
+
+
+def test_synth_from_crisis_populates_latency_ms():
+    crisis = _crisis()
+    # Pin `_utc_now` to crisis.injection_timestamp so latency is deterministic (~0ms).
+    with patch("api.detection_source._utc_now", return_value=crisis.injection_timestamp):
         det = synth_from_crisis(crisis)
-    # metric_ts is set to now inside synth; latency should be ~0
     assert det.latency_ms is not None
     assert 0 <= det.latency_ms < 1000
 ```
+
+(If `test_detection_source.py` already defines `_crisis()` — as it does on main — reuse the existing helper instead of redefining it.)
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -142,7 +152,7 @@ Expected: FAIL — `latency_ms` is `None` OR `synth_from_crisis` doesn't exist a
 
 - [ ] **Step 3: Add helper + wire latency**
 
-Open `backend/api/detection_source.py`. At the top, add:
+Open `backend/api/detection_source.py`. Add these module-level helpers (place them above `_CRISIS_METRIC` but below the imports):
 
 ```python
 from datetime import datetime, timezone
@@ -152,18 +162,23 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _latency_ms(metric_ts_iso: str) -> int:
-    try:
-        mts = datetime.fromisoformat(metric_ts_iso.replace("Z", "+00:00"))
-    except ValueError:
-        return 0
+def _latency_ms(metric_ts: datetime | str) -> int:
+    # ClickHouse returns datetime for DateTime columns; the synth path passes datetime too.
+    # Accept ISO strings defensively for older callers.
+    if isinstance(metric_ts, str):
+        try:
+            mts = datetime.fromisoformat(metric_ts.replace("Z", "+00:00"))
+        except ValueError:
+            return 0
+    else:
+        mts = metric_ts
     if mts.tzinfo is None:
         mts = mts.replace(tzinfo=timezone.utc)
     delta = (_utc_now() - mts).total_seconds() * 1000
     return max(0, int(delta))
 ```
 
-Then in `produce_detection()`, immediately before returning `DetectionIn(...)`, add `latency_ms=_latency_ms(row["metric_ts"])` to the constructor kwargs. Do the same inside `synth_from_crisis()` for its `DetectionIn(...)` construction.
+Then in `produce_detection()`, immediately before returning `DetectionIn(...)`, add `latency_ms=_latency_ms(row["metric_ts"])` to the constructor kwargs. Do the same inside `synth_from_crisis()` — pass the same `ts` (a `datetime`) that gets assigned to `metric_ts`, i.e. `latency_ms=_latency_ms(ts)`.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
