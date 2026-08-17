@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
@@ -324,29 +324,45 @@ export function AgentTrace() {
     return g
   }, [events])
 
+  // Auto-scroll to the latest event so the tail stays visible without the
+  // user having to chase it. Only scroll if the user is already near the
+  // bottom — otherwise they're reading earlier events and shouldn't be
+  // yanked away.
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (distanceFromBottom < 80) el.scrollTop = el.scrollHeight
+  }, [events.length])
+
   return (
     <PanelStateWrapper state={state} label="Agent Trace" idleLabel="Idle · press Inject to begin">
-      <Card className="p-4 min-h-[480px]">
-        <div className="text-xs uppercase tracking-wider text-ink-soft mb-4">
+      {/* Fixed viewport so trace can't stretch the page as events stream in.
+          Header stays put; only the event list scrolls. */}
+      <Card className="p-4 flex flex-col h-[calc(100vh-14rem)] min-h-[480px] max-h-[820px]">
+        <div className="text-xs uppercase tracking-wider text-ink-soft mb-4 shrink-0">
           Live Agent Trace
         </div>
-        <motion.div variants={listStagger} initial="hidden" animate="visible" className="space-y-6">
-          {STAGE_ORDER
-            .filter((s) => grouped[s].length > 0)
-            .map((s) => (
-              <motion.section key={s} variants={traceRowEnter}>
-                <h3 className="font-display text-2xl tracking-tight text-ink mb-2">{s}</h3>
-                <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
-                  {grouped[s].map((e) => (
-                    <motion.li key={e.seq} variants={traceRowEnter} className="border-l-2 border-line pl-3">
-                      <div className="text-sm text-ink capitalize">{eventLabel(e)}</div>
-                      <TraceDetail ev={e} />
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              </motion.section>
-            ))}
-        </motion.div>
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto pr-2">
+          <motion.div variants={listStagger} initial="hidden" animate="visible" className="space-y-6">
+            {STAGE_ORDER
+              .filter((s) => grouped[s].length > 0)
+              .map((s) => (
+                <motion.section key={s} variants={traceRowEnter}>
+                  <h3 className="font-display text-2xl tracking-tight text-ink mb-2">{s}</h3>
+                  <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
+                    {grouped[s].map((e) => (
+                      <motion.li key={e.seq} variants={traceRowEnter} className="border-l-2 border-line pl-3">
+                        <div className="text-sm text-ink capitalize">{eventLabel(e)}</div>
+                        <TraceDetail ev={e} />
+                      </motion.li>
+                    ))}
+                  </motion.ul>
+                </motion.section>
+              ))}
+          </motion.div>
+        </div>
       </Card>
     </PanelStateWrapper>
   )
