@@ -96,4 +96,23 @@ describe('api contracts', () => {
     }
     expect(row.approval_status).toBe('pending_approval')
   })
+
+  it('DetectionRow carries optional latency_ms', () => {
+    const row: import('@/api/contracts').DetectionRow = {
+      metric_ts: '2026-08-16T00:00:00Z',
+      metric: 'box_office',
+      film_id: 1,
+      region: 'US',
+      detector: 'mad_z',
+      baseline_value: 100,
+      actual_value: 200,
+      magnitude: 2.5,
+      business_impact: 0.4,
+      severity: 0.9,
+      dedup_key: 'abc',
+      film_title: '',
+      latency_ms: 1234,
+    }
+    expect(row.latency_ms).toBe(1234)
+  })
 })

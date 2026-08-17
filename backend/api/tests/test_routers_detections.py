@@ -11,7 +11,7 @@ def test_detections_returns_shape(monkeypatch):
     from api.tests.test_fallback import _mk_triple
     fake_rows = [
         ("2026-08-09 12:00:00", "x.y", 1, "Brazil",
-         "zscore", 0.0, 1.0, 5.0, 1000.0, 5.0, "k1"),
+         "zscore", 0.0, 1.0, 5.0, 1000.0, 5.0, "k1", "", 4321),
     ]
 
     class FakeCH:
@@ -31,4 +31,7 @@ def test_detections_returns_shape(monkeypatch):
             body = r.json()
             assert "detections" in body
             assert "query_latency_ms" in body
-            assert body["detections"][0]["metric"] == "x.y"
+            row = body["detections"][0]
+            assert row["metric"] == "x.y"
+            assert row["film_title"] == ""
+            assert row["latency_ms"] == 4321

@@ -47,6 +47,7 @@ export interface DetectionRow {
   severity: number
   dedup_key: string
   film_title?: string
+  latency_ms?: number | null
 }
 
 // ─── Investigation ──────────────────────────────────────────────────

@@ -14,7 +14,7 @@ router = APIRouter(tags=["reads"])
 _COLS = ("metric_ts", "metric", "film_id", "region",
          "detector", "baseline_value", "actual_value",
          "magnitude", "business_impact", "severity", "dedup_key",
-         "film_title")
+         "film_title", "latency_ms")
 
 
 @router.get("/detections")
@@ -29,7 +29,8 @@ async def detections(
             f"SELECT toString(d.metric_ts), d.metric, d.film_id, d.region, "
             f"d.detector, d.baseline_value, d.actual_value, d.magnitude, "
             f"d.business_impact, d.severity, d.dedup_key, "
-            f"coalesce(f.title, '') AS film_title "
+            f"coalesce(f.title, '') AS film_title, "
+            f"toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(d.metric_ts) AS latency_ms "
             f"FROM detections AS d "
             f"LEFT JOIN films AS f ON f.film_id = d.film_id "
             f"WHERE d.metric_ts >= now() - INTERVAL {int(since_hours)} HOUR "
