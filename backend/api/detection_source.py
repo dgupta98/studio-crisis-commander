@@ -23,6 +23,25 @@ from data.mv.refresh import refresh_detections
 # Canonical metric name for each CrisisType. Mapping is best-guess; the
 # detector produces rows against these metric names, so the SELECT below
 # looks for a match. If none is found in the poll window we synth anyway.
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _latency_ms(metric_ts: datetime | str) -> int:
+    """Return ms between metric_ts and _utc_now(). Non-negative; 0 on parse err."""
+    if isinstance(metric_ts, str):
+        try:
+            mts = datetime.fromisoformat(metric_ts.replace("Z", "+00:00"))
+        except ValueError:
+            return 0
+    else:
+        mts = metric_ts
+    if mts.tzinfo is None:
+        mts = mts.replace(tzinfo=timezone.utc)
+    delta = (_utc_now() - mts).total_seconds() * 1000
+    return max(0, int(delta))
+
+
 _CRISIS_METRIC: dict[CrisisType, str] = {
     CrisisType.REGIONAL_SENTIMENT_COLLAPSE:      "audience_sentiment.avg_score",
     CrisisType.TRAILER_VARIANT_UNDERPERFORMANCE: "trailer_analytics.completion_rate",
@@ -72,6 +91,7 @@ def synth_from_crisis(crisis: Crisis) -> DetectionIn:
             f"{ts.isoformat(timespec='seconds')}|synth"
         ),
         film_title=_lookup_film_title(crisis.affected_film_id),
+        latency_ms=_latency_ms(ts),
     )
 
 
@@ -122,7 +142,7 @@ async def produce_detection(
             crisis.affected_film_id, crisis.affected_region, since,
         )
         if row is not None:
-            return DetectionIn(**row), "refresh"
+            return DetectionIn(**row, latency_ms=_latency_ms(row["metric_ts"])), "refresh"
         await asyncio.sleep(0.2)
     return synth_from_crisis(crisis), "fallback_synth"
 

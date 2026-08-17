@@ -84,3 +84,14 @@ async def test_produce_detection_falls_back_when_row_missing():
         det, source = await produce_detection(crisis, poll_seconds=0.1)
     assert source == "fallback_synth"
     assert det.film_id == 42
+
+
+def test_synth_from_crisis_populates_latency_ms():
+    """synth_from_crisis must populate latency_ms based on _utc_now()."""
+    crisis = _crisis()
+    # Pin "now" to 30s after the crisis injection_timestamp; expect ~30_000 ms.
+    now = crisis.injection_timestamp.replace(tzinfo=timezone.utc)
+    with patch("api.detection_source._utc_now", return_value=now):
+        det = synth_from_crisis(crisis)
+    assert det.latency_ms is not None
+    assert 0 <= det.latency_ms < 1000
