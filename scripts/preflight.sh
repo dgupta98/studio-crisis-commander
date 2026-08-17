@@ -74,9 +74,15 @@ gate_5_eval_floor() {
 gate_6_replay_parity() {
   # Compare live artifact's `correct` to replay run's `correct` — must be within ±1.
   local live_correct replay_correct diff
-  live_correct=$(jq '.correct' data/eval_runs/latest.json)
-  ./scripts/eval_replay.py --out /tmp/replay_preflight.json >/dev/null
-  replay_correct=$(jq '.correct' /tmp/replay_preflight.json)
+  # Prerequisites: gate 4's live artifact + a working replay run. Without
+  # them the parity comparison is meaningless — set -uo pipefail (no -e) does
+  # NOT cascade the intermediate failures, so guard each step explicitly.
+  [[ -f data/eval_runs/latest.json ]] || return 1
+  live_correct=$(jq '.correct' data/eval_runs/latest.json) || return 1
+  ./scripts/eval_replay.py --out /tmp/replay_preflight.json >/dev/null || return 1
+  [[ -f /tmp/replay_preflight.json ]] || return 1
+  replay_correct=$(jq '.correct' /tmp/replay_preflight.json) || return 1
+  [[ -n "${live_correct}" && -n "${replay_correct}" ]] || return 1
   diff=$(( live_correct > replay_correct ? live_correct - replay_correct : replay_correct - live_correct ))
   [[ ${diff} -le 1 ]]
 }
