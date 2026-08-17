@@ -48,6 +48,7 @@ class DetectionIn(BaseModel):
     # Populated by detection_source.py via a films-JOIN when available.
     # Optional so cached triples and older DetectionIn payloads still validate.
     film_title: str = ""
+    latency_ms: int | None = None
 
 
 class SignalFinding(BaseModel):
