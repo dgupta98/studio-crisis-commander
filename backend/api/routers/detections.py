@@ -25,12 +25,16 @@ async def detections(
     def _run() -> list[list]:
         # LEFT JOIN films so the frontend can show titles in the anomaly
         # feed. coalesce keeps the payload string-typed on JOIN miss.
+        # NOTE: `latency_ms` here is query-time (now - metric_ts). SSE
+        # payloads carry produce-time latency captured at ingest by
+        # api.detection_source._latency_ms — same field, different clocks.
+        # `greatest(0,…)` matches the Python floor for clock-skew safety.
         sql = (
             f"SELECT toString(d.metric_ts), d.metric, d.film_id, d.region, "
             f"d.detector, d.baseline_value, d.actual_value, d.magnitude, "
             f"d.business_impact, d.severity, d.dedup_key, "
             f"coalesce(f.title, '') AS film_title, "
-            f"toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(d.metric_ts) AS latency_ms "
+            f"greatest(0, toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(d.metric_ts)) AS latency_ms "
             f"FROM detections AS d "
             f"LEFT JOIN films AS f ON f.film_id = d.film_id "
             f"WHERE d.metric_ts >= now() - INTERVAL {int(since_hours)} HOUR "
