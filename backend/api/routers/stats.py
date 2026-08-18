@@ -27,7 +27,13 @@ _ROWSCAN_TABLES = (
 def _scalar(c: Any, sql: str, default: int | float = 0) -> int | float:
     try:
         rows = c.query(sql).result_rows
-        return rows[0][0] if rows else default
+        if not rows:
+            return default
+        # ClickHouse returns NULL (→ None) for aggregates over empty tables
+        # (e.g. dateDiff(min, max) when the table has 0 rows). Coerce so
+        # downstream int()/float() casts never see None.
+        v = rows[0][0]
+        return default if v is None else v
     except Exception:  # noqa: BLE001
         log.warning("stats scalar failed: %s", sql, exc_info=True)
         return default
