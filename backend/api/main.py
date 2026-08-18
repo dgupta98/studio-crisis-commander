@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.fallback import load_cached_triple
 from api.pipeline import install_cached_triple
 from api.routers import audit as audit_router
+from api.routers import catalog as catalog_router
 from api.routers import detections as detections_router
 from api.routers import inject as inject_router
 from api.routers import intake as intake_router
@@ -63,6 +64,7 @@ app.include_router(audit_router.router)
 app.include_router(metrics_router.router)
 app.include_router(stats_router.router)
 app.include_router(intake_router.router)
+app.include_router(catalog_router.router)
 
 
 @app.get("/health")
