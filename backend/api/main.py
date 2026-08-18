@@ -23,6 +23,7 @@ from api.routers import detections as detections_router
 from api.routers import inject as inject_router
 from api.routers import intake as intake_router
 from api.routers import metrics as metrics_router
+from api.routers import stats as stats_router
 from api.routers import stream as stream_router
 from api.runtime import PipelineRuntime
 
@@ -60,6 +61,7 @@ app.include_router(stream_router.router)
 app.include_router(detections_router.router)
 app.include_router(audit_router.router)
 app.include_router(metrics_router.router)
+app.include_router(stats_router.router)
 app.include_router(intake_router.router)
 
 
