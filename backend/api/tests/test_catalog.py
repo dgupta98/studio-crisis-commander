@@ -24,31 +24,56 @@ def _fake_ch_factory(rows_by_pattern: dict[str, list]):
     return _fake
 
 
-def test_catalog_shelves_shape():
+def test_catalog_shelves_shape(monkeypatch):
     from api.tests.test_fallback import _mk_triple
     fake = _fake_ch_factory({
-        # generic fallback row for any film query: (film_id, title, delta?, region?)
-        "FROM films": [(1, "Alpha", 100.0, "US")],
+        # `IN (...)` featured lookup + `ORDER BY release_date` full-catalog
+        # query both start `... FROM films`. Two-col rows are fine — _to_card
+        # handles missing tail elements.
+        "FROM films":                    [(1, "Alpha", 0.0, "")],
+        # trending_region uses `FROM films f JOIN box_office_revenue b`
+        "FROM films f JOIN box_office_revenue": [(1, "Alpha", 200.0, "US")],
+        # recent_detections
+        "FROM detections d JOIN films f":       [(1, "Alpha", 3.2, "US")],
+        # social_storms
+        "FROM social_trends s JOIN films f":    [(1, "Alpha", 42.0, "US")],
+        # streaming climbers
+        "FROM streaming_watch_minutes st JOIN films f": [(1, "Alpha", 999.0, "US")],
     })
+    # Decouple from real data/eval_cache/*.json so the featured shelf is
+    # populated regardless of CI filesystem contents.
+    monkeypatch.setattr(
+        "api.catalog.shelves._cached_film_map",
+        lambda: {1: "sc_001"},
+    )
     with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
          patch("api.catalog.shelves.client", new=fake):
         from api.main import app
         with TestClient(app) as tc:
-            r = tc.get("/catalog/shelves")
+            r = tc.get("/catalog/shelves?region=US")
             assert r.status_code == 200
             body = r.json()
-            assert isinstance(body, list) and body, "shelves must be non-empty list"
-            shelf = body[0]
-            assert set(shelf.keys()) >= {"id", "title", "films"}
-            assert isinstance(shelf["films"], list)
+            ids = [s["id"] for s in body]
+            # region provided → trending_region present; all six shelves in order
+            assert ids == ["featured", "trending_region", "recent_detections",
+                           "social_storms", "streaming", "all"]
+            for shelf in body:
+                assert isinstance(shelf["films"], list) and shelf["films"], \
+                    f"shelf {shelf['id']} unexpectedly empty"
+                card = shelf["films"][0]
+                assert set(card.keys()) >= {"id", "title", "poster_url"}
 
 
-def test_catalog_film_detail_shape():
+def test_catalog_film_detail_shape(monkeypatch):
     from api.tests.test_fallback import _mk_triple
     fake = _fake_ch_factory({
         "FROM films WHERE film_id": [(1, "Alpha", "2024-01-01", 50.0, "en")],
         "SELECT count() FROM": [(7,)],  # every signals count returns 7
     })
+    monkeypatch.setattr(
+        "api.catalog.shelves._cached_film_map",
+        lambda: {1: "sc_001"},
+    )
     with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
          patch("api.catalog.shelves.client", new=fake):
         from api.main import app
@@ -62,9 +87,10 @@ def test_catalog_film_detail_shape():
             assert body["signals"].keys() == {"box_office", "social", "reviews", "streaming"}
 
 
-def test_catalog_film_detail_missing():
+def test_catalog_film_detail_missing(monkeypatch):
     from api.tests.test_fallback import _mk_triple
     fake = _fake_ch_factory({"FROM films WHERE film_id": []})
+    monkeypatch.setattr("api.catalog.shelves._cached_film_map", lambda: {})
     with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
          patch("api.catalog.shelves.client", new=fake):
         from api.main import app

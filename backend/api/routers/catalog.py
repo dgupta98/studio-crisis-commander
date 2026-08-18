@@ -11,7 +11,7 @@ router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
 @router.get("/shelves")
-async def shelves(region: str | None = Query(default=None)):
+async def shelves(region: str | None = Query(default=None, max_length=64)):
     return await asyncio.to_thread(catalog_shelves.build_shelves, region)
 
 

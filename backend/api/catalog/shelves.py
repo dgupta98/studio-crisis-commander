@@ -28,18 +28,15 @@ log = logging.getLogger(__name__)
 _CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "eval_cache"
 
 
-def _cached_scenario_ids() -> set[str]:
-    if not _CACHE_DIR.is_dir():
-        return set()
-    return {p.stem for p in _CACHE_DIR.glob("*.json")}
-
-
 def _cached_film_map() -> dict[int, str]:
     """film_id → scenario_id, for the first cached scenario per film."""
+    if not _CACHE_DIR.is_dir():
+        return {}
     out: dict[int, str] = {}
-    for sid in _cached_scenario_ids():
+    for p in sorted(_CACHE_DIR.glob("*.json")):
+        sid = p.stem
         try:
-            payload = json.loads((_CACHE_DIR / f"{sid}.json").read_text())
+            payload = json.loads(p.read_text())
             fid = int(payload.get("detection", {}).get("film_id", -1))
             if fid > 0 and fid not in out:
                 out[fid] = sid
@@ -103,7 +100,7 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
                     c,
                     f"SELECT f.film_id, f.title, "
                     f"sum(b.revenue_usd) AS delta, '{safe_region}' AS region "
-                    f"FROM films f LEFT JOIN box_office_revenue b ON f.film_id = b.film_id "
+                    f"FROM films f JOIN box_office_revenue b ON f.film_id = b.film_id "
                     f"WHERE b.region = '{safe_region}' AND b.date >= today() - 7 "
                     f"GROUP BY f.film_id, f.title "
                     f"ORDER BY delta DESC LIMIT 12"
