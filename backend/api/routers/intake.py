@@ -1,53 +1,65 @@
 """SSE stream of rolling per-family ingest rates for the landing/dashboard IntakeStrip.
 
-Emits one JSON object every 2s with row-counts inserted in the past minute per signal
-family. Wire format is one `data:` line per event (matches SseEvent conventions).
+Emits one JSON object every _POLL_INTERVAL_S with row-counts inserted in a recent
+window per signal family. Wire format is one `data:` line per event (matches
+SseEvent conventions).
 
-The `?limit=N` query param bounds the stream to N events and then closes; this is
-strictly a test seam because httpx's ASGITransport (used by TestClient and by
-AsyncClient(ASGITransport(...))) buffers the entire response until the ASGI app
-completes — it cannot iterate chunks from an unbounded generator. In production
-the frontend hits this endpoint without ?limit and receives an infinite stream.
+`?limit=N` is a hidden test seam (`include_in_schema=False`, bounded 1..100)
+because httpx's ASGITransport buffers the entire response until the ASGI app
+completes, so an unbounded `while True` generator hangs `TestClient.stream(...)`.
+Production frontends omit it and receive the infinite stream.
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import AsyncIterator
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from data.ch_client import client
 
+log = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/intake", tags=["intake"])
 
-# Signal family → the canonical numeric-ingest table for that family.
-# Names match backend/data/schema.sql — do NOT invent table names.
-_FAMILIES = {
-    "box_office": "box_office_revenue",
-    "social":     "social_trends",
-    "reviews":    "review_scores",
-    "streaming":  "streaming_watch_minutes",
+_POLL_INTERVAL_S = 2.0
+
+# Signal family → (table, time-column, WHERE predicate). Column names and types
+# must match backend/data/schema.sql. box_office uses `date` (Date, daily grain)
+# — a 1-minute window would always be zero — so we widen to "last 1 day".
+_FAMILIES: dict[str, tuple[str, str]] = {
+    "box_office": ("box_office_revenue",      "date >= today() - 1"),
+    "social":     ("social_trends",           "ts   >= now() - INTERVAL 1 MINUTE"),
+    "reviews":    ("review_scores",           "ts   >= now() - INTERVAL 1 MINUTE"),
+    "streaming":  ("streaming_watch_minutes", "ts   >= now() - INTERVAL 1 MINUTE"),
 }
 
 
 def _rates_sync() -> dict[str, int]:
+    # One ClickHouse client scope for all 4 queries — opening the HTTPS client
+    # per-family would triple the poll cost. If the client itself fails to open
+    # (missing env), let it propagate to a 500 rather than emit `{0,0,0,0}`
+    # forever, which would silently mask configuration drift.
     out: dict[str, int] = {}
     with client() as c:
-        for family, table in _FAMILIES.items():
+        for family, (table, where) in _FAMILIES.items():
             try:
                 rows = c.query(
-                    f"SELECT count() FROM {table} "
-                    f"WHERE metric_ts >= now() - INTERVAL 1 MINUTE"
+                    f"SELECT count() FROM {table} WHERE {where}"
                 ).result_rows
                 out[family] = int(rows[0][0]) if rows else 0
-            except Exception:
+            except Exception:  # noqa: BLE001 — schema drift / partition eviction / etc.
+                log.warning("intake rates query failed for %s", family, exc_info=True)
                 out[family] = 0
     return out
 
 
 async def _event_stream(limit: int | None = None) -> AsyncIterator[bytes]:
+    # `asyncio.sleep(…)` is a cancellation point, so a client disconnect
+    # cleanly cancels this generator via Starlette's StreamingResponse.
     emitted = 0
     while True:
         rates = await asyncio.to_thread(_rates_sync)
@@ -55,10 +67,12 @@ async def _event_stream(limit: int | None = None) -> AsyncIterator[bytes]:
         emitted += 1
         if limit is not None and emitted >= limit:
             return
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(_POLL_INTERVAL_S)
 
 
 @router.get("/rates")
-async def intake_rates(limit: int | None = None) -> StreamingResponse:
+async def intake_rates(
+    limit: int | None = Query(None, ge=1, le=100, include_in_schema=False),
+) -> StreamingResponse:
     return StreamingResponse(_event_stream(limit=limit),
                              media_type="text/event-stream")

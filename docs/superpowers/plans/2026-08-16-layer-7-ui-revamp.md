@@ -339,7 +339,11 @@ Expected: FAIL — 404 route missing.
 Create `backend/api/routers/intake.py`:
 
 ```python
-"""SSE stream of rolling per-family ingest rates for the landing/dashboard IntakeStrip."""
+"""SSE stream of rolling per-family ingest rates for the landing/dashboard IntakeStrip.
+
+Emits one JSON object every 2s with row-counts inserted in the past minute per signal
+family. Wire format is one `data:` line per event (matches SseEvent conventions).
+"""
 from __future__ import annotations
 
 import asyncio
@@ -349,28 +353,33 @@ from typing import AsyncIterator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from data.ch_client import client as ch
+from data.ch_client import client
 
 router = APIRouter(prefix="/intake", tags=["intake"])
 
-_FAMILIES = {
-    "box_office": "box_office_5min",
-    "social": "social_signals",
-    "reviews": "reviews_stream",
-    "streaming": "streaming_metrics",
+# Signal family → (table, WHERE clause). Column names + types must match
+# backend/data/schema.sql — do NOT invent them. box_office_revenue uses a
+# `date` (Date) column, not `ts`, and daily granularity — so its window is
+# widened to "since yesterday" or a 1-minute count would always be zero.
+_FAMILIES: dict[str, tuple[str, str]] = {
+    "box_office": ("box_office_revenue",      "date >= today() - 1"),
+    "social":     ("social_trends",           "ts   >= now() - INTERVAL 1 MINUTE"),
+    "reviews":    ("review_scores",           "ts   >= now() - INTERVAL 1 MINUTE"),
+    "streaming":  ("streaming_watch_minutes", "ts   >= now() - INTERVAL 1 MINUTE"),
 }
 
 
 def _rates_sync() -> dict[str, int]:
     out: dict[str, int] = {}
-    for family, table in _FAMILIES.items():
-        try:
-            row = ch.query(
-                f"SELECT count() FROM {table} WHERE metric_ts >= now() - INTERVAL 1 MINUTE"
-            ).result_rows
-            out[family] = int(row[0][0]) if row else 0
-        except Exception:
-            out[family] = 0
+    with client() as c:
+        for family, (table, where) in _FAMILIES.items():
+            try:
+                rows = c.query(
+                    f"SELECT count() FROM {table} WHERE {where}"
+                ).result_rows
+                out[family] = int(rows[0][0]) if rows else 0
+            except Exception:  # noqa: BLE001
+                out[family] = 0
     return out
 
 
@@ -388,14 +397,19 @@ async def intake_rates() -> StreamingResponse:
 
 - [ ] **Step 4: Wire into main.py**
 
-Open `backend/api/main.py`. In the router mount block, add:
+Open `backend/api/main.py`. Add an alias import to the existing block that already imports `metrics as metrics_router` etc:
 
 ```python
-from api.routers import intake
-app.include_router(intake.router)
+from api.routers import intake as intake_router
 ```
 
-Place next to the existing `app.include_router(metrics.router)` line.
+Then in the mount block below (after `app.include_router(metrics_router.router)`), add:
+
+```python
+app.include_router(intake_router.router)
+```
+
+Do NOT use `from api.routers import intake` alone — the existing file uses the `as *_router` alias pattern for consistency (see main.py lines 21-25).
 
 - [ ] **Step 5: Run tests to verify they pass**
 
