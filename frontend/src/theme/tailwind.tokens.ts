@@ -21,6 +21,10 @@ export const tailwindTheme = {
     'sev-crit-fg': tokens.color.sev.crit.fg,
     'sev-replay-bg': tokens.color.sev.replay.bg,
     'sev-replay-fg': tokens.color.sev.replay.fg,
+    'sig-box':       tokens.signal.box_office.hex,
+    'sig-social':    tokens.signal.social.hex,
+    'sig-reviews':   tokens.signal.reviews.hex,
+    'sig-streaming': tokens.signal.streaming.hex,
   },
   fontFamily: {
     display: tokens.type.display.split(', '),
