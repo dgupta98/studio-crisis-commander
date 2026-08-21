@@ -7,8 +7,8 @@ describe('SignalChip', () => {
     render(<SignalChip family="box_office" />)
     expect(screen.getByText(/box office/i)).toBeInTheDocument()
   })
-  it('carries a family class token', () => {
+  it('exposes the family via data-family for downstream selectors', () => {
     render(<SignalChip family="social" data-testid="chip" />)
-    expect(screen.getByTestId('chip').getAttribute('style')).toContain('#ff6b9d')
+    expect(screen.getByTestId('chip')).toHaveAttribute('data-family', 'social')
   })
 })

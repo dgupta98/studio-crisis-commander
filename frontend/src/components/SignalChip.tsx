@@ -20,11 +20,11 @@ export function SignalChip({ family, compact, style, className, ...rest }: Props
   return (
     <span
       {...rest}
+      data-family={family}
       className={`inline-flex items-center gap-1 rounded-full border font-mono uppercase tracking-wider ${
         compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[10px]'
       } ${className ?? ''}`}
       style={{
-        ['--sig-color' as string]: s.hex,
         color: s.hex,
         borderColor: s.hex,
         background: `rgba(${s.rgb}, 0.08)`,
