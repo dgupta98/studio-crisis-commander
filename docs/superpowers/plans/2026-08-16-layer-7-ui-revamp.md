@@ -464,38 +464,56 @@ Create `backend/api/routers/stats.py`:
 from __future__ import annotations
 
 import asyncio
+import logging
+from typing import Any
 
 from fastapi import APIRouter
 
-from data.ch_client import client as ch
+from data.ch_client import client
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
+# (table, time-column-predicate) for the 24h row-scan roll-up. Column names
+# must match backend/data/schema.sql. box_office_revenue uses `date` (Date),
+# the others use `ts` (DateTime).
+_ROWSCAN_TABLES = (
+    ("box_office_revenue",      "date >= today() - 1"),
+    ("social_trends",           "ts   >= now() - INTERVAL 1 DAY"),
+    ("review_scores",           "ts   >= now() - INTERVAL 1 DAY"),
+    ("streaming_watch_minutes", "ts   >= now() - INTERVAL 1 DAY"),
+)
 
-def _scalar(sql: str, default: int | float = 0) -> int | float:
+
+def _scalar(c: Any, sql: str, default: int | float = 0) -> int | float:
     try:
-        rows = ch.query(sql).result_rows
+        rows = c.query(sql).result_rows
         return rows[0][0] if rows else default
-    except Exception:
+    except Exception:  # noqa: BLE001
+        log.warning("stats scalar failed: %s", sql, exc_info=True)
         return default
 
 
 def _summary_sync() -> dict[str, int | float]:
-    films = int(_scalar("SELECT count() FROM films"))
-    regions = int(_scalar("SELECT count(DISTINCT region) FROM box_office_5min"))
-    days = int(_scalar(
-        "SELECT dateDiff('day', min(metric_ts), max(metric_ts)) FROM box_office_5min"
-    ))
-    rows_24h = 0
-    for table in ("box_office_5min", "social_signals", "reviews_stream", "streaming_metrics"):
-        rows_24h += int(_scalar(
-            f"SELECT count() FROM {table} WHERE metric_ts >= now() - INTERVAL 1 DAY"
+    with client() as c:
+        films = int(_scalar(c, "SELECT count() FROM films"))
+        regions = int(_scalar(c, "SELECT count(DISTINCT region) FROM box_office_revenue"))
+        days = int(_scalar(
+            c,
+            "SELECT dateDiff('day', min(date), max(date)) FROM box_office_revenue",
         ))
-    p50 = float(_scalar(
-        "SELECT quantile(0.5)(toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(metric_ts)) "
-        "FROM detections_stream WHERE metric_ts >= now() - INTERVAL 1 DAY",
-        default=0.0,
-    ))
+        rows_24h = 0
+        for table, where in _ROWSCAN_TABLES:
+            rows_24h += int(_scalar(c, f"SELECT count() FROM {table} WHERE {where}"))
+        # `detections` table (not `detections_stream`); metric_ts exists there.
+        p50 = float(_scalar(
+            c,
+            "SELECT quantile(0.5)("
+            "toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(metric_ts)"
+            ") FROM detections WHERE metric_ts >= now() - INTERVAL 1 DAY",
+            default=0.0,
+        ))
     return {
         "films_tracked": films,
         "regions": regions,
@@ -512,11 +530,16 @@ async def stats_summary() -> dict[str, int | float]:
 
 - [ ] **Step 4: Wire into main.py**
 
-Add to `backend/api/main.py`:
+Add to `backend/api/main.py` — preserve the existing `as *_router` alias pattern:
 
 ```python
-from api.routers import stats
-app.include_router(stats.router)
+from api.routers import stats as stats_router
+```
+
+And in the mount block:
+
+```python
+app.include_router(stats_router.router)
 ```
 
 - [ ] **Step 5: Run tests**
@@ -547,38 +570,95 @@ git commit -m "feat(api): add /stats/summary rollup endpoint"
 Create `backend/api/tests/test_catalog.py`:
 
 ```python
+"""Catalog endpoint shape tests — mocks ClickHouse so tests are hermetic."""
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
-from api.main import app
+
+
+def _fake_ch_factory(rows_by_pattern: dict[str, list]):
+    """Return a fake CH client that returns per-query rows based on SQL substrings."""
+    def _fake():
+        class FakeCH:
+            def query(self, sql):
+                m = MagicMock()
+                m.result_rows = []
+                for pattern, rows in rows_by_pattern.items():
+                    if pattern in sql:
+                        m.result_rows = rows
+                        break
+                return m
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        return FakeCH()
+    return _fake
 
 
 def test_catalog_shelves_shape():
-    with TestClient(app) as client:
-        r = client.get("/catalog/shelves")
-        assert r.status_code == 200
-        body = r.json()
-        assert isinstance(body, list)
-        if body:
+    from api.tests.test_fallback import _mk_triple
+    fake = _fake_ch_factory({
+        # generic fallback row for any film query: (film_id, title, delta?, region?)
+        "FROM films": [(1, "Alpha", 100.0, "US")],
+    })
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
+         patch("api.catalog.shelves.client", new=fake):
+        from api.main import app
+        with TestClient(app) as tc:
+            r = tc.get("/catalog/shelves")
+            assert r.status_code == 200
+            body = r.json()
+            assert isinstance(body, list) and body, "shelves must be non-empty list"
             shelf = body[0]
-            assert "id" in shelf and "title" in shelf and "films" in shelf
+            assert set(shelf.keys()) >= {"id", "title", "films"}
             assert isinstance(shelf["films"], list)
 
 
 def test_catalog_film_detail_shape():
-    with TestClient(app) as client:
-        r = client.get("/catalog/films/1")
-        # film may or may not exist in fixtures — accept 200 or 404
-        assert r.status_code in (200, 404)
-        if r.status_code == 200:
+    from api.tests.test_fallback import _mk_triple
+    fake = _fake_ch_factory({
+        "FROM films WHERE film_id": [(1, "Alpha", "2024-01-01", 50.0, "en")],
+        "SELECT count() FROM": [(7,)],  # every signals count returns 7
+    })
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
+         patch("api.catalog.shelves.client", new=fake):
+        from api.main import app
+        with TestClient(app) as tc:
+            r = tc.get("/catalog/films/1")
+            assert r.status_code == 200
             body = r.json()
-            for key in ("id", "title", "poster_url", "signals", "featured", "cached_scenario_id"):
-                assert key in body
+            for key in ("id", "title", "poster_url", "release_date",
+                        "signals", "featured", "cached_scenario_id"):
+                assert key in body, f"missing {key}"
+            assert body["signals"].keys() == {"box_office", "social", "reviews", "streaming"}
+
+
+def test_catalog_film_detail_missing():
+    from api.tests.test_fallback import _mk_triple
+    fake = _fake_ch_factory({"FROM films WHERE film_id": []})
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
+         patch("api.catalog.shelves.client", new=fake):
+        from api.main import app
+        with TestClient(app) as tc:
+            r = tc.get("/catalog/films/9999999")
+            assert r.status_code == 404
 
 
 def test_catalog_search():
-    with TestClient(app) as client:
-        r = client.get("/catalog/search?q=a")
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
+    from api.tests.test_fallback import _mk_triple
+    fake = _fake_ch_factory({
+        "positionCaseInsensitive": [(1, "Alpha"), (2, "Alphabet")],
+    })
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
+         patch("api.catalog.shelves.client", new=fake):
+        from api.main import app
+        with TestClient(app) as tc:
+            r = tc.get("/catalog/search?q=alp")
+            assert r.status_code == 200
+            body = r.json()
+            assert isinstance(body, list)
+            assert body[0]["id"] == 1 and body[0]["title"] == "Alpha"
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -593,15 +673,33 @@ Create `backend/api/catalog/__init__.py` as empty file.
 Create `backend/api/catalog/shelves.py`:
 
 ```python
-"""Static + dynamic shelf definitions for the Movies Index route."""
+"""Static + dynamic shelf definitions for the Movies Index route.
+
+Column reality (from backend/data/schema.sql):
+  - films table PK is `film_id` (not `id`); no poster_url column exists yet.
+    We return `poster_url: ""` — the frontend renders a signal-family gradient
+    placeholder. A follow-up backfill can populate this.
+  - box_office_revenue has `date` (Date), revenue_usd; other numeric tables use
+    `ts` (DateTime).
+  - social_trends.mentions, streaming_watch_minutes.watch_minutes, review_scores.score.
+  - detections table is `detections` (not `detections_stream`); uses `metric_ts`.
+
+Featured status is derived from `data/eval_cache/*.json` — each cached scenario
+file pins one (film_id, region) triple. Films whose id appears in a cache file
+are "featured" (Movie Detail page can mount instantly, no live-run cost).
+"""
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
-from data.ch_client import client as ch
+from data.ch_client import client
 
+log = logging.getLogger(__name__)
+
+# repo root: backend/api/catalog/shelves.py → parents[3] is the repo root
 _CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "eval_cache"
 
 
@@ -611,133 +709,186 @@ def _cached_scenario_ids() -> set[str]:
     return {p.stem for p in _CACHE_DIR.glob("*.json")}
 
 
-def _query_films(sql: str, limit: int = 12) -> list[dict[str, Any]]:
-    try:
-        rows = ch.query(sql).result_rows
-    except Exception:
-        return []
-    out: list[dict[str, Any]] = []
-    for row in rows[:limit]:
-        out.append({
-            "id": int(row[0]),
-            "title": row[1] or "",
-            "poster_url": row[2] or "",
-            "signal_delta": float(row[3]) if len(row) > 3 and row[3] is not None else 0.0,
-            "region_hint": row[4] if len(row) > 4 else "",
-        })
+def _cached_film_map() -> dict[int, str]:
+    """film_id → scenario_id, for the first cached scenario per film."""
+    out: dict[int, str] = {}
+    for sid in _cached_scenario_ids():
+        try:
+            payload = json.loads((_CACHE_DIR / f"{sid}.json").read_text())
+            fid = int(payload.get("detection", {}).get("film_id", -1))
+            if fid > 0 and fid not in out:
+                out[fid] = sid
+        except Exception:  # noqa: BLE001
+            log.warning("bad cache file %s", sid, exc_info=True)
     return out
 
 
+def _query_rows(c: Any, sql: str) -> list[tuple]:
+    try:
+        return list(c.query(sql).result_rows)
+    except Exception:  # noqa: BLE001
+        log.warning("catalog query failed: %s", sql, exc_info=True)
+        return []
+
+
+def _to_card(row: tuple) -> dict[str, Any]:
+    # Rows are (film_id, title, [signal_delta, region_hint]). Missing tail
+    # elements default to 0.0 and "".
+    return {
+        "id": int(row[0]),
+        "title": row[1] or "",
+        "poster_url": "",
+        "signal_delta": float(row[2]) if len(row) > 2 and row[2] is not None else 0.0,
+        "region_hint": row[3] if len(row) > 3 and row[3] is not None else "",
+    }
+
+
 def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
-    featured_ids = _cached_scenario_ids()
     shelves: list[dict[str, Any]] = []
+    featured_film_ids = set(_cached_film_map().keys())
 
-    # Shelf 1 — Featured (cached triples exist)
-    featured_films = _query_films(
-        "SELECT id, title, poster_url, 0 AS delta, '' AS region "
-        "FROM films WHERE id IN (SELECT film_id FROM detections_stream) "
-        "ORDER BY popularity DESC LIMIT 12"
-    )
-    for f in featured_films:
-        f["featured"] = True
-    shelves.append({"id": "featured", "title": "Featured — pre-run investigations", "films": featured_films})
+    with client() as c:
+        # Shelf 1 — Featured (films with pre-recorded triples in eval_cache).
+        # Order by popularity so the strongest posters lead the row.
+        if featured_film_ids:
+            ids_list = ",".join(str(int(x)) for x in featured_film_ids)
+            featured_films = [
+                _to_card(r) for r in _query_rows(
+                    c,
+                    f"SELECT film_id, title, 0.0 AS delta, '' AS region "
+                    f"FROM films WHERE film_id IN ({ids_list}) "
+                    f"ORDER BY popularity DESC LIMIT 12"
+                )
+            ]
+        else:
+            featured_films = []
+        for f in featured_films:
+            f["featured"] = True
+        shelves.append({
+            "id": "featured",
+            "title": "Featured — pre-run investigations",
+            "films": featured_films,
+        })
 
-    # Shelf 2 — Trending in your region
-    if region:
-        trend = _query_films(
-            f"SELECT f.id, f.title, f.poster_url, "
-            f"sum(b.opening_gross) AS delta, '{region}' AS region "
-            f"FROM films f LEFT JOIN box_office_5min b ON f.id = b.film_id "
-            f"WHERE b.region = '{region}' AND b.metric_ts >= now() - INTERVAL 7 DAY "
-            f"GROUP BY f.id, f.title, f.poster_url ORDER BY delta DESC LIMIT 12"
-        )
-        shelves.append({"id": "trending_region", "title": f"Trending in {region}", "films": trend})
+        # Shelf 2 — Trending in region (last 7 days of box_office_revenue)
+        if region:
+            safe_region = region.replace("'", "''")
+            trend = [
+                _to_card(r) for r in _query_rows(
+                    c,
+                    f"SELECT f.film_id, f.title, "
+                    f"sum(b.revenue_usd) AS delta, '{safe_region}' AS region "
+                    f"FROM films f LEFT JOIN box_office_revenue b ON f.film_id = b.film_id "
+                    f"WHERE b.region = '{safe_region}' AND b.date >= today() - 7 "
+                    f"GROUP BY f.film_id, f.title "
+                    f"ORDER BY delta DESC LIMIT 12"
+                )
+            ]
+            shelves.append({
+                "id": "trending_region",
+                "title": f"Trending in {region}",
+                "films": trend,
+            })
 
-    # Shelf 3 — Recent detections
-    recent = _query_films(
-        "SELECT f.id, f.title, f.poster_url, max(d.magnitude) AS delta, d.region "
-        "FROM detections_stream d JOIN films f ON d.film_id = f.id "
-        "WHERE d.metric_ts >= now() - INTERVAL 1 DAY "
-        "GROUP BY f.id, f.title, f.poster_url, d.region ORDER BY delta DESC LIMIT 12"
-    )
-    shelves.append({"id": "recent_detections", "title": "Recent detections", "films": recent})
+        # Shelf 3 — Recent detections (last 24h)
+        recent = [
+            _to_card(r) for r in _query_rows(
+                c,
+                "SELECT f.film_id, f.title, max(d.magnitude) AS delta, "
+                "any(d.region) AS region "
+                "FROM detections d JOIN films f ON d.film_id = f.film_id "
+                "WHERE d.metric_ts >= now() - INTERVAL 1 DAY "
+                "GROUP BY f.film_id, f.title "
+                "ORDER BY delta DESC LIMIT 12"
+            )
+        ]
+        shelves.append({
+            "id": "recent_detections",
+            "title": "Recent detections",
+            "films": recent,
+        })
 
-    # Shelf 4 — Social storms
-    social = _query_films(
-        "SELECT f.id, f.title, f.poster_url, sum(s.mention_count) AS delta, s.region "
-        "FROM social_signals s JOIN films f ON s.film_id = f.id "
-        "WHERE s.metric_ts >= now() - INTERVAL 3 DAY "
-        "GROUP BY f.id, f.title, f.poster_url, s.region ORDER BY delta DESC LIMIT 12"
-    )
-    shelves.append({"id": "social_storms", "title": "Social storms", "films": social})
+        # Shelf 4 — Social storms (last 3 days of social_trends.mentions)
+        social = [
+            _to_card(r) for r in _query_rows(
+                c,
+                "SELECT f.film_id, f.title, sum(s.mentions) AS delta, "
+                "any(s.region) AS region "
+                "FROM social_trends s JOIN films f ON s.film_id = f.film_id "
+                "WHERE s.ts >= now() - INTERVAL 3 DAY "
+                "GROUP BY f.film_id, f.title "
+                "ORDER BY delta DESC LIMIT 12"
+            )
+        ]
+        shelves.append({
+            "id": "social_storms",
+            "title": "Social storms",
+            "films": social,
+        })
 
-    # Shelf 5 — Streaming climbers
-    streaming = _query_films(
-        "SELECT f.id, f.title, f.poster_url, sum(st.stream_starts) AS delta, st.region "
-        "FROM streaming_metrics st JOIN films f ON st.film_id = f.id "
-        "WHERE st.metric_ts >= now() - INTERVAL 7 DAY "
-        "GROUP BY f.id, f.title, f.poster_url, st.region ORDER BY delta DESC LIMIT 12"
-    )
-    shelves.append({"id": "streaming", "title": "Streaming climbers", "films": streaming})
+        # Shelf 5 — Streaming climbers (last 7 days watch_minutes)
+        streaming = [
+            _to_card(r) for r in _query_rows(
+                c,
+                "SELECT f.film_id, f.title, sum(st.watch_minutes) AS delta, "
+                "any(st.region) AS region "
+                "FROM streaming_watch_minutes st JOIN films f ON st.film_id = f.film_id "
+                "WHERE st.ts >= now() - INTERVAL 7 DAY "
+                "GROUP BY f.film_id, f.title "
+                "ORDER BY delta DESC LIMIT 12"
+            )
+        ]
+        shelves.append({
+            "id": "streaming",
+            "title": "Streaming climbers",
+            "films": streaming,
+        })
 
-    # Shelf 6 — Full catalog (paginated in later task; here first page)
-    full = _query_films(
-        "SELECT id, title, poster_url, 0.0 AS delta, '' AS region FROM films "
-        "ORDER BY release_date DESC LIMIT 24",
-        limit=24,
-    )
-    shelves.append({"id": "all", "title": "All films", "films": full})
+        # Shelf 6 — Full catalog (paginated in later task; first page here)
+        full = [
+            _to_card(r) for r in _query_rows(
+                c,
+                "SELECT film_id, title, 0.0 AS delta, '' AS region FROM films "
+                "ORDER BY release_date DESC LIMIT 24"
+            )
+        ]
+        shelves.append({"id": "all", "title": "All films", "films": full})
 
     return shelves
 
 
 def get_film(film_id: int) -> dict[str, Any] | None:
-    try:
-        rows = ch.query(
-            f"SELECT id, title, poster_url, release_date, popularity FROM films WHERE id = {film_id} LIMIT 1"
-        ).result_rows
-    except Exception:
-        return None
-    if not rows:
-        return None
-    row = rows[0]
-    featured_ids = _cached_scenario_ids()
+    cached_map = _cached_film_map()
+    with client() as c:
+        rows = _query_rows(
+            c,
+            f"SELECT film_id, title, toString(release_date), popularity, language "
+            f"FROM films WHERE film_id = {int(film_id)} LIMIT 1",
+        )
+        if not rows:
+            return None
+        row = rows[0]
 
-    cached_id: str | None = None
-    for sid in featured_ids:
-        try:
-            path = _CACHE_DIR / f"{sid}.json"
-            payload = json.loads(path.read_text())
-            if int(payload.get("detection", {}).get("film_id", -1)) == film_id:
-                cached_id = sid
-                break
-        except Exception:
-            continue
-
-    signals: dict[str, Any] = {}
-    for family, table in (
-        ("box_office", "box_office_5min"),
-        ("social", "social_signals"),
-        ("reviews", "reviews_stream"),
-        ("streaming", "streaming_metrics"),
-    ):
-        try:
-            r = ch.query(
-                f"SELECT count() FROM {table} WHERE film_id = {film_id} AND metric_ts >= now() - INTERVAL 7 DAY"
-            ).result_rows
+        signals: dict[str, int] = {}
+        for family, table, where in (
+            ("box_office", "box_office_revenue",      f"film_id = {int(film_id)} AND date >= today() - 7"),
+            ("social",     "social_trends",           f"film_id = {int(film_id)} AND ts   >= now() - INTERVAL 7 DAY"),
+            ("reviews",    "review_scores",           f"film_id = {int(film_id)} AND ts   >= now() - INTERVAL 7 DAY"),
+            ("streaming",  "streaming_watch_minutes", f"film_id = {int(film_id)} AND ts   >= now() - INTERVAL 7 DAY"),
+        ):
+            r = _query_rows(c, f"SELECT count() FROM {table} WHERE {where}")
             signals[family] = int(r[0][0]) if r else 0
-        except Exception:
-            signals[family] = 0
 
     return {
         "id": int(row[0]),
         "title": row[1] or "",
-        "poster_url": row[2] or "",
-        "release_date": str(row[3]) if row[3] is not None else "",
-        "popularity": float(row[4]) if row[4] is not None else 0.0,
+        "poster_url": "",
+        "release_date": row[2] if row[2] is not None else "",
+        "popularity": float(row[3]) if row[3] is not None else 0.0,
+        "language": row[4] if len(row) > 4 and row[4] is not None else "",
         "signals": signals,
-        "featured": cached_id is not None,
-        "cached_scenario_id": cached_id,
+        "featured": film_id in cached_map,
+        "cached_scenario_id": cached_map.get(film_id),
     }
 
 
@@ -745,15 +896,14 @@ def search_films(q: str, limit: int = 20) -> list[dict[str, Any]]:
     if not q:
         return []
     safe = q.replace("'", "''")
-    try:
-        rows = ch.query(
-            f"SELECT id, title, poster_url FROM films "
+    with client() as c:
+        rows = _query_rows(
+            c,
+            f"SELECT film_id, title FROM films "
             f"WHERE positionCaseInsensitive(title, '{safe}') > 0 "
             f"ORDER BY popularity DESC LIMIT {int(limit)}"
-        ).result_rows
-    except Exception:
-        return []
-    return [{"id": int(r[0]), "title": r[1] or "", "poster_url": r[2] or ""} for r in rows]
+        )
+    return [{"id": int(r[0]), "title": r[1] or "", "poster_url": ""} for r in rows]
 ```
 
 - [ ] **Step 4: Create router**
@@ -793,11 +943,18 @@ async def search(q: str = Query(default="", max_length=64)):
 
 - [ ] **Step 5: Wire into main.py**
 
-Add to `backend/api/main.py`:
+Follow the existing alias convention (see the other imports in `backend/api/main.py` — every other router uses `from api.routers import <name> as <name>_router`, then `app.include_router(<name>_router.router)`).
+
+Add to the import block in `backend/api/main.py` (alphabetical among the router imports):
 
 ```python
-from api.routers import catalog
-app.include_router(catalog.router)
+from api.routers import catalog as catalog_router
+```
+
+Add to the `app.include_router(...)` block:
+
+```python
+app.include_router(catalog_router.router)
 ```
 
 - [ ] **Step 6: Run tests to verify they pass**
@@ -945,23 +1102,42 @@ export const router = createBrowserRouter([
 
 - [ ] **Step 4: Rewire `main.tsx`**
 
-Open `frontend/src/main.tsx`. Replace the `<App />` render with:
+Current file (verified) is:
 
 ```tsx
+import './index.css'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+```
+
+Replace it with (no `QueryClientProvider` exists — this project doesn't use React Query):
+
+```tsx
+import './index.css'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './router'
 
-// ... existing imports for React, StrictMode, QueryClient, etc.
-
-// inside the render call:
-<RouterProvider router={router} />
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <RouterProvider router={router} />
+  </StrictMode>,
+)
 ```
 
-Keep the existing `<QueryClientProvider>` wrapper — the `RouterProvider` goes inside it. Delete the `import App from './App'` line and the `<App />` JSX. Do NOT delete `App.tsx` yet — that happens in Phase 5.
+Note: `App` is a **named** export (`export function App`) — not default. The current `import { App }` will be removed entirely here. Do NOT delete `App.tsx` itself — that happens in Phase 5.
 
 - [ ] **Step 5: Write route smoke test**
 
-Create `frontend/tests/e2e/route-smoke.spec.ts`:
+The existing `frontend/playwright.config.ts` sets `testDir: 'src/tests/e2e'` — Playwright only discovers specs under that path. Create the file at `frontend/src/tests/e2e/route-smoke.spec.ts` (NOT `frontend/tests/e2e/...`):
 
 ```typescript
 import { test, expect } from '@playwright/test'
@@ -991,7 +1167,7 @@ Expected: 6 tests PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add frontend/package.json frontend/package-lock.json frontend/src/main.tsx frontend/src/router.tsx frontend/src/routes frontend/tests/e2e/route-smoke.spec.ts
+git add frontend/package.json frontend/package-lock.json frontend/src/main.tsx frontend/src/router.tsx frontend/src/routes frontend/src/tests/e2e/route-smoke.spec.ts
 git commit -m "feat(frontend): install react-router-dom + skeleton routes"
 ```
 
@@ -1056,9 +1232,10 @@ Open `frontend/src/theme/tailwind.tokens.ts`. Inside the `colors` object add:
 
 - [ ] **Step 5: Publish CSS vars**
 
-Open `frontend/src/index.css`. Add inside `:root`:
+Open `frontend/src/index.css`. The file has no `:root` block yet — create one immediately **after** the `@tailwind utilities;` line and **before** the `html, body, #root { ... }` rule:
 
 ```css
+:root {
   --sig-box-office: #4a9eff;
   --sig-social: #ff6b9d;
   --sig-reviews: #ffd93d;
@@ -1067,6 +1244,7 @@ Open `frontend/src/index.css`. Add inside `:root`:
   --sig-social-glow: rgba(255, 107, 157, 0.35);
   --sig-reviews-glow: rgba(255, 217, 61, 0.35);
   --sig-streaming-glow: rgba(107, 207, 127, 0.35);
+}
 ```
 
 - [ ] **Step 6: Run tests to verify they pass**
@@ -1607,8 +1785,8 @@ describe('AppShell', () => {
 
 - [ ] **Step 6: Run tests**
 
-Run: `cd frontend && npx vitest run src/tests/unit/AppShell.test.tsx && npx playwright test tests/e2e/route-smoke.spec.ts`
-Expected: PASS.
+Run: `cd frontend && npx vitest run src/tests/unit/AppShell.test.tsx && npx playwright test src/tests/e2e/route-smoke.spec.ts`
+Expected: PASS. (Playwright's `testDir` is `src/tests/e2e/`, not `tests/e2e/`.)
 
 - [ ] **Step 7: Commit**
 
@@ -1820,8 +1998,8 @@ useEffect(() => {
 
 - [ ] **Step 5: Run tests**
 
-Run: `cd frontend && npx vitest run src/tests/unit/GlobalInjectModal.test.tsx src/tests/unit/AppShell.test.tsx && npx playwright test tests/e2e/route-smoke.spec.ts`
-Expected: PASS.
+Run: `cd frontend && npx vitest run src/tests/unit/GlobalInjectModal.test.tsx src/tests/unit/AppShell.test.tsx && npx playwright test src/tests/e2e/route-smoke.spec.ts`
+Expected: PASS. (Playwright's `testDir` is `src/tests/e2e/`, not `tests/e2e/`.)
 
 - [ ] **Step 6: Commit**
 
