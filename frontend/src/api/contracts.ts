@@ -175,6 +175,18 @@ export interface MetricsResponse {
   query_latency_ms: number
 }
 
+export type BoxOfficeRawPoint = { ts: string; revenue_usd: number; tickets_sold: number }
+export type SocialRawPoint    = { ts: string; avg_virality: number; volume: number }
+export type SentimentRawPoint = { ts: string; avg_score: number;   volume: number }
+export type TrailerRawPoint   = { ts: string; views: number;       completion_rate: number }
+
+export type RawSeriesByFamily = {
+  box_office: BoxOfficeRawPoint[]
+  social:     SocialRawPoint[]
+  sentiment:  SentimentRawPoint[]
+  trailer:    TrailerRawPoint[]
+}
+
 // ─── Audit ──────────────────────────────────────────────────────────
 export interface AuditRow {
   audit_id: string

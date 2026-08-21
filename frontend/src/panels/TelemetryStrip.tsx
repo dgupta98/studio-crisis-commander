@@ -4,6 +4,9 @@ import { Card } from '@/components/Card'
 import { Sparkline } from '@/components/Sparkline'
 import { PanelStateWrapper } from '@/components/PanelStateWrapper'
 import type { MetricPoint } from '@/api/contracts'
+import type {
+  BoxOfficeRawPoint, SocialRawPoint, SentimentRawPoint, TrailerRawPoint,
+} from '@/api/contracts'
 
 type Series = { label: string; data: MetricPoint[] }
 
@@ -24,6 +27,22 @@ type Timeseries = {
   social_virality_hourly: MetricPoint[]
   sentiment_hourly: MetricPoint[]
   trailer_hourly: MetricPoint[]
+}
+
+type FamilyKey = 'box_office' | 'social' | 'sentiment' | 'trailer'
+type RawPoint  = BoxOfficeRawPoint | SocialRawPoint | SentimentRawPoint | TrailerRawPoint
+
+export function projectSeries(family: FamilyKey, raw: readonly RawPoint[]): { ts: string; value: number }[] {
+  if (!raw?.length) return []
+  const pick = (p: RawPoint): number => {
+    switch (family) {
+      case 'box_office': return (p as BoxOfficeRawPoint).revenue_usd
+      case 'social':     return (p as SocialRawPoint).avg_virality
+      case 'sentiment':  return (p as SentimentRawPoint).avg_score
+      case 'trailer':    return (p as TrailerRawPoint).views
+    }
+  }
+  return raw.map((p) => ({ ts: p.ts, value: pick(p) }))
 }
 
 export function TelemetryStrip() {
@@ -50,10 +69,10 @@ export function TelemetryStrip() {
 
   const series: Series[] = first
     ? [
-        { label: 'Box Office', data: first.timeseries.box_office_daily },
-        { label: 'Virality',   data: first.timeseries.social_virality_hourly },
-        { label: 'Sentiment',  data: first.timeseries.sentiment_hourly },
-        { label: 'Trailer',    data: first.timeseries.trailer_hourly },
+        { label: 'Box Office', data: projectSeries('box_office', first.timeseries.box_office_daily as any) },
+        { label: 'Virality',   data: projectSeries('social',     first.timeseries.social_virality_hourly as any) },
+        { label: 'Sentiment',  data: projectSeries('sentiment',  first.timeseries.sentiment_hourly as any) },
+        { label: 'Trailer',    data: projectSeries('trailer',    first.timeseries.trailer_hourly as any) },
       ]
     : []
   const allEmpty = series.length > 0 && series.every((s) => s.data.length === 0)
