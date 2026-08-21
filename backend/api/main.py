@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from api.fallback import load_cached_triple
 from api.pipeline import install_cached_triple
@@ -55,6 +57,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+_cache_dir = Path(__file__).resolve().parents[2] / "data" / "eval_cache"
+if _cache_dir.is_dir():
+    app.mount("/eval_cache", StaticFiles(directory=_cache_dir), name="eval_cache")
 
 
 app.include_router(inject_router.router)
