@@ -2539,90 +2539,175 @@ git commit -m "feat(dashboard): 3-column workspace + 8-row anomaly cap"
 
 ### Task 19: React Query prefetch on dashboard mount
 
+**Why:** Prewarm `/detections` and `/stats/summary` when Dashboard mounts so the panels render instantly instead of showing a skeleton for the first HTTP RTT. Also establishes the shared `QueryClientProvider` + `queries.ts` module used by Phase 3.2 (`useQuery(queries.shelves(...))`), Phase 3.3 (`useQuery(queries.film(id))`), and the two Playwright test setups later in the plan.
+
 **Files:**
-- Modify: `frontend/src/main.tsx` (ensure `QueryClientProvider` wraps `RouterProvider`)
-- Modify: `frontend/src/routes/DashboardRoute.tsx` (add prefetch effect)
+- Modify: `frontend/package.json` (add `@tanstack/react-query`)
+- Modify: `frontend/src/main.tsx` (wrap `<RouterProvider>` in `<QueryClientProvider>`)
+- Modify: `frontend/src/routes/DashboardRoute.tsx` (prefetch effect)
 - Create: `frontend/src/api/queries.ts`
 
-- [ ] **Step 1: Add shared query keys/fetchers**
+- [ ] **Step 1: Install `@tanstack/react-query`**
 
-Create `frontend/src/api/queries.ts`:
+```bash
+cd frontend && npm install @tanstack/react-query
+```
+
+Verify: `grep '"@tanstack/react-query"' package.json` should show a version pin.
+
+- [ ] **Step 2: Add shared query keys/fetchers**
+
+Create `frontend/src/api/queries.ts`. Match the existing `sse.ts` convention — fail hard if `VITE_API_URL` unset:
 
 ```typescript
-import { QueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 
-const BASE = import.meta.env.VITE_API_URL || ''
+const BASE = (): string => {
+  const url = import.meta.env.VITE_API_URL
+  if (!url) throw new Error('VITE_API_URL is not set')
+  return url.replace(/\/$/, '')
+}
 
-async function json<T>(url: string): Promise<T> {
-  const r = await fetch(`${BASE}${url}`)
-  if (!r.ok) throw new Error(`${url}: ${r.status}`)
+async function json<T>(path: string): Promise<T> {
+  const r = await fetch(`${BASE()}${path}`)
+  if (!r.ok) throw new Error(`${path}: ${r.status}`)
   return r.json() as Promise<T>
 }
 
 export const queries = {
   detections: () => ({
-    queryKey: ['detections'],
-    queryFn: () => json<any[]>(`/detections?limit=50`),
+    queryKey: ['detections'] as const,
+    queryFn: () => json<unknown[]>(`/detections?limit=50`),
     staleTime: 15_000,
   }),
   statsSummary: () => ({
-    queryKey: ['stats', 'summary'],
+    queryKey: ['stats', 'summary'] as const,
     queryFn: () => json<Record<string, number>>(`/stats/summary`),
     staleTime: 60_000,
   }),
   shelves: (region: string | null) => ({
-    queryKey: ['catalog', 'shelves', region],
-    queryFn: () => json<any[]>(`/catalog/shelves${region ? `?region=${region}` : ''}`),
+    queryKey: ['catalog', 'shelves', region] as const,
+    queryFn: () => json<unknown>(`/catalog/shelves${region ? `?region=${encodeURIComponent(region)}` : ''}`),
     staleTime: 60_000,
   }),
   film: (filmId: number) => ({
-    queryKey: ['catalog', 'film', filmId],
-    queryFn: () => json<any>(`/catalog/films/${filmId}`),
+    queryKey: ['catalog', 'film', filmId] as const,
+    queryFn: () => json<unknown>(`/catalog/films/${filmId}`),
     staleTime: 30_000,
   }),
 }
 
-export function prefetchDashboard(qc: QueryClient) {
-  qc.prefetchQuery(queries.detections())
-  qc.prefetchQuery(queries.statsSummary())
+export function prefetchDashboard(qc: QueryClient): void {
+  void qc.prefetchQuery(queries.detections())
+  void qc.prefetchQuery(queries.statsSummary())
 }
 ```
 
-- [ ] **Step 2: Verify `QueryClientProvider` wraps the router**
+- [ ] **Step 3: Wrap `<RouterProvider>` with `<QueryClientProvider>` in `main.tsx`**
 
-Open `frontend/src/main.tsx`. Ensure structure is:
+Replace `frontend/src/main.tsx` body wholesale (the current file has no QueryClientProvider):
 
 ```tsx
-<QueryClientProvider client={queryClient}>
-  <RouterProvider router={router} />
-</QueryClientProvider>
+import './index.css'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { RouterProvider } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { router } from './router'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </StrictMode>,
+)
 ```
 
-If `queryClient` doesn't exist yet, add: `const queryClient = new QueryClient()`. Ensure `@tanstack/react-query` is installed (it should be; if not: `cd frontend && npm install @tanstack/react-query`).
+- [ ] **Step 4: Prefetch on Dashboard mount**
 
-- [ ] **Step 3: Prefetch on Dashboard mount**
-
-Modify `frontend/src/routes/DashboardRoute.tsx`. Add at top of component:
+Modify `frontend/src/routes/DashboardRoute.tsx`. Add the imports and the prefetch effect inside the component:
 
 ```tsx
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { prefetchDashboard } from '../api/queries'
+// ... (existing imports)
 
-// inside DashboardRoute():
-const qc = useQueryClient()
-useEffect(() => { prefetchDashboard(qc) }, [qc])
+export default function DashboardRoute() {
+  const qc = useQueryClient()
+  useEffect(() => { prefetchDashboard(qc) }, [qc])
+  return (
+    // ... existing JSX unchanged
+  )
+}
 ```
 
-- [ ] **Step 4: Verify no regressions**
+Do NOT restructure any of the existing DashboardRoute JSX — only add the two-line hook + effect at the top of the function body.
 
-Run: `cd frontend && npx vitest run && npx playwright test tests/e2e/route-smoke.spec.ts`
-Expected: PASS.
+- [ ] **Step 5: Update `DashboardRoute.test.tsx` to provide a QueryClientProvider**
 
-- [ ] **Step 5: Commit**
+The existing DashboardRoute test now needs a QueryClientProvider wrapper because the route calls `useQueryClient()`. Update `frontend/src/tests/unit/DashboardRoute.test.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, it, expect, vi } from 'vitest'
+import DashboardRoute from '../../routes/DashboardRoute'
+import { useRunStore } from '../../store/runStore'
+
+vi.mock('../../hooks/useIntakeRates', () => ({ useIntakeRates: () => {} }))
+
+describe('DashboardRoute', () => {
+  it('renders intake, anomaly feed, workspace, trace, telemetry regions', () => {
+    // ... KEEP the exact same runStore seeding block Task 18 added
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <DashboardRoute />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+    expect(screen.getByTestId('intake-strip')).toBeInTheDocument()
+    expect(screen.getByTestId('dashboard-workspace')).toBeInTheDocument()
+    expect(screen.getByTestId('anomaly-feed')).toBeInTheDocument()
+    expect(screen.getByTestId('agent-trace')).toBeInTheDocument()
+    expect(screen.getByTestId('telemetry-strip')).toBeInTheDocument()
+  })
+})
+```
+
+Preserve any existing runStore-seeding logic Task 18 added — only add the `QueryClient`/`QueryClientProvider` wrap.
+
+- [ ] **Step 6: Run vitest to verify no regressions**
+
+Run: `cd frontend && npx vitest run`
+Expected: 120/120 (no new test in this task — Task 18 test is updated in place, not duplicated). If it drops below 120, investigate and fix.
+
+- [ ] **Step 7: Run Playwright route smoke**
+
+Run: `cd frontend && npx playwright test src/tests/e2e/route-smoke.spec.ts`
+Expected: PASS (all routes still resolve).
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add frontend/src/api/queries.ts frontend/src/main.tsx frontend/src/routes/DashboardRoute.tsx
+git add frontend/package.json frontend/package-lock.json \
+        frontend/src/api/queries.ts \
+        frontend/src/main.tsx \
+        frontend/src/routes/DashboardRoute.tsx \
+        frontend/src/tests/unit/DashboardRoute.test.tsx
 git commit -m "feat(dashboard): React Query prefetch on mount"
 ```
 
