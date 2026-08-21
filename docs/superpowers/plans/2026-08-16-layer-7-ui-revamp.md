@@ -2089,114 +2089,137 @@ git commit -m "docs: root-cause telemetry-empty bug"
 
 ---
 
-### Task 16: Fix telemetry-empty + ReportProvenanceError SQL-whitespace bug
+### Task 16: Fix telemetry-empty (shape mismatch — H2 confirmed)
+
+**Root cause (per Task 15 note):** Frontend `MetricPoint` is `{ts, value}` and `Sparkline` binds `dataKey="value"`, but backend `/metrics/{film_id}/{region}` returns per-family shapes: `box_office_daily: {ts, revenue_usd, tickets_sold}`, `social_virality_hourly: {ts, avg_virality, volume}`, `sentiment_hourly: {ts, avg_score, volume}`, `trailer_hourly: {ts, views, completion_rate}`. Even if H1 (empty tables) is later resolved, sparklines still render blank because `dataKey="value"` resolves to `undefined` on every point. Fix H2 client-side by projecting each family to `{ts, value}` inside `TelemetryStrip` before handing to `Sparkline`. H1 (data-density) is out of scope — noted for a separate pipeline follow-up.
 
 **Files:**
-- Modify: `backend/api/routers/metrics.py` OR `frontend/src/panels/TelemetryStrip.tsx` (depending on Task 15 root cause)
-- Modify: `backend/agents/report/_provenance.py`
-- Modify: `backend/api/tests/test_metrics.py` OR add contract test
-- Modify: `backend/agents/report/tests/test_provenance.py` (or create)
+- Modify: `frontend/src/panels/TelemetryStrip.tsx`
+- Modify: `frontend/src/api/contracts.ts` (widen `MetricPoint` to a discriminated per-family type + keep a canonical `{ts, value}` variant)
+- Test: `frontend/src/tests/unit/telemetryStrip.test.tsx` (new)
 
-- [ ] **Step 1: Write regression test for telemetry bug**
-
-**Case A — root cause is backend (H1/H2):** Append to `backend/api/tests/test_metrics.py` (create if absent):
-
-```python
-from fastapi.testclient import TestClient
-from api.main import app
-
-
-def test_metrics_rollup_returns_all_four_families():
-    with TestClient(app) as client:
-        r = client.get("/metrics/rollup?film_id=1&region=US")
-        assert r.status_code == 200
-        body = r.json()
-        for family in ("box_office", "social", "sentiment", "trailer"):
-            assert family in body, f"missing {family}"
-            assert isinstance(body[family], list)
-            if body[family]:
-                point = body[family][0]
-                assert "ts" in point and "value" in point
-```
-
-**Case B — root cause is frontend (H3):** Add to `frontend/src/tests/unit/telemetryStrip.test.tsx` (create if absent) a test that renders `<TelemetryStrip />` against a mocked fetch returning the canonical `MetricsResponse` shape and asserts all four sparklines mount.
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Case A: `cd backend && pytest api/tests/test_metrics.py -v` — Expected: FAIL matching diagnosed symptom.
-Case B: `cd frontend && npx vitest run src/tests/unit/telemetryStrip.test.tsx` — Expected: FAIL.
-
-- [ ] **Step 3: Apply the fix**
-
-Apply the minimum change identified in the Task 15 note. Do NOT expand scope. If the root cause is `ts_str` being aliased inconsistently across the four sub-queries in `metrics.py`, align every subquery on the same `toString(ts) AS ts_str, value` shape AND update `_run_query_sync` to map both positional column names consistently. If root cause is a frontend key mismatch, update `TelemetryStrip.tsx` alone.
-
-- [ ] **Step 4: Write regression test for ReportProvenanceError SQL-whitespace bug**
-
-Create or append `backend/agents/report/tests/test_provenance.py`:
-
-```python
-from agents.report._provenance import validate_sql_allowed
-
-
-def test_provenance_accepts_whitespace_variants():
-    allowed = ["SELECT count()\nFROM detections_stream\nWHERE film_id = 1"]
-    # same SQL, different whitespace — must still validate
-    variant = "SELECT count() FROM detections_stream WHERE film_id = 1"
-    validate_sql_allowed(variant, allowed)  # should not raise
-
-
-def test_provenance_rejects_disallowed_sql():
-    import pytest
-    from agents.report._provenance import ReportProvenanceError
-    allowed = ["SELECT * FROM films"]
-    with pytest.raises(ReportProvenanceError):
-        validate_sql_allowed("SELECT * FROM secrets", allowed)
-```
-
-- [ ] **Step 5: Run test to verify it fails**
-
-Run: `cd backend && pytest agents/report/tests/test_provenance.py -v`
-Expected: FAIL — validator compares byte-for-byte.
-
-- [ ] **Step 6: Fix the validator**
-
-Open `backend/agents/report/_provenance.py`. Find the comparison. Normalize whitespace on both sides before comparing:
-
-```python
-import re
-
-def _normalize(sql: str) -> str:
-    return re.sub(r"\s+", " ", sql.strip()).lower()
-
-
-def validate_sql_allowed(sql: str, allowed: list[str]) -> None:
-    normalized = _normalize(sql)
-    if not any(normalized == _normalize(a) for a in allowed):
-        raise ReportProvenanceError(f"SQL not in allow-list: {sql[:120]}")
-```
-
-Preserve the exact `ReportProvenanceError` type and message-shape callers depend on. If the existing function signature differs, adapt this snippet to match — the *logic* is what matters (normalize whitespace, then compare).
-
-- [ ] **Step 7: Run tests to verify they pass**
-
-Run: `cd backend && pytest api/tests/test_metrics.py agents/report/tests/test_provenance.py -v`
-Expected: PASS.
-
-- [ ] **Step 8: Re-record any cached triples that failed on this bug**
-
-Re-run just the two failed scenarios:
+- [ ] **Step 1: Read current contract + panel to lock the exact shape**
 
 ```bash
-cd backend && python ../scripts/eval_record.py --scenario-id sc_011 --scenario-id sc_019
+sed -n '150,180p' frontend/src/api/contracts.ts
+sed -n '1,80p'   frontend/src/panels/TelemetryStrip.tsx
 ```
 
-If `eval_record.py` doesn't yet accept per-scenario args, run the full sweep (~$3–5) — that's a Task 33 concern; skip here.
+Note the exact `MetricsResponse` field names (`box_office`/`social`/`sentiment`/`trailer` — the frontend keys — vs backend `box_office_daily`/`social_virality_hourly`/`sentiment_hourly`/`trailer_hourly`). The runStore already aliases these; confirm before touching contracts.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 2: Write failing Vitest for the shape mismatch**
+
+Create `frontend/src/tests/unit/telemetryStrip.test.tsx`:
+
+```tsx
+import { describe, it, expect } from 'vitest'
+import { render } from '@testing-library/react'
+import { projectSeries } from '../../panels/TelemetryStrip'
+
+describe('TelemetryStrip.projectSeries', () => {
+  it('maps box_office_daily.revenue_usd → value', () => {
+    const out = projectSeries('box_office', [
+      { ts: '2026-08-10 10:00:00', revenue_usd: 12000, tickets_sold: 150 },
+    ] as any)
+    expect(out).toEqual([{ ts: '2026-08-10 10:00:00', value: 12000 }])
+  })
+  it('maps social_virality_hourly.avg_virality → value', () => {
+    const out = projectSeries('social', [
+      { ts: 't', avg_virality: 8, volume: 4 },
+    ] as any)
+    expect(out[0].value).toBe(8)
+  })
+  it('maps sentiment_hourly.avg_score → value', () => {
+    const out = projectSeries('sentiment', [
+      { ts: 't', avg_score: -3, volume: 128 },
+    ] as any)
+    expect(out[0].value).toBe(-3)
+  })
+  it('maps trailer_hourly.views → value', () => {
+    const out = projectSeries('trailer', [
+      { ts: 't', views: 555, completion_rate: 0.42 },
+    ] as any)
+    expect(out[0].value).toBe(555)
+  })
+  it('returns [] for empty input', () => {
+    expect(projectSeries('box_office', [])).toEqual([])
+  })
+})
+```
+
+Run: `cd frontend && npx vitest run src/tests/unit/telemetryStrip.test.tsx`
+Expected: FAIL — `projectSeries` does not yet exist.
+
+- [ ] **Step 3: Widen the contract in `frontend/src/api/contracts.ts`**
+
+Add per-family raw point types alongside the existing canonical one. Keep the existing `MetricPoint = {ts, value}` for the projected shape used by `Sparkline`:
+
+```ts
+export type BoxOfficeRawPoint = { ts: string; revenue_usd: number; tickets_sold: number }
+export type SocialRawPoint    = { ts: string; avg_virality: number; volume: number }
+export type SentimentRawPoint = { ts: string; avg_score: number;   volume: number }
+export type TrailerRawPoint   = { ts: string; views: number;       completion_rate: number }
+
+export type RawSeriesByFamily = {
+  box_office: BoxOfficeRawPoint[]
+  social:     SocialRawPoint[]
+  sentiment:  SentimentRawPoint[]
+  trailer:    TrailerRawPoint[]
+}
+```
+
+Do NOT delete the existing `MetricPoint` / `MetricsResponse` — other consumers (runStore, Sparkline) still expect them. This task adds a parallel raw type used only by the projection helper.
+
+- [ ] **Step 4: Add `projectSeries` and rewire `TelemetryStrip.tsx`**
+
+Export a pure helper alongside the panel:
+
+```tsx
+import type {
+  BoxOfficeRawPoint, SocialRawPoint, SentimentRawPoint, TrailerRawPoint,
+} from '../api/contracts'
+
+type FamilyKey = 'box_office' | 'social' | 'sentiment' | 'trailer'
+type RawPoint  = BoxOfficeRawPoint | SocialRawPoint | SentimentRawPoint | TrailerRawPoint
+
+export function projectSeries(family: FamilyKey, raw: RawPoint[]): { ts: string; value: number }[] {
+  if (!raw?.length) return []
+  const pick = (p: RawPoint): number => {
+    switch (family) {
+      case 'box_office': return (p as BoxOfficeRawPoint).revenue_usd
+      case 'social':     return (p as SocialRawPoint).avg_virality
+      case 'sentiment':  return (p as SentimentRawPoint).avg_score
+      case 'trailer':    return (p as TrailerRawPoint).views
+    }
+  }
+  return raw.map((p) => ({ ts: p.ts, value: pick(p) }))
+}
+```
+
+Inside the panel body, wherever the four series are handed to `Sparkline`, wrap each with `projectSeries('<family>', series)`. Do NOT change `Sparkline` itself — its `{ts, value}` contract is correct.
+
+- [ ] **Step 5: Run the vitest to verify it passes**
+
+Run: `cd frontend && npx vitest run src/tests/unit/telemetryStrip.test.tsx`
+Expected: PASS (5/5).
+
+- [ ] **Step 6: Sanity-check that no other consumer expects the old shape**
+
+Run: `cd frontend && grep -rn 'MetricPoint\b' src/`
+Confirm only `contracts.ts`, `Sparkline.tsx`, `TelemetryStrip.tsx`, and existing tests reference it. If any other consumer imports the raw `MetricsResponse[family]` and expects `.value`, either point it through `projectSeries` or leave a TODO — do NOT restructure.
+
+- [ ] **Step 7: Run the full frontend test suite**
+
+Run: `cd frontend && npx vitest run`
+Expected: all existing tests still pass (previous baseline was 113/113); new file adds 5 tests → 118/118.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add backend/api/routers/metrics.py backend/agents/report/_provenance.py backend/api/tests/test_metrics.py backend/agents/report/tests/test_provenance.py
-git commit -m "fix: telemetry-empty root cause + provenance whitespace normalization"
+git add frontend/src/api/contracts.ts \
+        frontend/src/panels/TelemetryStrip.tsx \
+        frontend/src/tests/unit/telemetryStrip.test.tsx
+git commit -m "fix(telemetry): project per-family raw points to {ts, value}"
 ```
 
 ---
