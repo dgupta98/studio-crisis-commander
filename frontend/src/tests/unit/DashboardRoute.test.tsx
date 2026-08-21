@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DashboardRoute from '../../routes/DashboardRoute'
 import { useRunStore } from '../../store/runStore'
@@ -47,10 +48,13 @@ beforeEach(() => {
 
 describe('DashboardRoute', () => {
   it('renders intake, anomaly feed, workspace, trace, telemetry regions', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <DashboardRoute />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
     expect(screen.getByTestId('intake-strip')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-workspace')).toBeInTheDocument()

@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { prefetchDashboard } from '../api/queries'
 import { IntakeStrip } from '../panels/IntakeStrip'
 import { AnomalyFeed } from '../panels/AnomalyFeed'
 import { AgentTrace } from '../panels/AgentTrace'
@@ -5,6 +8,8 @@ import { TelemetryStrip } from '../panels/TelemetryStrip'
 import { DashboardWorkspace } from '../panels/DashboardWorkspace'
 
 export default function DashboardRoute() {
+  const qc = useQueryClient()
+  useEffect(() => { prefetchDashboard(qc) }, [qc])
   return (
     <div data-testid="route-dashboard" className="flex h-full flex-col">
       <IntakeStrip />
