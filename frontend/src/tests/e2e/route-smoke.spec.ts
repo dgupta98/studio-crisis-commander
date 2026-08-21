@@ -15,3 +15,15 @@ for (const r of routes) {
     await expect(page.getByTestId(r.tid)).toBeVisible()
   })
 }
+
+test('landing shows headline and CTA', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: /Investigations that arrive/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Open Dashboard/i })).toBeVisible()
+})
+
+test('landing → dashboard CTA nav', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: /Open Dashboard/i }).first().click()
+  await expect(page).toHaveURL(/\/dashboard$/)
+})
