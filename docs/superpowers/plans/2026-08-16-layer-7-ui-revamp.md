@@ -2375,24 +2375,24 @@ git commit -m "feat(dashboard): IntakeStrip with live SSE ingest counters"
 
 - [ ] **Step 1: Write failing test**
 
+Note: `@tanstack/react-query` is NOT installed in this repo (Task 8 plan was patched to drop it). Don't import it. The `useIntakeRates` SSE hook must be stubbed so the test doesn't try to open a real EventSource in jsdom.
+
 Create `frontend/src/tests/unit/DashboardRoute.test.tsx`:
 
 ```tsx
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import DashboardRoute from '../../routes/DashboardRoute'
+
+vi.mock('../../hooks/useIntakeRates', () => ({ useIntakeRates: () => {} }))
 
 describe('DashboardRoute', () => {
   it('renders intake, anomaly feed, workspace, trace, telemetry regions', () => {
-    const qc = new QueryClient()
     render(
-      <QueryClientProvider client={qc}>
-        <MemoryRouter>
-          <DashboardRoute />
-        </MemoryRouter>
-      </QueryClientProvider>
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>
     )
     expect(screen.getByTestId('intake-strip')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-workspace')).toBeInTheDocument()
@@ -2406,9 +2406,9 @@ describe('DashboardRoute', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/tests/unit/DashboardRoute.test.tsx`
-Expected: FAIL.
+Expected: FAIL — missing testids and/or missing `DashboardWorkspace` module.
 
-- [ ] **Step 3: Cap AnomalyFeed at 8 rows**
+- [ ] **Step 3a: Cap AnomalyFeed at 8 rows and add its testid**
 
 Open `frontend/src/panels/AnomalyFeed.tsx`. Find the rows-render loop. Slice to first 8:
 
@@ -2416,7 +2416,7 @@ Open `frontend/src/panels/AnomalyFeed.tsx`. Find the rows-render loop. Slice to 
 const visibleRows = rows.slice(0, 8)
 ```
 
-Use `visibleRows` in the JSX. Add a `data-testid="anomaly-feed"` on the outer container if not already present. Below the list, if `rows.length > 8`, render:
+Use `visibleRows` in the JSX. Add `data-testid="anomaly-feed"` on the outer container (existing panels have no testids yet). Below the list, if `rows.length > 8`, render:
 
 ```tsx
 {rows.length > 8 && (
@@ -2425,6 +2425,13 @@ Use `visibleRows` in the JSX. Add a `data-testid="anomaly-feed"` on the outer co
   </div>
 )}
 ```
+
+- [ ] **Step 3b: Add data-testid to AgentTrace and TelemetryStrip**
+
+- `frontend/src/panels/AgentTrace.tsx`: add `data-testid="agent-trace"` to the outermost element.
+- `frontend/src/panels/TelemetryStrip.tsx`: add `data-testid="telemetry-strip"` to the outermost `<Card>` container (or add a wrapping div if the `<Card>` doesn't accept the prop — check the props type first).
+
+Do NOT modify any other behavior of these panels.
 
 - [ ] **Step 4: Implement `DashboardWorkspace`**
 
@@ -2511,13 +2518,20 @@ If any imported panel component takes required props today, pass the same props 
 
 - [ ] **Step 6: Run tests to verify they pass**
 
-Run: `cd frontend && npx vitest run src/tests/unit/DashboardRoute.test.tsx && npx playwright test tests/e2e/route-smoke.spec.ts`
+Run: `cd frontend && npx vitest run src/tests/unit/DashboardRoute.test.tsx && npx playwright test src/tests/e2e/route-smoke.spec.ts`
 Expected: PASS.
+
+Then run the full vitest suite to confirm no regressions: `cd frontend && npx vitest run` — expect 120/120 (prev baseline 119 + 1 new).
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add frontend/src/routes/DashboardRoute.tsx frontend/src/panels/AnomalyFeed.tsx frontend/src/panels/DashboardWorkspace.tsx frontend/src/tests/unit/DashboardRoute.test.tsx
+git add frontend/src/routes/DashboardRoute.tsx \
+        frontend/src/panels/AnomalyFeed.tsx \
+        frontend/src/panels/AgentTrace.tsx \
+        frontend/src/panels/TelemetryStrip.tsx \
+        frontend/src/panels/DashboardWorkspace.tsx \
+        frontend/src/tests/unit/DashboardRoute.test.tsx
 git commit -m "feat(dashboard): 3-column workspace + 8-row anomaly cap"
 ```
 
