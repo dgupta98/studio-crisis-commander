@@ -3157,13 +3157,26 @@ Create `frontend/src/tests/unit/MoviesRoute.test.tsx`:
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MoviesRoute from '../../routes/MoviesRoute'
+import { useCatalogStore } from '../../store/catalogStore'
 
 const shelves = [
   { id: 'featured', title: 'Featured', films: [{ id: 1, title: 'Alpha', poster_url: '', featured: true }] },
   { id: 'trending', title: 'Trending', films: [{ id: 2, title: 'Bravo', poster_url: '' }] },
 ]
+
+beforeEach(() => {
+  // queries.ts BASE() throws when VITE_API_URL is unset — required for queryFn
+  // to reach the stubbed fetch instead of erroring immediately.
+  vi.stubEnv('VITE_API_URL', 'http://test.local')
+  useCatalogStore.setState({ shelves: [], films: {}, region: null })
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
 
 describe('MoviesRoute', () => {
   it('renders shelves from /catalog/shelves', async () => {
@@ -3204,10 +3217,11 @@ import { MoviesSearchBar } from '../panels/MoviesSearchBar'
 
 export default function MoviesRoute() {
   const region = useRegion()
-  const { data: shelves, isLoading, error } = useQuery(queries.shelves(region))
+  const { data, isLoading, error } = useQuery(queries.shelves(region))
+  const shelves = (data ?? []) as any[]
   const setShelves = useCatalogStore((s) => s.setShelves)
-  useEffect(() => { if (shelves) setShelves(shelves as any) }, [shelves, setShelves])
-  const featured = useMemo(() => (shelves ?? []).find((s: any) => s.id === 'featured')?.films ?? [], [shelves])
+  useEffect(() => { if (data) setShelves(data as any) }, [data, setShelves])
+  const featured = useMemo(() => shelves.find((s) => s.id === 'featured')?.films ?? [], [shelves])
 
   return (
     <div data-testid="route-movies" className="flex flex-col gap-6 pb-8">
@@ -3218,7 +3232,7 @@ export default function MoviesRoute() {
       </div>
       {isLoading && <div className="px-6 text-sm text-ink-soft">Loading shelves…</div>}
       {error && <div className="px-6 text-sm text-rose-400">Failed to load shelves.</div>}
-      {(shelves ?? []).map((shelf: any) => (
+      {shelves.map((shelf) => (
         <Shelf key={shelf.id} title={shelf.title} films={shelf.films} variant="data" />
       ))}
     </div>
