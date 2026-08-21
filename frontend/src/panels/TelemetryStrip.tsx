@@ -83,7 +83,7 @@ export function TelemetryStrip() {
   // otherwise the panel showed "Idle — awaiting metrics" on cold load while
   // Anomaly Feed was fully populated.
   const body = (
-    <Card className="p-4">
+    <Card data-testid="telemetry-strip" className="p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-wider text-ink-soft">
           Telemetry{isHistorical && ' · last run'}

@@ -28,12 +28,12 @@ export function AnomalyFeed() {
 
   return (
     <PanelStateWrapper state={state} label="Anomaly Feed">
-      <Card className="p-4">
+      <Card data-testid="anomaly-feed" className="p-4">
         <div className="text-xs uppercase tracking-wider text-ink-soft mb-3">
           Anomaly Feed
         </div>
         <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
-          {display.map((r: DetectionRow) => {
+          {display.slice(0, 8).map((r: DetectionRow) => {
             const lvl = level(r.severity)
             return (
             <motion.li
@@ -56,6 +56,11 @@ export function AnomalyFeed() {
             )
           })}
         </motion.ul>
+        {display.length > 8 && (
+          <div className="mt-2 border-t border-line pt-2 text-[11px] text-ink-soft">
+            +{display.length - 8} more · <a href="/audit" className="underline hover:text-ink">view audit</a>
+          </div>
+        )}
       </Card>
     </PanelStateWrapper>
   )

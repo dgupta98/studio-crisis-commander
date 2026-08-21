@@ -340,7 +340,7 @@ export function AgentTrace() {
     <PanelStateWrapper state={state} label="Agent Trace" idleLabel="Idle · press Inject to begin">
       {/* Fixed viewport so trace can't stretch the page as events stream in.
           Header stays put; only the event list scrolls. */}
-      <Card className="p-4 flex flex-col h-[calc(100vh-14rem)] min-h-[480px] max-h-[820px]">
+      <Card data-testid="agent-trace" className="p-4 flex flex-col h-[calc(100vh-14rem)] min-h-[480px] max-h-[820px]">
         <div className="text-xs uppercase tracking-wider text-ink-soft mb-4 shrink-0">
           Live Agent Trace
         </div>
