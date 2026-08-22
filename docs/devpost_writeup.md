@@ -53,12 +53,9 @@ A human approves or denies before anything crossing the impact threshold ships. 
 
 ## Built with
 
-- Python 3.12, FastAPI, uvicorn, Pydantic
-- Vite, React 18, TypeScript, Tailwind, Framer Motion, Zustand, Recharts
-- Google Gemini via `google-genai` + `google-cloud-aiplatform`, Google ADK
-- ClickHouse Cloud + `mcp-clickhouse` MCP server
-- Cloud Run, Cloud Scheduler, Secret Manager (GCP)
-- Playwright, Vitest, pytest
+Paste the following into Devpost's Built With field (comma-separated, 24 tags, under the 25 cap):
+
+Python, FastAPI, uvicorn, Pydantic, Vite, React, TypeScript, Tailwind, Framer Motion, Zustand, Recharts, Gemini, google-genai, google-cloud-aiplatform, Google ADK, ClickHouse, mcp-clickhouse, Cloud Run, Cloud Scheduler, Secret Manager, GCP, Playwright, Vitest, pytest
 
 ## Try it out
 
