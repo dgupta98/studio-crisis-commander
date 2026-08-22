@@ -153,13 +153,14 @@ export function ParticleCascade() {
   return (
     <>
       <canvas ref={canvasRef} className="absolute inset-0 -z-10 h-full w-full" aria-hidden />
-      {/* Vignette overlay — pulls attention to center. */}
+      {/* Vignette overlay — pulls attention to center without blacking out the
+          ambient family-color orbs painted underneath. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            'radial-gradient(ellipse at center, transparent 20%, rgba(8,8,12,0.65) 75%, rgba(8,8,12,0.95) 100%)',
+            'radial-gradient(ellipse at center, transparent 30%, rgba(8,8,12,0.35) 78%, rgba(8,8,12,0.72) 100%)',
         }}
       />
     </>

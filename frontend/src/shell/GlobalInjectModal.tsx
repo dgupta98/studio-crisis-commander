@@ -1,14 +1,17 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { queries } from '@/api/queries'
 
 interface Props {
   open: boolean
   onClose: () => void
+  /** Pre-selected film when opened from a Movie Detail page. */
+  defaultFilm?: { id: number; title: string } | null
 }
 
 const CRISIS_TYPES = ['box_office_drop', 'social_meltdown', 'review_bomb', 'streaming_spike'] as const
 const REGIONS = ['US', 'GB', 'DE', 'FR', 'JP', 'KR', 'CN', 'IN', 'BR', 'MX', 'AU', 'CA', 'IT', 'ES', 'RU']
+const MAX_LIST = 40
 
 type Shelf = { id: string; title: string; films: { id: number; title: string }[] }
 type Film = { id: number; title: string }
@@ -26,26 +29,41 @@ function flattenFilms(shelves: Shelf[] | undefined): Film[] {
   )
 }
 
-export function GlobalInjectModal({ open, onClose }: Props) {
+export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) {
   const [ctype, setCtype] = useState<typeof CRISIS_TYPES[number]>('box_office_drop')
-  const [filmQuery, setFilmQuery] = useState('')
   const [region, setRegion] = useState('US')
   const [magnitude, setMagnitude] = useState('0.4')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const listId = useId()
 
-  // Cached from Dashboard/Movies prefetch — no extra network hit on modal open.
+  const [queryText, setQueryText] = useState('')
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
   const { data: shelvesRaw } = useQuery({
     ...queries.shelves(null),
     enabled: open,
   })
   const films = useMemo(() => flattenFilms(shelvesRaw as Shelf[] | undefined), [shelvesRaw])
-  const filmByTitle = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const f of films) m.set(f.title.toLowerCase(), f.id)
-    return m
-  }, [films])
+
+  // Reset every time the modal opens so a stale prior selection can't leak
+  // into the next invocation. Depend on `defaultFilm?.id`, not the object,
+  // so parent re-renders with a fresh object literal don't stomp typing.
+  useEffect(() => {
+    if (!open) return
+    setErr(null)
+    setBusy(false)
+    setDropdownOpen(false)
+    if (defaultFilm) {
+      setQueryText(defaultFilm.title)
+      setSelectedId(defaultFilm.id)
+    } else {
+      setQueryText('')
+      setSelectedId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultFilm?.id])
 
   useEffect(() => {
     if (!open) return
@@ -57,17 +75,34 @@ export function GlobalInjectModal({ open, onClose }: Props) {
   }, [open, onClose])
 
   useEffect(() => {
-    if (open && !filmQuery && films.length > 0) setFilmQuery(films[0].title)
-  }, [open, films, filmQuery])
+    if (!dropdownOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [dropdownOpen])
+
+  const filteredFilms = useMemo(() => {
+    const q = queryText.trim().toLowerCase()
+    if (!q) return films.slice(0, MAX_LIST)
+    return films.filter((f) => f.title.toLowerCase().includes(q)).slice(0, MAX_LIST)
+  }, [films, queryText])
 
   if (!open) return null
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
-    const trimmed = filmQuery.trim()
-    let filmId: number | null = filmByTitle.get(trimmed.toLowerCase()) ?? null
-    if (filmId === null && /^\d+$/.test(trimmed)) filmId = Number(trimmed)
+    const trimmed = queryText.trim()
+    let filmId = selectedId
+    if (filmId === null) {
+      const exact = films.find((f) => f.title.toLowerCase() === trimmed.toLowerCase())
+      if (exact) filmId = exact.id
+      else if (/^\d+$/.test(trimmed)) filmId = Number(trimmed)
+    }
     if (filmId === null) {
       setErr('Pick a movie from the list.')
       return
@@ -117,26 +152,72 @@ export function GlobalInjectModal({ open, onClose }: Props) {
             {CRISIS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
-        <label className="mt-3 block">
+
+        <div className="mt-3">
           <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Movie</span>
-          <input
-            aria-label="Movie"
-            list={listId}
-            value={filmQuery}
-            onChange={(e) => setFilmQuery(e.target.value)}
-            placeholder="Start typing a title…"
-            autoComplete="off"
-            className="w-full rounded border border-line bg-paper px-2 py-1.5 text-sm"
-          />
-          <datalist id={listId}>
-            {films.map((f) => (
-              <option key={f.id} value={f.title} />
-            ))}
-          </datalist>
-          {films.length === 0 && (
-            <span className="mt-1 block text-[11px] text-ink-soft">Loading catalog…</span>
+          <div ref={containerRef} className="relative">
+            <input
+              aria-label="Movie"
+              autoComplete="off"
+              value={queryText}
+              placeholder={films.length === 0 ? 'Loading catalog…' : 'Type to search titles…'}
+              disabled={films.length === 0}
+              onChange={(e) => {
+                setQueryText(e.target.value)
+                setSelectedId(null)
+                setDropdownOpen(true)
+              }}
+              onFocus={() => setDropdownOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation()
+                  setDropdownOpen(false)
+                }
+              }}
+              className="w-full rounded border border-line bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+            />
+            {dropdownOpen && filteredFilms.length > 0 && (
+              <ul
+                role="listbox"
+                className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-auto rounded border border-line bg-card shadow-lg"
+              >
+                {filteredFilms.map((f) => (
+                  <li
+                    key={f.id}
+                    role="option"
+                    aria-selected={selectedId === f.id}
+                    onMouseDown={(e) => {
+                      // preventDefault keeps the input focused so the click
+                      // registers before the input's blur fires.
+                      e.preventDefault()
+                      setQueryText(f.title)
+                      setSelectedId(f.id)
+                      setDropdownOpen(false)
+                    }}
+                    className={`cursor-pointer px-3 py-2 text-sm ${
+                      selectedId === f.id
+                        ? 'bg-card-alt text-accent'
+                        : 'text-ink hover:bg-card-alt'
+                    }`}
+                  >
+                    {f.title}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {dropdownOpen && films.length > 0 && filteredFilms.length === 0 && (
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded border border-line bg-card px-3 py-2 text-xs text-ink-soft shadow-lg">
+                No films match “{queryText}”.
+              </div>
+            )}
+          </div>
+          {selectedId !== null && (
+            <span className="mt-1 block text-[11px] text-ink-soft">
+              Selected film id: <span className="font-mono">{selectedId}</span>
+            </span>
           )}
-        </label>
+        </div>
+
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Region</span>

@@ -33,7 +33,11 @@ export default function MovieDetailRoute() {
           <AmbientTelemetry signals={film.signals} />
         </div>
       </div>
-      <GlobalInjectModal open={injectOpen} onClose={() => setInjectOpen(false)} />
+      <GlobalInjectModal
+        open={injectOpen}
+        onClose={() => setInjectOpen(false)}
+        defaultFilm={{ id: film.id, title: film.title }}
+      />
     </div>
   )
 }

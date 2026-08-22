@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { BrandMark } from '@/components/BrandMark'
 
 const LINKS = [
   { to: '/dashboard', label: 'Dashboard', icon: '◉' },
@@ -10,10 +11,9 @@ const LINKS = [
 export function LeftNav() {
   return (
     <nav aria-label="Primary" className="flex h-full w-64 flex-col border-r border-line bg-card">
-      <NavLink to="/" className="flex items-center gap-2 border-b border-line px-5 py-5 text-base font-display tracking-tight">
-        <span className="text-accent">SCC</span>
-        <span className="text-ink-soft">/ Crisis Commander</span>
-      </NavLink>
+      <div className="border-b border-line px-5 py-5">
+        <BrandMark />
+      </div>
       <ul className="flex-1 py-4">
         {LINKS.map((link) => (
           <li key={link.to}>

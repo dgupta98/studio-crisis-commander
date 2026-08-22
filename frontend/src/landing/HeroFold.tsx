@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { useEffect } from 'react'
 import { ParticleCascade } from './ParticleCascade'
+import { PosterLetterCascade } from './PosterLetterCascade'
 import { LiveCounter } from './LiveCounter'
 import { SignalChip, type SignalFamily } from '../components/SignalChip'
+import { BrandMark } from '../components/BrandMark'
 import { tokens } from '../theme/tokens'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
@@ -44,7 +46,47 @@ export function HeroFold() {
 
   return (
     <section className="relative flex min-h-screen items-center overflow-hidden bg-paper px-6 pt-24 pb-16">
+      {/* Ambient signal-family orbs — always on, sits behind particles so the
+          canvas never renders as a flat black even before particles spawn. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-20"
+        style={{
+          background: `
+            radial-gradient(ellipse 55% 45% at 10% 18%, ${tokens.signal.box_office.hex}55 0%, transparent 65%),
+            radial-gradient(ellipse 50% 50% at 90% 15%, ${tokens.signal.social.hex}4a 0%, transparent 65%),
+            radial-gradient(ellipse 55% 45% at 15% 88%, ${tokens.signal.reviews.hex}38 0%, transparent 65%),
+            radial-gradient(ellipse 50% 50% at 85% 85%, ${tokens.signal.streaming.hex}45 0%, transparent 65%),
+            linear-gradient(180deg, #0b0b14 0%, #08080c 55%, #050508 100%)
+          `,
+        }}
+      />
+
+      {/* Projector cone — warm crimson beam from top-center. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[70vh] opacity-60"
+        style={{
+          background:
+            'radial-gradient(ellipse 50% 100% at 50% -10%, rgba(212,50,74,0.22) 0%, rgba(212,50,74,0.08) 40%, transparent 70%)',
+        }}
+      />
+
+      {/* Anamorphic horizontal light sweep across midline. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 h-px -translate-y-1/2"
+        style={{
+          background:
+            'linear-gradient(90deg, transparent 0%, rgba(255,240,220,0.35) 50%, transparent 100%)',
+          boxShadow: '0 0 40px 4px rgba(255,220,180,0.18)',
+        }}
+      />
+
       <ParticleCascade />
+
+      {/* Falling poster-letter glyphs — non-obstructive, screen-blended. */}
+      <PosterLetterCascade />
 
       {/* Spotlight */}
       {!reduced && (
@@ -54,6 +96,11 @@ export function HeroFold() {
           style={{ background: spotlightBg }}
         />
       )}
+
+      {/* Brand mark — persistent home link, sits just below the top letterbox. */}
+      <div className="absolute left-6 top-10 z-30 md:left-10 md:top-14">
+        <BrandMark />
+      </div>
 
       {/* Letterbox bars */}
       <motion.div
