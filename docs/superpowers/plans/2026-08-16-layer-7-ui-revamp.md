@@ -4535,7 +4535,7 @@ git commit -m "perf: bundle visualizer + Lighthouse script"
 - Delete: `frontend/src/tests/unit/HeroBanner.test.tsx` (if exists)
 - Delete: `frontend/src/tests/unit/HistoryDrawer.test.tsx` (if exists)
 - Delete: `frontend/src/tests/unit/InjectControls.test.tsx` (if exists)
-- Delete: `frontend/tests/e2e/hero-flow.spec.ts`
+- Delete: `frontend/src/tests/e2e/hero-flow.spec.ts`
 
 - [ ] **Step 1: Verify no live imports remain**
 
@@ -4559,7 +4559,7 @@ cd frontend && rm -f \
   src/tests/unit/HeroBanner.test.tsx \
   src/tests/unit/HistoryDrawer.test.tsx \
   src/tests/unit/InjectControls.test.tsx \
-  tests/e2e/hero-flow.spec.ts
+  src/tests/e2e/hero-flow.spec.ts
 ```
 
 - [ ] **Step 3: Verify build + tests still pass**
@@ -4570,7 +4570,7 @@ Expected: PASS.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add -A frontend/src/App.tsx frontend/src/panels frontend/src/tests/unit frontend/tests/e2e/hero-flow.spec.ts
+git add -A frontend/src/App.tsx frontend/src/panels frontend/src/tests/unit frontend/src/tests/e2e/hero-flow.spec.ts
 git commit -m "chore: delete OpsCenter + orphaned panels (superseded by L7 routes)"
 ```
 
