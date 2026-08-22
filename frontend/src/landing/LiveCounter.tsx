@@ -16,23 +16,23 @@ export function LiveCounter() {
     { label: 'p50 detect · ms', value: Math.round(data?.p50_detection_ms ?? 0) },
   ]
   return (
-    <div className="grid grid-cols-3 gap-x-4 gap-y-6">
+    <div className="grid grid-cols-3 gap-x-6 gap-y-8">
       {stats.map((s, i) => (
         <motion.div
           key={s.label}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE, delay: i * 0.06 }}
-          className="flex flex-col items-start gap-1 overflow-hidden"
+          className="flex flex-col items-start gap-2 overflow-hidden"
         >
           <span
-            className="font-display font-light text-2xl leading-none tracking-tight md:text-3xl"
+            className="font-display font-light text-4xl leading-none tracking-tight md:text-5xl"
             style={{ fontVariantNumeric: 'tabular-nums' }}
             title={fmt.format(s.value)}
           >
             {compact(s.value)}
           </span>
-          <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-ink-soft">
+          <span className="text-[11px] font-mono uppercase tracking-[0.22em] text-ink-soft">
             {s.label}
           </span>
         </motion.div>

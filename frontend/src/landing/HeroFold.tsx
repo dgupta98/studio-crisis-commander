@@ -140,9 +140,9 @@ export function HeroFold() {
           transition={{ duration: 0.9, ease: EASE, delay: 1.4 }}
           className="flex flex-col gap-8 lg:col-span-5"
         >
-          {/* Compact telemetry card */}
-          <div className="rounded-lg border border-line bg-card/40 p-6 backdrop-blur-sm">
-            <div className="mb-4 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.28em] text-ink-soft">
+          {/* Telemetry card */}
+          <div className="rounded-lg border border-line bg-card/40 p-8 backdrop-blur-sm">
+            <div className="mb-6 flex items-center gap-3 text-xs font-mono uppercase tracking-[0.28em] text-ink-soft">
               <span className="h-px flex-1 bg-line" />
               <span>Live Telemetry</span>
               <span className="h-px flex-1 bg-line" />
@@ -152,28 +152,28 @@ export function HeroFold() {
 
           {/* Agents 2x2 */}
           <div>
-            <div className="mb-3 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.28em] text-ink-soft">
+            <div className="mb-4 flex items-center gap-3 text-xs font-mono uppercase tracking-[0.28em] text-ink-soft">
               <span className="h-px flex-1 bg-line" />
               <span>The Cast · Four Agents</span>
               <span className="h-px flex-1 bg-line" />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {AGENTS.map((a, i) => (
                 <article
                   key={a.family}
-                  className="group relative flex flex-col gap-2 overflow-hidden rounded-md border border-line bg-card/60 p-4 text-left backdrop-blur-sm transition-all hover:border-accent/50 hover:bg-card"
+                  className="group relative flex flex-col gap-3 overflow-hidden rounded-md border border-line bg-card/60 p-6 text-left backdrop-blur-sm transition-all hover:border-accent/50 hover:bg-card"
                 >
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-50"
+                    className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-60"
                     style={{ background: tokens.signal[a.family].glow }}
                   />
                   <div className="flex items-center justify-between">
                     <SignalChip family={a.family} />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-soft">0{i + 1}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">0{i + 1}</span>
                   </div>
-                  <div className="font-display text-lg tracking-tight">{a.title}</div>
-                  <div className="text-xs text-ink-soft">{a.role}</div>
+                  <div className="font-display text-2xl tracking-tight">{a.title}</div>
+                  <div className="text-sm text-ink-soft">{a.role}</div>
                 </article>
               ))}
             </div>
