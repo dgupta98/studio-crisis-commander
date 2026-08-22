@@ -1,8 +1,9 @@
-# Frontend (Layer 5)
+# Frontend (Layer 7)
 
-Cinematic-modern ops center for Studio Crisis Commander. Consumes the
-Layer 4 FastAPI backend over REST + SSE, renders the four-agent pipeline
-as a live editorial experience.
+Cinematic-modern multi-route product surface for Studio Crisis Commander.
+Consumes the FastAPI backend over REST + SSE, renders the four-agent
+pipeline as a live editorial experience across Landing, Dashboard, Movies,
+and Movie Detail routes.
 
 ## Boundaries
 
@@ -13,17 +14,20 @@ as a live editorial experience.
 
 ## Layout
 
-| File | Role |
+| Path | Role |
 | --- | --- |
-| `src/App.tsx` | `<OpsCenter>` layout shell (full-width hero, 60/40 two-col) |
+| `src/router.tsx` | React Router 6 route table (Landing, Dashboard, Movies, Movie Detail, Audit, Settings) |
+| `src/components/AppShell.tsx` | Persistent shell (top bar + left nav + `<GlobalInjectModal>`) |
+| `src/routes/*.tsx` | Route components — LandingRoute, DashboardRoute, MoviesRoute, MovieDetailRoute, AuditRoute, SettingsRoute |
+| `src/landing/*.tsx` | HeroFold, AgentsFold, HowItWorksFold, CtaFold, ParticleCascade, LiveCounter |
+| `src/panels/*.tsx` | Editorial panels — AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, AmbientTelemetry, … |
+| `src/components/` | Primitives — SignalChip, LatencyBadge, RegionFlag, MovieCard, Shelf, FeaturedHero, PanelStateWrapper |
+| `src/store/` | Zustand stores — runStore (SSE + panel state), catalogStore, signalStore |
+| `src/hooks/` | useIntakeRates, useFilm, useCachedTriple, useRegion, useReducedMotion |
 | `src/api/contracts.ts` | TS mirror of backend Pydantic contracts |
 | `src/api/client.ts` | Fetch wrapper (`apiGet`, `apiPost`) |
 | `src/api/sse.ts` | `openStream()` — EventSource wrapper |
-| `src/store/runStore.ts` | Single Zustand store: state + event routing + derived panelStates |
-| `src/theme/tokens.ts` | Newsroom-hybrid design tokens |
-| `src/motion/choreography.ts` | Framer Motion variants |
-| `src/components/PanelStateWrapper.tsx` | 5-state gate (idle / loading / success / empty / error) |
-| `src/panels/*.tsx` | 8 panels — Hero, Telemetry, Anomaly, Trace, Recommendation, Approval, Inject, History |
+| `src/theme/tokens.ts` | Signal-family color tokens (blue/pink/yellow/green + `fg` variant) |
 
 ## Running
 
@@ -71,4 +75,5 @@ gcloud run deploy scc-frontend \
 
 ## Spec
 
-`docs/superpowers/specs/2026-08-09-layer-5-frontend-dashboard-design.md`
+- Current surface: `docs/superpowers/specs/2026-08-16-layer-7-ui-revamp-design.md`
+- Original dashboard: `docs/superpowers/specs/2026-08-09-layer-5-frontend-dashboard-design.md`
