@@ -40,7 +40,7 @@ class RunState:
 
 
 class PipelineRuntime:
-    def __init__(self, *, max_runs: int = 50, max_age_seconds: float = 900.0):
+    def __init__(self, *, max_runs: int = 50, max_age_seconds: float = 3600.0):
         self._runs: dict[str, RunState] = {}
         self._decision_index: dict[str, str] = {}  # decision_id -> run_id
         self._order: deque[str] = deque()          # insertion order for eviction

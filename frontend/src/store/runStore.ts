@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type {
   SseEvent, DetectionRow, Finding, DecisionResult, ExecutiveReport,
   ApprovalStatus, AuditRow, MetricsResponse, CrisisType,
@@ -92,7 +93,9 @@ const INITIAL: Omit<RunStore, keyof {
   _closeStream: null,
 }
 
-export const useRunStore = create<RunStore>((set, _get) => ({
+export const useRunStore = create<RunStore>()(
+  persist(
+    (set, _get) => ({
   ...INITIAL,
 
   inject: async (opts) => {
@@ -286,10 +289,17 @@ export const useRunStore = create<RunStore>((set, _get) => ({
     const streamError = s.streamState === 'error'
     const streaming = s.streamState === 'streaming' || s.streamState === 'closed'
 
+    // If the pipeline completed (or we already have a final report), treat
+    // the run as fully resolved — never flip panels back to error even if
+    // the SSE connection drops afterward (Cloud Run instance replacement,
+    // browser tab suspend, or PipelineRuntime eviction).
+    const resolved = s.streamState === 'closed' || s.report !== null
+
     const panels: Record<PanelKey, PanelState> = {
+      // Data-first: show detection if we have it, error only when empty.
       hero: !hasRun ? { kind: 'idle' }
-        : streamError ? { kind: 'error', message: 'Stream disconnected', retry: s.reset }
         : s.detection ? { kind: 'success' }
+        : (streamError && !resolved) ? { kind: 'error', message: 'Stream disconnected', retry: s.reset }
         : { kind: 'loading', substatus: 'Detecting anomaly…' },
 
       telemetry:
@@ -304,15 +314,17 @@ export const useRunStore = create<RunStore>((set, _get) => ({
         : hasRun ? { kind: 'loading' }
         : { kind: 'empty', hint: 'Loading recent detections…' },
 
+      // Data-first: if we have any trace events or findings, show them.
       trace: !hasRun ? { kind: 'idle' }
-        : streamError ? { kind: 'error', message: 'Trace stream lost',
+        : (s.events.length > 0 || s.findings.length > 0) ? { kind: 'success' }
+        : (streamError && !resolved) ? { kind: 'error', message: 'Trace stream lost',
                           retry: () => s.connectStream(s.runId!) }
         : { kind: 'success' },
 
       recommendation:
         s.decision ? { kind: 'success' }
         : !hasRun ? { kind: 'idle' }
-        : streamError ? { kind: 'error', message: 'Decision stage failed', retry: s.reset }
+        : (streamError && !resolved) ? { kind: 'error', message: 'Decision stage failed', retry: s.reset }
         : { kind: 'loading', substatus: streaming ? 'Awaiting decision…' : 'Waiting…' },
 
       approval:
@@ -328,4 +340,40 @@ export const useRunStore = create<RunStore>((set, _get) => ({
     }
     set({ panelStates: panels })
   },
-}))
+    }),
+    {
+      name: 'scc-run-state',
+      // Only persist completed runs (report present) to avoid storing
+      // half-populated state from failed/in-progress pipelines. Feed data
+      // (recentDetections, metrics) is always persisted for instant load.
+      partialize: (state) => ({
+        recentDetections: state.recentDetections,
+        metrics: state.metrics,
+        ...(state.report ? {
+          runId: state.runId,
+          events: state.events,
+          detection: state.detection,
+          findings: state.findings,
+          decision: state.decision,
+          report: state.report,
+          approvalStatus: state.approvalStatus,
+          mode: state.mode,
+          latencyMs: state.latencyMs,
+        } : {}),
+      }),
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (state) {
+            // Restored from a previous session — the SSE stream is long
+            // gone, so mark the run as closed and recompute panels so the
+            // persisted data renders immediately instead of showing idle.
+            if (state.runId) {
+              useRunStore.setState({ streamState: 'closed' })
+            }
+            useRunStore.getState()._recomputePanels()
+          }
+        }
+      },
+    },
+  ),
+)
