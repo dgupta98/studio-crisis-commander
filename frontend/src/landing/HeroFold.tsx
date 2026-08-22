@@ -140,7 +140,7 @@ export function HeroFold() {
             className="rounded-full border border-line bg-card/60 px-5 py-2 text-xs font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
           >
             <span className="mr-2 inline-block h-2 w-2 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
-            Detecting data as it lands
+            Every claim cited to the row
           </motion.span>
 
           <h1 className="font-display font-bold text-5xl leading-[1.08] tracking-tight md:text-6xl xl:text-7xl">
@@ -155,8 +155,8 @@ export function HeroFold() {
             transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
             className="max-w-2xl font-body text-lg leading-relaxed text-ink-soft md:text-xl"
           >
-            Four autonomous agents pipe box office, social, reviews, and streaming into a single crisis narrative — in
-            milliseconds.
+            Four agents watch every signal. Every dollar figure carries the exact SQL that produced it. Anomaly to
+            recommendation in under 90 seconds.
           </motion.p>
 
           <motion.div

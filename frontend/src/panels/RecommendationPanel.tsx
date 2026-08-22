@@ -14,9 +14,12 @@ export function RecommendationPanel() {
   const decision = useRunStore((s) => s.decision)
   const report = useRunStore((s) => s.report)
   const [openKf, setOpenKf] = useState<number | null>(null)
+  const [openImpact, setOpenImpact] = useState<number | null>(null)
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenKf(null) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setOpenKf(null); setOpenImpact(null) }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -88,9 +91,38 @@ export function RecommendationPanel() {
                     <div className="text-sm font-mono text-ink">{a.action_type}</div>
                     <div className="text-sm text-ink-soft">{a.rationale}</div>
                     {a.impact_usd !== null && (
-                      <div className="text-xs text-ink-soft mt-1">
-                        Impact: <span className="tabular-nums">${a.impact_usd.toLocaleString()}</span>
-                      </div>
+                      a.impact_sql ? (
+                        <Popover
+                          open={openImpact === i}
+                          trigger={
+                            <button
+                              type="button"
+                              onClick={() => setOpenImpact(openImpact === i ? null : i)}
+                              aria-expanded={openImpact === i}
+                              aria-haspopup="dialog"
+                              className="mt-1 inline-flex items-center gap-1.5 rounded border border-line px-2 py-0.5 text-xs text-ink-soft hover:bg-card-alt hover:text-ink"
+                              title="Click to see the exact SQL that produced this figure"
+                            >
+                              Impact:
+                              <span className="tabular-nums text-ink">
+                                ${a.impact_usd.toLocaleString()}
+                              </span>
+                              <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
+                                view SQL
+                              </span>
+                            </button>
+                          }
+                        >
+                          <div className="mb-2 text-xs uppercase tracking-wider text-ink-soft">
+                            LLM narrates. SQL computes.
+                          </div>
+                          <SqlBlock sql={a.impact_sql} />
+                        </Popover>
+                      ) : (
+                        <div className="text-xs text-ink-soft mt-1">
+                          Impact: <span className="tabular-nums">${a.impact_usd.toLocaleString()}</span>
+                        </div>
+                      )
                     )}
                   </motion.li>
                 ))}
