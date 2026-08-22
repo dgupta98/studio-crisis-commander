@@ -4390,8 +4390,10 @@ git commit -m "test(e2e): per-route flows for dashboard, movies, detail"
 
 **Files:**
 - Modify: `frontend/src/landing/HeroFold.tsx` (respect reduced-motion for framer-motion animations if any)
-- Create: `frontend/tests/e2e/a11y.spec.ts`
+- Create: `frontend/src/tests/e2e/a11y.spec.ts`
 - Modify: `frontend/package.json` (add `@axe-core/playwright` if not present)
+
+**IMPORTANT — path correction:** The playwright config uses `testDir: 'src/tests/e2e'`. All e2e specs live under `frontend/src/tests/e2e/`, NOT `frontend/tests/e2e/`. Use the corrected path everywhere in this task.
 
 - [ ] **Step 1: Install axe**
 
@@ -4399,7 +4401,7 @@ Run: `cd frontend && npm install --save-dev @axe-core/playwright`
 
 - [ ] **Step 2: Write a11y spec**
 
-Create `frontend/tests/e2e/a11y.spec.ts`:
+Create `frontend/src/tests/e2e/a11y.spec.ts`:
 
 ```typescript
 import { test, expect } from '@playwright/test'
@@ -4422,7 +4424,7 @@ for (const path of routes) {
 
 - [ ] **Step 3: Run reduced-motion QA in Playwright**
 
-Add to `frontend/tests/e2e/a11y.spec.ts` at the bottom:
+Add to `frontend/src/tests/e2e/a11y.spec.ts` at the bottom:
 
 ```typescript
 test('reduced-motion disables particle canvas on landing', async ({ browser }) => {
@@ -4436,19 +4438,19 @@ test('reduced-motion disables particle canvas on landing', async ({ browser }) =
 
 - [ ] **Step 4: Fix any serious a11y violations**
 
-Run: `cd frontend && npx playwright test tests/e2e/a11y.spec.ts`
+Run: `cd frontend && npx playwright test src/tests/e2e/a11y.spec.ts`
 
 For each serious/critical violation, apply the minimum fix in the offending component. Common fixes: missing `aria-label` on icon-only buttons, insufficient color contrast in text on tinted backgrounds, missing `<h1>` on a route. Do not open-ended-refactor.
 
 - [ ] **Step 5: Re-run**
 
-Run: `cd frontend && npx playwright test tests/e2e/a11y.spec.ts`
+Run: `cd frontend && npx playwright test src/tests/e2e/a11y.spec.ts`
 Expected: all pass.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add frontend/package.json frontend/package-lock.json frontend/tests/e2e/a11y.spec.ts
+git add frontend/package.json frontend/package-lock.json frontend/src/tests/e2e/a11y.spec.ts
 git commit -m "test(a11y): axe scan per route + reduced-motion e2e"
 ```
 
