@@ -3,14 +3,14 @@ import { describe, it, expect } from 'vitest'
 import { tokens } from '@/theme/tokens'
 
 describe('design tokens', () => {
-  it('exposes newsroom-hybrid color palette', () => {
-    expect(tokens.color.paper).toBe('#FBFAF7')
-    expect(tokens.color.card).toBe('#FFFFFF')
-    expect(tokens.color.ink).toBe('#111111')
-    expect(tokens.color.accent).toBe('#A31621')
-    expect(tokens.color.sev.crit.bg).toBe('#E5C0BC')
-    expect(tokens.color.sev.warn.fg).toBe('#6b4a10')
-    expect(tokens.color.sev.info.bg).toBe('#E8E5DA')
+  it('exposes dark cinema color palette', () => {
+    expect(tokens.color.paper).toBe('#08080c')
+    expect(tokens.color.card).toBe('#13131a')
+    expect(tokens.color.ink).toBe('#f5f2ea')
+    expect(tokens.color.accent).toBe('#d4324a')
+    expect(tokens.color.sev.crit.bg).toBe('#3a1a1a')
+    expect(tokens.color.sev.warn.fg).toBe('#f0d9a0')
+    expect(tokens.color.sev.info.bg).toBe('#1e1e28')
   })
 
   it('exposes cinematic motion tokens', () => {
@@ -21,7 +21,7 @@ describe('design tokens', () => {
   })
 
   it('exposes type family assignments', () => {
-    expect(tokens.type.display).toContain('Georgia')
+    expect(tokens.type.display).toContain('Fraunces')
     expect(tokens.type.body).toContain('Inter')
     expect(tokens.type.mono).toContain('JetBrains Mono')
   })

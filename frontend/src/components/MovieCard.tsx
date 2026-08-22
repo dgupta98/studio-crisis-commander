@@ -26,7 +26,7 @@ export function MovieCard({ film, variant = 'data' }: Props) {
           <div className="flex h-full w-full items-center justify-center text-[10px] text-ink-soft">no poster</div>
         )}
         {film.featured && (
-          <span className="absolute left-1 top-1 rounded bg-accent/90 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-black">
+          <span className="absolute left-1 top-1 rounded bg-accent/90 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-white">
             Featured
           </span>
         )}
