@@ -41,7 +41,13 @@ interface RunStore {
   _closeStream: (() => void) | null
 
   // ─── actions ─────────────────────────────────────
-  inject: (opts?: { crisisType?: CrisisType; fallback?: 'force' }) => Promise<string>
+  inject: (opts?: {
+    crisisType?: CrisisType
+    filmId?: number
+    region?: string
+    magnitude?: number
+    fallback?: 'force'
+  }) => Promise<string>
   connectStream: (runId: string) => void
   approve: (decisionId: string, note?: string) => Promise<void>
   deny: (decisionId: string, reason: string) => Promise<void>
@@ -92,13 +98,29 @@ export const useRunStore = create<RunStore>((set, _get) => ({
   inject: async (opts) => {
     const body: Record<string, unknown> = {}
     if (opts?.crisisType) body.ctype = opts.crisisType
+    if (opts?.filmId !== undefined) body.film_id = opts.filmId
+    if (opts?.region) body.region = opts.region
+    if (opts?.magnitude !== undefined) body.magnitude = opts.magnitude
     if (opts?.fallback) body.fallback = opts.fallback
+    // Clear any prior run's residue before starting a new one so the trace/
+    // decision/report panels don't briefly show the previous investigation.
+    set({
+      runId: null,
+      events: [],
+      detection: null,
+      findings: [],
+      decision: null,
+      report: null,
+      approvalStatus: null,
+      mode: null,
+    })
     const res = await apiPost<{ run_id: string; stream_url?: string }>(
       '/inject-crisis', body,
     )
     const runId = res.run_id
     set({ runId, streamState: 'connecting' })
     useRunStore.getState().connectStream(runId)
+    useRunStore.getState()._recomputePanels()
     return runId
   },
 

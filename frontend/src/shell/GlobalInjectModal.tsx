@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { queries } from '@/api/queries'
+import { useRunStore } from '@/store/runStore'
+import type { CrisisType } from '@/api/contracts'
 
 interface Props {
   open: boolean
@@ -9,7 +12,18 @@ interface Props {
   defaultFilm?: { id: number; title: string } | null
 }
 
-const CRISIS_TYPES = ['box_office_drop', 'social_meltdown', 'review_bomb', 'streaming_spike'] as const
+// Wire values MUST match backend `data.ground_truth.CrisisType` — pipeline
+// throws KeyError on unknown values and silently falls into demo mode.
+const CRISIS_TYPES: { value: CrisisType; label: string }[] = [
+  { value: 'regional_sentiment_collapse',    label: 'Regional sentiment collapse' },
+  { value: 'trailer_variant_underperformance', label: 'Trailer variant underperformance' },
+  { value: 'competitor_release_impact',      label: 'Competitor release impact' },
+  { value: 'marketing_overspend_low_roi',    label: 'Marketing overspend, low ROI' },
+  { value: 'streaming_completion_drop',      label: 'Streaming completion drop' },
+  { value: 'refund_spike',                   label: 'Refund spike' },
+  { value: 'negative_social_virality',       label: 'Negative social virality' },
+  { value: 'review_score_divergence',        label: 'Review score divergence' },
+]
 const REGIONS = ['US', 'GB', 'DE', 'FR', 'JP', 'KR', 'CN', 'IN', 'BR', 'MX', 'AU', 'CA', 'IT', 'ES', 'RU']
 const MAX_LIST = 40
 
@@ -30,7 +44,9 @@ function flattenFilms(shelves: Shelf[] | undefined): Film[] {
 }
 
 export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) {
-  const [ctype, setCtype] = useState<typeof CRISIS_TYPES[number]>('box_office_drop')
+  const navigate = useNavigate()
+  const injectAction = useRunStore((s) => s.inject)
+  const [ctype, setCtype] = useState<CrisisType>('regional_sentiment_collapse')
   const [region, setRegion] = useState('US')
   const [magnitude, setMagnitude] = useState('0.4')
   const [busy, setBusy] = useState(false)
@@ -109,19 +125,18 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
     }
     setBusy(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/inject-crisis`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ctype,
-          film_id: filmId,
-          region,
-          magnitude: Number(magnitude),
-        }),
+      // Go through the store: sets runId, opens SSE stream, wires panels.
+      // Raw fetch here would leave AgentTrace / DashboardWorkspace idle.
+      await injectAction({
+        crisisType: ctype,
+        filmId,
+        region,
+        magnitude: Number(magnitude),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const body = await res.json()
-      window.location.href = `/dashboard?run_id=${encodeURIComponent(body.run_id)}`
+      onClose()
+      // Client-side nav preserves the store (and the live SSE connection).
+      // A hard window.location swap would wipe both.
+      navigate('/dashboard')
     } catch (e: any) {
       setErr(String(e))
       setBusy(false)
@@ -146,10 +161,10 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
           <select
             aria-label="Crisis type"
             value={ctype}
-            onChange={(e) => setCtype(e.target.value as any)}
+            onChange={(e) => setCtype(e.target.value as CrisisType)}
             className="w-full rounded border border-line bg-paper px-2 py-1.5 text-sm"
           >
-            {CRISIS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {CRISIS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </label>
 
