@@ -50,7 +50,7 @@ Run yourself:
 ## Architecture
 
 ```
-React Dashboard (Vite + Recharts + live agent trace)
+React SPA (Vite + Tailwind + Framer Motion + React Query + Zustand)
         |
 FastAPI Backend (Cloud Run, GCP us-east1)
         |
@@ -67,6 +67,24 @@ ClickHouse Cloud (GCP us-east1, 50M+ rows)
   box_office | streaming | trailer | marketing
   sentiment  | regional  | refunds | social
 ```
+
+## Routes
+
+- `/` — Landing (particle cascade, live counters, hero, 4-agent fold, CTAs)
+- `/dashboard` — Real-time crisis workspace (intake strip, anomaly feed, investigation/recommendation/approval tabs, persistent agent trace, telemetry)
+- `/movies` — Netflix-style shelves (featured cached investigations, trending in region, recent detections, social storms, streaming climbers, all films)
+- `/movies/:id` — Movie detail (hero, latest investigation, persistent agent trace, past runs, ambient telemetry)
+- `/audit` — Historical crisis log
+- `/settings` — Config
+
+## Screenshots
+
+| Route | Preview |
+|---|---|
+| `/` | ![Landing](docs/screenshots/landing.png) |
+| `/dashboard` | ![Dashboard](docs/screenshots/dashboard.png) |
+| `/movies` | ![Movies](docs/screenshots/movies.png) |
+| `/movies/:id` | ![Movie Detail](docs/screenshots/movie-detail.png) |
 
 ---
 
