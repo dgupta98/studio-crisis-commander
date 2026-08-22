@@ -343,23 +343,23 @@ export const useRunStore = create<RunStore>()(
     }),
     {
       name: 'scc-run-state',
-      // Only persist completed runs (report present) to avoid storing
-      // half-populated state from failed/in-progress pipelines. Feed data
-      // (recentDetections, metrics) is always persisted for instant load.
+      // Persist everything the UI needs to reconstruct panels after a
+      // refresh / tab-suspend / Cloud Run instance replacement — including
+      // in-flight runs (any triggered inject should survive), the audit
+      // history (RecentRuns hydrates instantly), and cached feed data.
       partialize: (state) => ({
+        runId: state.runId,
+        events: state.events,
+        detection: state.detection,
+        findings: state.findings,
+        decision: state.decision,
+        report: state.report,
+        approvalStatus: state.approvalStatus,
+        mode: state.mode,
+        latencyMs: state.latencyMs,
         recentDetections: state.recentDetections,
+        auditRows: state.auditRows,
         metrics: state.metrics,
-        ...(state.report ? {
-          runId: state.runId,
-          events: state.events,
-          detection: state.detection,
-          findings: state.findings,
-          decision: state.decision,
-          report: state.report,
-          approvalStatus: state.approvalStatus,
-          mode: state.mode,
-          latencyMs: state.latencyMs,
-        } : {}),
       }),
       onRehydrateStorage: () => {
         return (state) => {

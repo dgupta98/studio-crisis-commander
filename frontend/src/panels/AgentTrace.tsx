@@ -4,6 +4,7 @@ import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { SqlBlock } from '@/components/SqlBlock'
 import { PanelStateWrapper } from '@/components/PanelStateWrapper'
+import type { PanelState } from '@/store/runStore'
 import { listStagger, traceRowEnter } from '@/motion/choreography'
 import { regionLabel } from '@/lib/regions'
 import type {
@@ -309,9 +310,21 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
   return null
 }
 
-export function AgentTrace() {
+export function AgentTrace({ filmId }: { filmId?: number } = {}) {
   const state = useRunStore((s) => s.panelStates.trace)
-  const events = useRunStore((s) => s.events)
+  const allEvents = useRunStore((s) => s.events)
+  const detection = useRunStore((s) => s.detection)
+
+  // When mounted inside Movie Detail, the trace must scope to THIS film.
+  // The store is a global singleton, so an active run for film A would
+  // otherwise bleed into every /movies/B page. We hide events unless the
+  // current run's detection matches, and show a targeted empty state.
+  const isScoped = typeof filmId === 'number'
+  const scopedMatch = isScoped && detection?.film_id === filmId
+  const events = !isScoped || scopedMatch ? allEvents : []
+  const effectiveState: PanelState = isScoped && !scopedMatch
+    ? { kind: 'empty', hint: 'No live run for this film yet — press Inject Crisis to start one.' }
+    : state
 
   const grouped = useMemo(() => {
     const g: Record<Stage, SseEvent[]> = {
@@ -337,7 +350,7 @@ export function AgentTrace() {
   }, [events.length])
 
   return (
-    <PanelStateWrapper state={state} label="Agent Trace" idleLabel="Idle · press Inject to begin">
+    <PanelStateWrapper state={effectiveState} label="Agent Trace" idleLabel="Idle · press Inject to begin">
       {/* Fixed viewport so trace can't stretch the page as events stream in.
           Header stays put; only the event list scrolls. */}
       <Card data-testid="agent-trace" className="p-4 flex flex-col h-[calc(100vh-14rem)] min-h-[480px] max-h-[820px]">

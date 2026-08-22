@@ -35,7 +35,7 @@ export default function MovieDetailRoute() {
       <div className="grid gap-6 px-6 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-6">
           <LatestInvestigation triple={investigation} />
-          <PersistentAgentTrace />
+          <PersistentAgentTrace filmId={id} />
           <RunTimeline runs={runList} />
         </div>
         <div className="flex flex-col gap-6">
