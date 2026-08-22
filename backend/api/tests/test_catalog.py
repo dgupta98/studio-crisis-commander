@@ -33,10 +33,6 @@ def test_catalog_shelves_shape(monkeypatch):
         "FROM films":                    [(1, "Alpha", 0.0, "")],
         # trending_region uses `FROM films f JOIN box_office_revenue b`
         "FROM films f JOIN box_office_revenue": [(1, "Alpha", 200.0, "US")],
-        # recent_detections
-        "FROM detections d JOIN films f":       [(1, "Alpha", 3.2, "US")],
-        # social_storms
-        "FROM social_trends s JOIN films f":    [(1, "Alpha", 42.0, "US")],
         # streaming climbers
         "FROM streaming_watch_minutes st JOIN films f": [(1, "Alpha", 999.0, "US")],
     })
@@ -54,9 +50,8 @@ def test_catalog_shelves_shape(monkeypatch):
             assert r.status_code == 200
             body = r.json()
             ids = [s["id"] for s in body]
-            # region provided → trending_region present; all six shelves in order
-            assert ids == ["featured", "trending_region", "recent_detections",
-                           "social_storms", "streaming", "all"]
+            # region provided → trending_region present; remaining shelves in order
+            assert ids == ["featured", "trending_region", "streaming", "all"]
             for shelf in body:
                 assert isinstance(shelf["films"], list) and shelf["films"], \
                     f"shelf {shelf['id']} unexpectedly empty"

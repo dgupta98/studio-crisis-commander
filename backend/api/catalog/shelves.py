@@ -219,45 +219,7 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
                 "films": _topup(c, trend_cards),
             })
 
-        # Shelf 3 — Recent detections (window from max(metric_ts)).
-        recent = [
-            _to_card(r) for r in _query_rows(
-                c,
-                "SELECT f.film_id, f.title, max(d.magnitude) AS delta, "
-                "any(d.region) AS region "
-                "FROM detections d JOIN films f ON d.film_id = f.film_id "
-                "WHERE d.metric_ts >= coalesce("
-                "  (SELECT max(metric_ts) FROM detections), now()) - INTERVAL 1 DAY "
-                "GROUP BY f.film_id, f.title "
-                "ORDER BY delta DESC LIMIT 12"
-            )
-        ]
-        shelves.append({
-            "id": "recent_detections",
-            "title": "Recent detections",
-            "films": _topup(c, recent),
-        })
-
-        # Shelf 4 — Social storms (window from max(ts)).
-        social = [
-            _to_card(r) for r in _query_rows(
-                c,
-                "SELECT f.film_id, f.title, sum(s.mentions) AS delta, "
-                "any(s.region) AS region "
-                "FROM social_trends s JOIN films f ON s.film_id = f.film_id "
-                "WHERE s.ts >= coalesce("
-                "  (SELECT max(ts) FROM social_trends), now()) - INTERVAL 3 DAY "
-                "GROUP BY f.film_id, f.title "
-                "ORDER BY delta DESC LIMIT 12"
-            )
-        ]
-        shelves.append({
-            "id": "social_storms",
-            "title": "Social storms",
-            "films": _topup(c, social),
-        })
-
-        # Shelf 5 — Streaming climbers (window from max(ts)).
+        # Shelf 3 — Streaming climbers (window from max(ts)).
         streaming = [
             _to_card(r) for r in _query_rows(
                 c,
