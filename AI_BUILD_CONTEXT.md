@@ -122,13 +122,15 @@ studio-crisis-commander/
 │   │   └── generator.py
 │   ├── main.py
 │   └── requirements.txt
-├── frontend/
-│   └── src/components/
-│       ├── Dashboard.jsx
-│       ├── AgentTrace.jsx
-│       ├── AnomalyFeed.jsx
-│       ├── RecommendPanel.jsx
-│       └── InjectCrisis.jsx
+├── frontend/                # React 18 + Vite + TS + Tailwind + Framer Motion + Zustand + React Router + React Query
+│   └── src/
+│       ├── routes/          # Landing, Dashboard, Movies, MovieDetail, Audit, Settings
+│       ├── landing/         # HeroFold, AgentsFold, HowItWorks, CtaFold, ParticleCascade, LiveCounter
+│       ├── panels/          # AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, AmbientTelemetry
+│       ├── components/      # AppShell, TopBar, GlobalInjectModal, SignalChip, LatencyBadge, RegionFlag, MovieCard, Shelf, FeaturedHero
+│       ├── store/           # runStore, catalogStore, signalStore
+│       ├── hooks/           # useIntakeRates, useFilm, useCachedTriple, useRegion, useReducedMotion
+│       └── router.tsx
 ├── eval/
 │   └── harness.py
 ├── .env.example

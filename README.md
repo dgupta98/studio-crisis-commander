@@ -109,30 +109,38 @@ ClickHouse Cloud (GCP us-east1, 50M+ rows)
 
 ```
 studio-crisis-commander/
-├── backend/
+├── backend/                       # FastAPI + Google ADK + Gemini
 │   ├── agents/
-│   │   ├── detection_agent.py
-│   │   ├── investigation_agent.py
-│   │   ├── decision_agent.py
-│   │   └── report_agent.py
-│   ├── mcp/
-│   │   └── clickhouse_mcp.py
-│   ├── data/
-│   │   ├── schema.sql
-│   │   └── generator.py
-│   ├── main.py
+│   │   ├── detection/             # pure-SQL MAD-Z, no LLM
+│   │   ├── investigation/         # 4 grounded sub-agents via mcp-clickhouse
+│   │   ├── decision/              # ranked actions with impact_sql provenance
+│   │   └── report/                # executive brief + provenance validator
+│   ├── mcp_integration/           # mcp-clickhouse client wrapper
+│   ├── data/                      # schema.sql, generators, crisis injector
+│   ├── api/
+│   │   ├── main.py                # FastAPI app + eval_cache static mount
+│   │   ├── routers/               # detections, inject, stream, intake, stats, catalog, metrics, audit
+│   │   ├── pipeline.py            # PipelineRuntime + SSE stream
+│   │   ├── runtime.py
+│   │   └── cached/fallback_triple.json
+│   ├── Dockerfile
 │   └── requirements.txt
-├── frontend/
-│   └── src/components/
-│       ├── Dashboard.jsx
-│       ├── AgentTrace.jsx
-│       ├── AnomalyFeed.jsx
-│       ├── RecommendPanel.jsx
-│       └── InjectCrisis.jsx
-├── eval/
-│   └── harness.py
+├── frontend/                      # React 18 + Vite + TS + Tailwind + Framer Motion + Zustand
+│   └── src/
+│       ├── routes/                # LandingRoute, DashboardRoute, MoviesRoute, MovieDetailRoute, AuditRoute, SettingsRoute
+│       ├── landing/               # HeroFold, AgentsFold, HowItWorksFold, CtaFold, ParticleCascade, LiveCounter
+│       ├── panels/                # AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, AmbientTelemetry, ...
+│       ├── components/            # AppShell, TopBar, GlobalInjectModal, SignalChip, LatencyBadge, RegionFlag, MovieCard, Shelf, FeaturedHero, PanelStateWrapper, primitives
+│       ├── store/                 # runStore, catalogStore, signalStore (Zustand)
+│       ├── hooks/                 # useIntakeRates, useFilm, useCachedTriple, useRegion, useReducedMotion
+│       ├── api/                   # contracts, queries (React Query), openStream
+│       ├── router.tsx             # React Router 6 routes
+│       └── theme/tokens.ts        # signal-family color tokens
+├── data/
+│   └── eval_cache/                # pre-run investigation triples for featured films
+├── scripts/                       # deploy_{frontend,backend,all}.sh, eval_{live,replay,record}.py, lighthouse.sh, preflight.sh, ...
+├── docs/                          # devpost.md, video_beats.md, superpowers/{specs,plans}
 ├── .env.example
-├── .gitignore
 ├── LICENSE
 └── README.md
 ```
