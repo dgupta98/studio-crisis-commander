@@ -40,15 +40,16 @@ function initial(title: string): string {
 
 function pickItems(shelves: Shelf[] | undefined, count: number): Item[] {
   if (!shelves) return []
-  const seenLetters = new Set<string>()
   const seenIds = new Set<number>()
   const out: Item[] = []
+  // Dedupe on film id only — repeating the same initial with a different
+  // poster is desirable at this density (18 items). Skipping-by-letter
+  // would starve the cascade well before we hit `count`.
   for (const shelf of shelves) {
     for (const f of shelf.films ?? []) {
       if (!f.poster_url || seenIds.has(f.id)) continue
       const l = initial(f.title)
-      if (!l || seenLetters.has(l)) continue
-      seenLetters.add(l)
+      if (!l) continue
       seenIds.add(f.id)
       out.push({ key: `${f.id}-${l}`, letter: l, poster: f.poster_url, title: f.title })
       if (out.length >= count) return out
@@ -60,14 +61,24 @@ function pickItems(shelves: Shelf[] | undefined, count: number): Item[] {
 // Deterministic spread across the horizontal + varied durations, so the
 // scene feels curated rather than random on each render.
 const LANES = [
-  { left: '6%',  size: 'clamp(160px, 20vw, 340px)', dur: 26, delay: -3,  rot: 12  },
-  { left: '20%', size: 'clamp(140px, 16vw, 280px)', dur: 32, delay: -12, rot: -18 },
-  { left: '33%', size: 'clamp(180px, 22vw, 380px)', dur: 28, delay: -22, rot: 15  },
-  { left: '48%', size: 'clamp(140px, 17vw, 300px)', dur: 34, delay: -8,  rot: -10 },
-  { left: '62%', size: 'clamp(170px, 21vw, 360px)', dur: 30, delay: -18, rot: 20  },
-  { left: '76%', size: 'clamp(140px, 16vw, 280px)', dur: 36, delay: -5,  rot: -14 },
-  { left: '88%', size: 'clamp(160px, 19vw, 320px)', dur: 29, delay: -25, rot: 8   },
-  { left: '55%', size: 'clamp(120px, 14vw, 240px)', dur: 40, delay: -32, rot: -22 },
+  { left: '3%',  size: 'clamp(70px,  8vw,  140px)', dur: 30, delay: -3,  rot: 10  },
+  { left: '11%', size: 'clamp(55px,  6vw,  110px)', dur: 38, delay: -14, rot: -14 },
+  { left: '18%', size: 'clamp(80px,  9vw,  160px)', dur: 32, delay: -22, rot: 16  },
+  { left: '25%', size: 'clamp(60px,  7vw,  120px)', dur: 42, delay: -6,  rot: -8  },
+  { left: '32%', size: 'clamp(75px, 8.5vw, 150px)', dur: 34, delay: -28, rot: 18  },
+  { left: '39%', size: 'clamp(55px,  6vw,  110px)', dur: 40, delay: -10, rot: -12 },
+  { left: '46%', size: 'clamp(80px,  9vw,  160px)', dur: 36, delay: -19, rot: 14  },
+  { left: '53%', size: 'clamp(60px, 6.5vw, 120px)', dur: 44, delay: -33, rot: -20 },
+  { left: '60%', size: 'clamp(70px,  8vw,  140px)', dur: 32, delay: -8,  rot: 12  },
+  { left: '67%', size: 'clamp(55px,  6vw,  110px)', dur: 38, delay: -25, rot: -16 },
+  { left: '74%', size: 'clamp(80px,  9vw,  160px)', dur: 30, delay: -12, rot: 20  },
+  { left: '81%', size: 'clamp(60px, 6.5vw, 125px)', dur: 42, delay: -30, rot: -10 },
+  { left: '88%', size: 'clamp(75px, 8.5vw, 145px)', dur: 34, delay: -16, rot: 14  },
+  { left: '95%', size: 'clamp(55px,  6vw,  110px)', dur: 40, delay: -4,  rot: -18 },
+  { left: '15%', size: 'clamp(50px, 5.5vw, 100px)', dur: 46, delay: -20, rot: 22  },
+  { left: '42%', size: 'clamp(50px, 5.5vw, 100px)', dur: 48, delay: -36, rot: -22 },
+  { left: '70%', size: 'clamp(50px, 5.5vw, 100px)', dur: 44, delay: -2,  rot: 8   },
+  { left: '85%', size: 'clamp(50px, 5.5vw, 100px)', dur: 50, delay: -26, rot: -6  },
 ]
 
 export function PosterLetterCascade() {
@@ -110,8 +121,8 @@ export function PosterLetterCascade() {
                 backgroundClip: 'text',
                 color: 'transparent',
                 WebkitTextFillColor: 'transparent',
-                opacity: 0.22,
-                filter: 'contrast(1.15) saturate(1.25) drop-shadow(0 0 24px rgba(212,50,74,0.25))',
+                opacity: 0.13,
+                filter: 'contrast(1.1) saturate(1.15) drop-shadow(0 0 18px rgba(212,50,74,0.18))',
               }}
             >
               {item.letter}
