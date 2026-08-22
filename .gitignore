@@ -254,3 +254,6 @@ data/eval_runs/*.json
 # Playwright artifacts
 frontend/test-results/
 frontend/playwright-report/
+
+# Lighthouse reports — generated on-demand for human review
+reports/
