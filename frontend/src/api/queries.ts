@@ -33,6 +33,16 @@ export const queries = {
     queryFn: () => json<unknown>(`/catalog/films/${filmId}`),
     staleTime: 30_000,
   }),
+  filmLatestInvestigation: (filmId: number) => ({
+    queryKey: ['catalog', 'film', filmId, 'latest'] as const,
+    queryFn: () => json<unknown>(`/catalog/films/${filmId}/latest-investigation`),
+    staleTime: 30_000,
+  }),
+  filmRuns: (filmId: number) => ({
+    queryKey: ['catalog', 'film', filmId, 'runs'] as const,
+    queryFn: () => json<unknown[]>(`/catalog/films/${filmId}/runs`),
+    staleTime: 30_000,
+  }),
 }
 
 export function prefetchDashboard(qc: QueryClient): void {

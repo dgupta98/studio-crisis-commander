@@ -135,13 +135,46 @@ def _attach_posters(cards_by_shelf: list[list[dict[str, Any]]]) -> None:
             card["poster_url"] = _poster_for(int(card["id"]), tmdb_lookup)
 
 
+MIN_SHELF_CARDS = 4
+
+
+def _popular_films(c: Any, exclude: set[int], want: int) -> list[dict[str, Any]]:
+    """Popularity-ranked filler for shelves that came back sparse.
+
+    Every shelf on the Movies index needs to look populated for the demo; if
+    a signal-driven query returns fewer than MIN_SHELF_CARDS rows (common
+    when synthetic data is older than the shelf's time window), we top it up
+    from the ordered popularity list. Excludes ids already on the shelf.
+    """
+    if want <= 0:
+        return []
+    excl = ",".join(str(int(x)) for x in exclude) or "0"
+    rows = _query_rows(
+        c,
+        f"SELECT film_id, title, 0.0 AS delta, '' AS region FROM films "
+        f"WHERE film_id NOT IN ({excl}) "
+        f"ORDER BY popularity DESC LIMIT {int(want)}"
+    )
+    return [_to_card(r) for r in rows]
+
+
+def _topup(c: Any, cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(cards) >= MIN_SHELF_CARDS:
+        return cards
+    ids = {int(x["id"]) for x in cards}
+    filler = _popular_films(c, exclude=ids, want=MIN_SHELF_CARDS - len(cards))
+    return cards + filler
+
+
 def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
     shelves: list[dict[str, Any]] = []
     featured_film_ids = set(_cached_film_map().keys())
 
     with client() as c:
-        # Shelf 1 — Featured (films with pre-recorded triples in eval_cache).
-        # Order by popularity so the strongest posters lead the row.
+        # Shelf 1 — Featured.
+        # If eval_cache/*.json is bundled, prefer those (pre-recorded triples
+        # mean Movie Detail can mount instantly). If not (current prod image),
+        # fall back to popular films so the shelf isn't empty.
         if featured_film_ids:
             ids_list = ",".join(str(int(x)) for x in featured_film_ids)
             featured_films = [
@@ -153,7 +186,7 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
                 )
             ]
         else:
-            featured_films = []
+            featured_films = _popular_films(c, exclude=set(), want=8)
         for f in featured_films:
             f["featured"] = True
         shelves.append({
@@ -162,16 +195,20 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
             "films": featured_films,
         })
 
-        # Shelf 2 — Trending in region (last 7 days of box_office_revenue)
+        # Shelf 2 — Trending in region. Anchor on max(date) for the region,
+        # not today(), so the shelf populates even when synthetic data is
+        # older than 7 days (same fix pattern as /detections).
         if region:
             safe_region = region.replace("'", "''")
-            trend = [
+            trend_cards = [
                 _to_card(r) for r in _query_rows(
                     c,
                     f"SELECT f.film_id, f.title, "
                     f"sum(b.revenue_usd) AS delta, '{safe_region}' AS region "
                     f"FROM films f JOIN box_office_revenue b ON f.film_id = b.film_id "
-                    f"WHERE b.region = '{safe_region}' AND b.date >= today() - 7 "
+                    f"WHERE b.region = '{safe_region}' AND b.date >= coalesce("
+                    f"  (SELECT max(date) FROM box_office_revenue "
+                    f"    WHERE region = '{safe_region}'), today()) - 7 "
                     f"GROUP BY f.film_id, f.title "
                     f"ORDER BY delta DESC LIMIT 12"
                 )
@@ -179,17 +216,18 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
             shelves.append({
                 "id": "trending_region",
                 "title": f"Trending in {region}",
-                "films": trend,
+                "films": _topup(c, trend_cards),
             })
 
-        # Shelf 3 — Recent detections (last 24h)
+        # Shelf 3 — Recent detections (window from max(metric_ts)).
         recent = [
             _to_card(r) for r in _query_rows(
                 c,
                 "SELECT f.film_id, f.title, max(d.magnitude) AS delta, "
                 "any(d.region) AS region "
                 "FROM detections d JOIN films f ON d.film_id = f.film_id "
-                "WHERE d.metric_ts >= now() - INTERVAL 1 DAY "
+                "WHERE d.metric_ts >= coalesce("
+                "  (SELECT max(metric_ts) FROM detections), now()) - INTERVAL 1 DAY "
                 "GROUP BY f.film_id, f.title "
                 "ORDER BY delta DESC LIMIT 12"
             )
@@ -197,17 +235,18 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
         shelves.append({
             "id": "recent_detections",
             "title": "Recent detections",
-            "films": recent,
+            "films": _topup(c, recent),
         })
 
-        # Shelf 4 — Social storms (last 3 days of social_trends.mentions)
+        # Shelf 4 — Social storms (window from max(ts)).
         social = [
             _to_card(r) for r in _query_rows(
                 c,
                 "SELECT f.film_id, f.title, sum(s.mentions) AS delta, "
                 "any(s.region) AS region "
                 "FROM social_trends s JOIN films f ON s.film_id = f.film_id "
-                "WHERE s.ts >= now() - INTERVAL 3 DAY "
+                "WHERE s.ts >= coalesce("
+                "  (SELECT max(ts) FROM social_trends), now()) - INTERVAL 3 DAY "
                 "GROUP BY f.film_id, f.title "
                 "ORDER BY delta DESC LIMIT 12"
             )
@@ -215,17 +254,18 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
         shelves.append({
             "id": "social_storms",
             "title": "Social storms",
-            "films": social,
+            "films": _topup(c, social),
         })
 
-        # Shelf 5 — Streaming climbers (last 7 days watch_minutes)
+        # Shelf 5 — Streaming climbers (window from max(ts)).
         streaming = [
             _to_card(r) for r in _query_rows(
                 c,
                 "SELECT f.film_id, f.title, sum(st.watch_minutes) AS delta, "
                 "any(st.region) AS region "
                 "FROM streaming_watch_minutes st JOIN films f ON st.film_id = f.film_id "
-                "WHERE st.ts >= now() - INTERVAL 7 DAY "
+                "WHERE st.ts >= coalesce("
+                "  (SELECT max(ts) FROM streaming_watch_minutes), now()) - INTERVAL 7 DAY "
                 "GROUP BY f.film_id, f.title "
                 "ORDER BY delta DESC LIMIT 12"
             )
@@ -233,10 +273,10 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
         shelves.append({
             "id": "streaming",
             "title": "Streaming climbers",
-            "films": streaming,
+            "films": _topup(c, streaming),
         })
 
-        # Shelf 6 — Full catalog (paginated in later task; first page here)
+        # Shelf 6 — Full catalog (first page of newest releases).
         full = [
             _to_card(r) for r in _query_rows(
                 c,

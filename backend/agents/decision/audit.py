@@ -222,6 +222,21 @@ def list_recent_audit(limit: int = 50) -> list[AuditRow]:
     return [_row_to_audit(r) for r in rows]
 
 
+def list_recent_audit_for_film(film_id: int, limit: int = 10) -> list[AuditRow]:
+    """Newest completed runs for a specific film, most recent first."""
+    sql = (
+        "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
+        "region, actions_json, status, threshold_usd, agent_run_json, "
+        "report_json, approval_status, approver, approval_note, "
+        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "FROM decision_audit FINAL "
+        f"WHERE film_id = {int(film_id)} "
+        f"ORDER BY updated_at DESC LIMIT {int(limit)}"
+    )
+    rows = asyncio.run(_run_read(sql))
+    return [_row_to_audit(r) for r in rows]
+
+
 def get_audit(decision_id: str) -> AuditRow | None:
     sql = (
         "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "

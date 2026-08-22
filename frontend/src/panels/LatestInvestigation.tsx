@@ -38,7 +38,7 @@ export function LatestInvestigation({ triple }: Props) {
         </span>
       </div>
       <h2 className="font-display text-xl tracking-tight text-ink">{rep.headline ?? '—'}</h2>
-      {rep.body && <p className="text-sm text-ink-soft">{rep.body}</p>}
+      {(rep.tldr || rep.body) && <p className="text-sm text-ink-soft">{rep.tldr ?? rep.body}</p>}
       {Array.isArray(dec.recommended_actions) && dec.recommended_actions.length > 0 && (
         <ul className="flex flex-col gap-1 border-t border-line pt-3">
           {dec.recommended_actions.map((a: any, i: number) => (
