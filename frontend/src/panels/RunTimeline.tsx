@@ -12,7 +12,11 @@ export function RunTimeline({ runs }: { runs: Run[] }) {
   }
   return (
     <section className="flex flex-col gap-2">
+<<<<<<< HEAD
       <h3 className="px-1 font-body text-sm font-semibold tracking-tight text-ink">Past runs</h3>
+=======
+      <h3 className="px-1 font-display text-sm font-semibold tracking-tight text-ink">Past runs</h3>
+>>>>>>> 5625b8c (font changes)
       <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-card">
         {runs.map((r) => (
           <li key={r.run_id} className="flex items-center justify-between px-3 py-2 text-xs">

@@ -21,7 +21,7 @@ describe('design tokens', () => {
   })
 
   it('exposes type family assignments', () => {
-    expect(tokens.type.display).toContain('Fraunces')
+    expect(tokens.type.display).toContain('Inter')
     expect(tokens.type.body).toContain('Inter')
     expect(tokens.type.mono).toContain('JetBrains Mono')
   })

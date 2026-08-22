@@ -143,7 +143,7 @@ export function HeroFold() {
             Detecting data as it lands
           </motion.span>
 
-          <h1 className="font-display font-light text-6xl leading-[1.02] tracking-tight md:text-7xl xl:text-8xl">
+          <h1 className="font-display font-bold text-5xl leading-[1.08] tracking-tight md:text-6xl xl:text-7xl">
             <RevealLine words={HEADLINE_LINE_1} delay={0.7} reduced={reduced} />
             <br />
             <RevealLine words={HEADLINE_LINE_2} delay={1.15} reduced={reduced} accentLast />
@@ -219,7 +219,7 @@ export function HeroFold() {
                     <SignalChip family={a.family} />
                     <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">0{i + 1}</span>
                   </div>
-                  <div className="font-display text-2xl tracking-tight">{a.title}</div>
+                  <div className="font-display text-xl font-semibold tracking-tight text-ink">{a.title}</div>
                   <div className="text-sm text-ink-soft">{a.role}</div>
                 </article>
               ))}

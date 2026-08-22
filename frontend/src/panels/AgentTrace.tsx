@@ -350,7 +350,7 @@ export function AgentTrace() {
               .filter((s) => grouped[s].length > 0)
               .map((s) => (
                 <motion.section key={s} variants={traceRowEnter}>
-                  <h3 className="font-display text-2xl tracking-tight text-ink mb-2">{s}</h3>
+                  <h3 className="font-display text-lg font-semibold tracking-tight text-ink mb-2">{s}</h3>
                   <motion.ul variants={listStagger} initial="hidden" animate="visible" className="space-y-2">
                     {grouped[s].map((e) => (
                       <motion.li key={e.seq} variants={traceRowEnter} className="border-l-2 border-line pl-3">

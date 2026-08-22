@@ -26,7 +26,7 @@ export function LiveCounter() {
           className="flex flex-col items-start gap-2 overflow-hidden"
         >
           <span
-            className="font-display font-light text-4xl leading-none tracking-tight md:text-5xl"
+            className="font-display font-bold text-3xl leading-none tracking-tight md:text-4xl text-ink"
             style={{ fontVariantNumeric: 'tabular-nums' }}
             title={fmt.format(s.value)}
           >

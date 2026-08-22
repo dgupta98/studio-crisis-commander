@@ -39,7 +39,7 @@ export function MovieHero({ film, onInject }: Props) {
             Released {film.release_date}
           </span>
         </div>
-        <h1 className="font-display text-3xl tracking-tight">{film.title}</h1>
+        <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-ink">{film.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
           {FAMILIES.map((family) => (
             <div key={family} className="flex items-center gap-1">

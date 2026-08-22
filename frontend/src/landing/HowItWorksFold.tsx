@@ -44,9 +44,9 @@ export function HowItWorksFold() {
           transition={{ duration: 0.9, ease: EASE }}
           className="text-center"
         >
-          <span className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent">The Sequence</span>
-          <h2 className="mt-3 font-display font-light text-4xl tracking-tight md:text-6xl">
-            How it <span className="italic">works.</span>
+          <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">The Sequence</span>
+          <h2 className="mt-3 font-display font-bold text-3xl tracking-tight md:text-5xl">
+            How it <span className="text-accent">works.</span>
           </h2>
         </motion.div>
 
@@ -63,14 +63,14 @@ export function HowItWorksFold() {
               {/* Big translucent numeral in the background */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute -left-4 -top-8 select-none font-display text-[8rem] font-thin leading-none opacity-[0.06]"
+                className="pointer-events-none absolute -left-4 -top-8 select-none font-display text-[8rem] font-black leading-none opacity-[0.04]"
                 style={{ color: tokens.signal[s.family].hex }}
               >
                 {s.n}
               </span>
 
               <div
-                className="flex h-10 w-10 items-center justify-center rounded-full border font-mono text-xs"
+                className="flex h-10 w-10 items-center justify-center rounded-full border font-mono text-xs font-semibold"
                 style={{
                   borderColor: tokens.signal[s.family].hex,
                   color: tokens.signal[s.family].hex,
@@ -79,8 +79,13 @@ export function HowItWorksFold() {
               >
                 {s.n}
               </div>
+<<<<<<< HEAD
               <h3 className="font-display font-light text-2xl tracking-tight md:text-3xl">{s.title}</h3>
               <p className="font-body text-sm leading-relaxed text-ink-soft md:text-base">{s.body}</p>
+=======
+              <h3 className="font-display font-semibold text-xl tracking-tight md:text-2xl text-ink">{s.title}</h3>
+              <p className="text-sm leading-relaxed text-ink-soft md:text-base">{s.body}</p>
+>>>>>>> 5625b8c (font changes)
             </motion.div>
           ))}
         </div>

@@ -38,7 +38,7 @@ export function FeaturedHero({ films, intervalMs = 6000 }: Props) {
         <span className="rounded bg-accent/20 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-accent w-fit">
           Featured investigation
         </span>
-        <h2 className="font-display text-4xl tracking-tight text-ink">{film.title}</h2>
+        <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight text-ink">{film.title}</h2>
         <Link
           to={`/movies/${film.id}`}
           className="w-fit rounded-md border border-accent bg-accent/10 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/20"

@@ -22,7 +22,7 @@ export function BrandMark({ to = '/', compact = false, className = '' }: Props) 
       className={`group inline-flex items-center gap-3 ${className}`}
     >
       <span
-        className="relative flex h-11 w-11 items-center justify-center rounded-md border border-accent/70 bg-black/40 font-display text-[15px] font-medium tracking-[0.06em] text-accent shadow-[0_0_24px_rgba(212,50,74,0.35)] backdrop-blur-sm transition-all group-hover:border-accent group-hover:shadow-[0_0_32px_rgba(212,50,74,0.6)]"
+        className="relative flex h-11 w-11 items-center justify-center rounded-md border border-accent/70 bg-black/40 font-display text-[15px] font-bold tracking-[0.06em] text-accent shadow-[0_0_24px_rgba(212,50,74,0.35)] backdrop-blur-sm transition-all group-hover:border-accent group-hover:shadow-[0_0_32px_rgba(212,50,74,0.6)]"
       >
         SCC
         <span

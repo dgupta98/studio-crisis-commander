@@ -18,8 +18,8 @@ export const tokens = {
     },
   },
   type: {
-    display: '"Fraunces", Georgia, "Times New Roman", serif',
-    body: 'Inter, ui-sans-serif, system-ui, sans-serif',
+    display: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif',
+    body: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif',
     mono: '"JetBrains Mono", Menlo, Consolas, monospace',
   },
   motion: {

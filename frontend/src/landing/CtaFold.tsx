@@ -26,9 +26,9 @@ export function CtaFold() {
         transition={{ duration: 0.9, ease: EASE }}
         className="mx-auto flex max-w-4xl flex-col items-center gap-8 px-6 text-center"
       >
-        <span className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent">Now Showing</span>
-        <h2 className="font-display font-light text-5xl leading-[1.05] tracking-tight md:text-7xl">
-          Watch it happen <span className="italic text-accent">live.</span>
+        <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">Now Showing</span>
+        <h2 className="font-display font-bold text-4xl leading-[1.08] tracking-tight md:text-6xl text-ink">
+          Watch it happen <span className="text-accent">live.</span>
         </h2>
         <p className="max-w-xl font-body text-base text-ink-soft md:text-lg">
           Four agents, five endpoints, one dashboard. Every dollar figure links to the query that produced it.

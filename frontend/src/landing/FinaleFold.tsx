@@ -47,9 +47,9 @@ export function FinaleFold() {
           transition={{ duration: 0.8, ease: EASE }}
           className="text-center"
         >
-          <span className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent">The Sequence</span>
-          <h2 className="mt-2 font-display font-light text-4xl leading-tight tracking-tight md:text-6xl">
-            How it <span className="italic">works.</span>
+          <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">The Sequence</span>
+          <h2 className="mt-2 font-display font-bold text-3xl leading-tight tracking-tight md:text-5xl">
+            How it <span className="text-accent">works.</span>
           </h2>
         </motion.div>
 
@@ -65,7 +65,7 @@ export function FinaleFold() {
               className="relative flex flex-col gap-3"
             >
               <div
-                className="flex h-10 w-10 items-center justify-center rounded-full border font-mono text-xs"
+                className="flex h-10 w-10 items-center justify-center rounded-full border font-mono text-xs font-semibold"
                 style={{
                   borderColor: tokens.signal[s.family].hex,
                   color: tokens.signal[s.family].hex,
@@ -74,8 +74,13 @@ export function FinaleFold() {
               >
                 {s.n}
               </div>
+<<<<<<< HEAD
               <h3 className="font-display text-xl tracking-tight md:text-2xl">{s.title}</h3>
               <p className="font-body text-sm leading-relaxed text-ink-soft">{s.body}</p>
+=======
+              <h3 className="font-display font-semibold text-lg tracking-tight md:text-xl text-ink">{s.title}</h3>
+              <p className="text-sm leading-relaxed text-ink-soft">{s.body}</p>
+>>>>>>> 5625b8c (font changes)
             </motion.div>
           ))}
         </div>
@@ -88,9 +93,9 @@ export function FinaleFold() {
           transition={{ duration: 0.8, ease: EASE }}
           className="flex flex-col items-center gap-4 border-t border-line/50 pt-10 text-center"
         >
-          <span className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent">Now Showing</span>
-          <h2 className="font-display font-light text-3xl leading-tight tracking-tight md:text-5xl">
-            Watch it happen <span className="italic text-accent">live.</span>
+          <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">Now Showing</span>
+          <h2 className="font-display font-bold text-3xl leading-tight tracking-tight md:text-4xl">
+            Watch it happen <span className="text-accent">live.</span>
           </h2>
           <div className="mt-2 flex items-center gap-3">
             <Link

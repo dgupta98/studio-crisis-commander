@@ -155,7 +155,7 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md rounded-lg border border-line bg-card p-6 shadow-2xl"
       >
-        <h2 className="mb-4 font-display text-lg">Inject Crisis</h2>
+        <h2 className="mb-4 font-display text-lg font-bold tracking-tight text-ink">Inject Crisis</h2>
         <label className="block">
           <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Crisis type</span>
           <select

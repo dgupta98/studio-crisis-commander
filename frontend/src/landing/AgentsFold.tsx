@@ -51,10 +51,10 @@ export function AgentsFold() {
           transition={{ duration: 0.9, ease: EASE }}
           className="text-center"
         >
-          <span className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent">The Cast</span>
-          <h2 className="mt-3 font-display font-light text-4xl leading-tight tracking-tight md:text-6xl">
+          <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">The Cast</span>
+          <h2 className="mt-3 font-display font-bold text-3xl leading-tight tracking-tight md:text-5xl">
             Four agents.<br />
-            <span className="italic text-ink-soft">One narrative.</span>
+            <span className="text-ink-soft">One narrative.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl font-body text-base text-ink-soft md:text-lg">
             Each agent owns one contract and one output. Composed via Google ADK. Handed off in sequence.
@@ -88,8 +88,8 @@ export function AgentsFold() {
                 </span>
               </div>
               <div>
-                <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-ink-soft">{a.role}</div>
-                <h3 className="mt-2 font-display font-light text-2xl tracking-tight md:text-3xl">{a.title}</h3>
+                <div className="text-[11px] font-mono font-medium uppercase tracking-[0.22em] text-ink-soft">{a.role}</div>
+                <h3 className="mt-2 font-display font-semibold text-xl tracking-tight md:text-2xl text-ink">{a.title}</h3>
               </div>
               <p className="font-body text-sm leading-relaxed text-ink-soft md:text-base">{a.body}</p>
             </motion.article>

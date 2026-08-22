@@ -31,7 +31,7 @@ export function RecommendationPanel() {
 
           {report && (
             <>
-              <h2 className="font-display text-2xl tracking-tight text-ink mb-2">
+              <h2 className="font-display text-xl md:text-2xl font-bold tracking-tight text-ink mb-2">
                 {report.headline}
               </h2>
               <p className="text-sm text-ink-soft mb-4">{report.tldr}</p>
