@@ -39,7 +39,7 @@ async def detections(
             f"d.detector, d.baseline_value, d.actual_value, d.magnitude, "
             f"d.business_impact, d.severity, d.dedup_key, "
             f"coalesce(f.title, '') AS film_title, "
-            f"greatest(0, toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(d.metric_ts)) AS latency_ms "
+            f"greatest(0, toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(toDateTime64(d.metric_ts, 3))) AS latency_ms "
             f"FROM detections AS d "
             f"LEFT JOIN films AS f ON f.film_id = d.film_id "
             f"WHERE d.metric_ts >= coalesce("
