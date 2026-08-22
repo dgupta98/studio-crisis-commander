@@ -29,21 +29,21 @@ export function PosterMarquee() {
   const loop = [...posters, ...posters]
 
   return (
-    <div className="relative w-full overflow-hidden py-2">
+    <div className="relative w-full overflow-hidden py-4">
       {/* Edge fades. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32"
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-48"
         style={{ background: `linear-gradient(90deg, ${tokens.color.paper} 0%, transparent 100%)` }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32"
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-48"
         style={{ background: `linear-gradient(270deg, ${tokens.color.paper} 0%, transparent 100%)` }}
       />
 
       <div
-        className={reduced ? 'flex gap-4 overflow-x-auto px-6' : 'flex gap-4 marquee-track'}
+        className={reduced ? 'flex gap-6 overflow-x-auto px-6' : 'flex gap-6 marquee-track'}
         style={reduced ? undefined : { width: 'max-content' }}
       >
         {loop.map((p, i) => (
@@ -69,7 +69,7 @@ export function PosterMarquee() {
 function PosterTile({ card }: { card: Card }) {
   return (
     <div
-      className="relative h-40 w-28 flex-shrink-0 overflow-hidden rounded-md border border-line bg-card-alt shadow-[0_10px_30px_-15px_rgba(0,0,0,0.8)] transition-transform hover:-translate-y-1"
+      className="relative h-64 w-44 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-card-alt shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-2 md:h-72 md:w-48"
       title={card.title}
     >
       {card.poster_url ? (
@@ -80,7 +80,7 @@ function PosterTile({ card }: { card: Card }) {
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] leading-tight text-ink-soft">
+        <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs leading-tight text-ink-soft">
           {card.title}
         </div>
       )}

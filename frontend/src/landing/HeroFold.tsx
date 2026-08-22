@@ -90,13 +90,13 @@ export function HeroFold() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
-            className="rounded-full border border-line bg-card/60 px-4 py-1.5 text-[11px] font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
+            className="rounded-full border border-line bg-card/60 px-5 py-2 text-xs font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
           >
-            <span className="mr-2 inline-block h-1.5 w-1.5 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
+            <span className="mr-2 inline-block h-2 w-2 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
             Detecting data as it lands
           </motion.span>
 
-          <h1 className="font-display font-light text-5xl leading-[1.02] tracking-tight md:text-6xl xl:text-7xl">
+          <h1 className="font-display font-light text-6xl leading-[1.02] tracking-tight md:text-7xl xl:text-8xl">
             <RevealLine words={HEADLINE_LINE_1} delay={0.7} reduced={reduced} />
             <br />
             <RevealLine words={HEADLINE_LINE_2} delay={1.15} reduced={reduced} accentLast />
@@ -106,7 +106,7 @@ export function HeroFold() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
-            className="max-w-xl text-base text-ink-soft md:text-lg"
+            className="max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl"
           >
             Four autonomous agents pipe box office, social, reviews, and streaming into a single crisis narrative — in
             milliseconds.
@@ -116,17 +116,17 @@ export function HeroFold() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: EASE, delay: 1.8 }}
-            className="flex flex-wrap items-center gap-3"
+            className="mt-2 flex flex-wrap items-center gap-4"
           >
             <Link
               to="/dashboard"
-              className="group relative overflow-hidden rounded-md border border-accent bg-accent px-6 py-3 text-sm font-medium tracking-wide text-white transition-transform hover:-translate-y-0.5 hover:brightness-110"
+              className="group relative overflow-hidden rounded-md border border-accent bg-accent px-8 py-4 text-base font-medium tracking-wide text-white transition-transform hover:-translate-y-0.5 hover:brightness-110"
             >
               <span className="relative z-10">Open Dashboard →</span>
             </Link>
             <Link
               to="/movies"
-              className="rounded-md border border-line px-6 py-3 text-sm tracking-wide text-ink transition-colors hover:border-accent hover:text-accent"
+              className="rounded-md border border-line px-8 py-4 text-base tracking-wide text-ink transition-colors hover:border-accent hover:text-accent"
             >
               Browse Movies
             </Link>
