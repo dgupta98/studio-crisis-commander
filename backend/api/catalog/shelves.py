@@ -1,9 +1,10 @@
 """Static + dynamic shelf definitions for the Movies Index route.
 
 Column reality (from backend/data/schema.sql):
-  - films table PK is `film_id` (not `id`); no poster_url column exists yet.
-    We return `poster_url: ""` — the frontend renders a signal-family gradient
-    placeholder. A follow-up backfill can populate this.
+  - films table PK is `film_id`; `tmdb_id` is the join key for poster paths.
+  - poster URLs are built from `backend/data/seed/poster_paths.json`, populated
+    by `scripts/backfill_posters.py`. Films missing from the map render the
+    frontend's gradient placeholder.
   - box_office_revenue has `date` (Date), revenue_usd; other numeric tables use
     `ts` (DateTime).
   - social_trends.mentions, streaming_watch_minutes.watch_minutes, review_scores.score.
@@ -25,7 +26,53 @@ from data.ch_client import client
 log = logging.getLogger(__name__)
 
 # repo root: backend/api/catalog/shelves.py → parents[3] is the repo root
-_CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "eval_cache"
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_CACHE_DIR = _REPO_ROOT / "data" / "eval_cache"
+_POSTER_JSON = _REPO_ROOT / "backend" / "data" / "seed" / "poster_paths.json"
+_TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w342"
+
+
+def _load_poster_map() -> dict[int, str]:
+    """Load tmdb_id → poster_path map, returning full CDN URLs by tmdb_id."""
+    if not _POSTER_JSON.is_file():
+        log.warning("poster_paths.json missing — run scripts/backfill_posters.py")
+        return {}
+    try:
+        raw = json.loads(_POSTER_JSON.read_text())
+    except Exception:  # noqa: BLE001
+        log.warning("poster_paths.json unreadable", exc_info=True)
+        return {}
+    out: dict[int, str] = {}
+    for k, v in raw.items():
+        try:
+            tid = int(k)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(v, str) and v:
+            out[tid] = f"{_TMDB_IMG_BASE}{v}"
+    return out
+
+
+_POSTER_BY_TMDB: dict[int, str] = _load_poster_map()
+
+
+def _tmdb_ids_for(film_ids: list[int]) -> dict[int, int]:
+    """film_id → tmdb_id map for the given film_ids."""
+    if not film_ids:
+        return {}
+    ids_list = ",".join(str(int(x)) for x in film_ids)
+    with client() as c:
+        rows = list(c.query(
+            f"SELECT film_id, tmdb_id FROM films WHERE film_id IN ({ids_list})"
+        ).result_rows)
+    return {int(r[0]): int(r[1]) for r in rows}
+
+
+def _poster_for(film_id: int, tmdb_lookup: dict[int, int]) -> str:
+    tid = tmdb_lookup.get(int(film_id))
+    if tid is None:
+        return ""
+    return _POSTER_BY_TMDB.get(int(tid), "")
 
 
 def _cached_film_map() -> dict[int, str]:
@@ -55,7 +102,8 @@ def _query_rows(c: Any, sql: str) -> list[tuple]:
 
 def _to_card(row: tuple) -> dict[str, Any]:
     # Rows are (film_id, title, [signal_delta, region_hint]). Missing tail
-    # elements default to 0.0 and "".
+    # elements default to 0.0 and "". poster_url is filled in later by
+    # `_attach_posters` once we know every film_id in the batch.
     return {
         "id": int(row[0]),
         "title": row[1] or "",
@@ -63,6 +111,20 @@ def _to_card(row: tuple) -> dict[str, Any]:
         "signal_delta": float(row[2]) if len(row) > 2 and row[2] is not None else 0.0,
         "region_hint": row[3] if len(row) > 3 and row[3] is not None else "",
     }
+
+
+def _attach_posters(cards_by_shelf: list[list[dict[str, Any]]]) -> None:
+    """Fill in poster_url on every card, using one film→tmdb lookup batch."""
+    ids: set[int] = set()
+    for shelf in cards_by_shelf:
+        for card in shelf:
+            ids.add(int(card["id"]))
+    if not ids:
+        return
+    tmdb_lookup = _tmdb_ids_for(sorted(ids))
+    for shelf in cards_by_shelf:
+        for card in shelf:
+            card["poster_url"] = _poster_for(int(card["id"]), tmdb_lookup)
 
 
 def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
@@ -176,6 +238,7 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
         ]
         shelves.append({"id": "all", "title": "All films", "films": full})
 
+    _attach_posters([s["films"] for s in shelves])
     return shelves
 
 
@@ -184,7 +247,7 @@ def get_film(film_id: int) -> dict[str, Any] | None:
     with client() as c:
         rows = _query_rows(
             c,
-            f"SELECT film_id, title, toString(release_date), popularity, language "
+            f"SELECT film_id, title, toString(release_date), popularity, language, tmdb_id "
             f"FROM films WHERE film_id = {int(film_id)} LIMIT 1",
         )
         if not rows:
@@ -201,10 +264,12 @@ def get_film(film_id: int) -> dict[str, Any] | None:
             r = _query_rows(c, f"SELECT count() FROM {table} WHERE {where}")
             signals[family] = int(r[0][0]) if r else 0
 
+    tmdb_id = int(row[5]) if len(row) > 5 and row[5] is not None else 0
+    poster_url = _POSTER_BY_TMDB.get(tmdb_id, "")
     return {
         "id": int(row[0]),
         "title": row[1] or "",
-        "poster_url": "",
+        "poster_url": poster_url,
         "release_date": row[2] if row[2] is not None else "",
         "popularity": float(row[3]) if row[3] is not None else 0.0,
         "language": row[4] if len(row) > 4 and row[4] is not None else "",
@@ -221,8 +286,15 @@ def search_films(q: str, limit: int = 20) -> list[dict[str, Any]]:
     with client() as c:
         rows = _query_rows(
             c,
-            f"SELECT film_id, title FROM films "
+            f"SELECT film_id, title, tmdb_id FROM films "
             f"WHERE positionCaseInsensitive(title, '{safe}') > 0 "
             f"ORDER BY popularity DESC LIMIT {int(limit)}"
         )
-    return [{"id": int(r[0]), "title": r[1] or "", "poster_url": ""} for r in rows]
+    return [
+        {
+            "id": int(r[0]),
+            "title": r[1] or "",
+            "poster_url": _POSTER_BY_TMDB.get(int(r[2]) if r[2] is not None else 0, ""),
+        }
+        for r in rows
+    ]
