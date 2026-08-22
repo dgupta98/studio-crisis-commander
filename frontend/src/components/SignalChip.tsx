@@ -25,7 +25,7 @@ export function SignalChip({ family, compact, style, className, ...rest }: Props
         compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[10px]'
       } ${className ?? ''}`}
       style={{
-        color: s.hex,
+        color: s.fg,
         borderColor: s.hex,
         background: `rgba(${s.rgb}, 0.08)`,
         boxShadow: `0 0 12px ${s.glow}`,
