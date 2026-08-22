@@ -43,7 +43,7 @@ export function HeroFold() {
   }, [mouseX, mouseY, reduced])
 
   return (
-    <section className="relative flex min-h-screen flex-col items-center overflow-hidden bg-paper px-6 pt-24 pb-16 text-center">
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-paper px-6 pt-24 pb-16">
       <ParticleCascade />
 
       {/* Spotlight */}
@@ -83,97 +83,103 @@ export function HeroFold() {
         />
       )}
 
-      {/* HERO block */}
-      <div className="relative z-10 flex max-w-4xl flex-col items-center gap-6">
-        <motion.span
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
-          className="rounded-full border border-line bg-card/60 px-4 py-1.5 text-[11px] font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
-        >
-          <span className="mr-2 inline-block h-1.5 w-1.5 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
-          Detecting data as it lands
-        </motion.span>
-
-        <h1 className="font-display font-light text-5xl leading-[1.02] tracking-tight md:text-6xl lg:text-7xl">
-          <RevealLine words={HEADLINE_LINE_1} delay={0.7} reduced={reduced} />
-          <br />
-          <RevealLine words={HEADLINE_LINE_2} delay={1.15} reduced={reduced} accentLast />
-        </h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
-          className="max-w-2xl text-base text-ink-soft md:text-lg"
-        >
-          Four autonomous agents pipe box office, social, reviews, and streaming into a single crisis narrative — in
-          milliseconds.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 1.8 }}
-          className="flex items-center gap-3"
-        >
-          <Link
-            to="/dashboard"
-            className="group relative overflow-hidden rounded-md border border-accent bg-accent px-6 py-3 text-sm font-medium tracking-wide text-white transition-transform hover:-translate-y-0.5 hover:brightness-110"
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-14">
+        {/* LEFT — headline + CTA */}
+        <div className="flex flex-col items-start gap-6 lg:col-span-7">
+          <motion.span
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
+            className="rounded-full border border-line bg-card/60 px-4 py-1.5 text-[11px] font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
           >
-            <span className="relative z-10">Open Dashboard →</span>
-          </Link>
-          <Link
-            to="/movies"
-            className="rounded-md border border-line px-6 py-3 text-sm tracking-wide text-ink transition-colors hover:border-accent hover:text-accent"
-          >
-            Browse Movies
-          </Link>
-        </motion.div>
+            <span className="mr-2 inline-block h-1.5 w-1.5 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
+            Detecting data as it lands
+          </motion.span>
 
+          <h1 className="font-display font-light text-5xl leading-[1.02] tracking-tight md:text-6xl xl:text-7xl">
+            <RevealLine words={HEADLINE_LINE_1} delay={0.7} reduced={reduced} />
+            <br />
+            <RevealLine words={HEADLINE_LINE_2} delay={1.15} reduced={reduced} accentLast />
+          </h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
+            className="max-w-xl text-base text-ink-soft md:text-lg"
+          >
+            Four autonomous agents pipe box office, social, reviews, and streaming into a single crisis narrative — in
+            milliseconds.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: EASE, delay: 1.8 }}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <Link
+              to="/dashboard"
+              className="group relative overflow-hidden rounded-md border border-accent bg-accent px-6 py-3 text-sm font-medium tracking-wide text-white transition-transform hover:-translate-y-0.5 hover:brightness-110"
+            >
+              <span className="relative z-10">Open Dashboard →</span>
+            </Link>
+            <Link
+              to="/movies"
+              className="rounded-md border border-line px-6 py-3 text-sm tracking-wide text-ink transition-colors hover:border-accent hover:text-accent"
+            >
+              Browse Movies
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* RIGHT — telemetry + agents */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.2, ease: EASE, delay: 2.0 }}
-          className="mt-6 w-full border-t border-line/50 pt-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: EASE, delay: 1.4 }}
+          className="flex flex-col gap-8 lg:col-span-5"
         >
-          <LiveCounter />
+          {/* Compact telemetry card */}
+          <div className="rounded-lg border border-line bg-card/40 p-6 backdrop-blur-sm">
+            <div className="mb-4 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.28em] text-ink-soft">
+              <span className="h-px flex-1 bg-line" />
+              <span>Live Telemetry</span>
+              <span className="h-px flex-1 bg-line" />
+            </div>
+            <LiveCounter />
+          </div>
+
+          {/* Agents 2x2 */}
+          <div>
+            <div className="mb-3 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.28em] text-ink-soft">
+              <span className="h-px flex-1 bg-line" />
+              <span>The Cast · Four Agents</span>
+              <span className="h-px flex-1 bg-line" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {AGENTS.map((a, i) => (
+                <article
+                  key={a.family}
+                  className="group relative flex flex-col gap-2 overflow-hidden rounded-md border border-line bg-card/60 p-4 text-left backdrop-blur-sm transition-all hover:border-accent/50 hover:bg-card"
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-50"
+                    style={{ background: tokens.signal[a.family].glow }}
+                  />
+                  <div className="flex items-center justify-between">
+                    <SignalChip family={a.family} />
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-soft">0{i + 1}</span>
+                  </div>
+                  <div className="font-display text-lg tracking-tight">{a.title}</div>
+                  <div className="text-xs text-ink-soft">{a.role}</div>
+                </article>
+              ))}
+            </div>
+          </div>
         </motion.div>
       </div>
-
-      {/* AGENTS strip — compact 4-up under the hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9, ease: EASE, delay: 2.3 }}
-        className="relative z-10 mt-14 w-full max-w-6xl"
-      >
-        <div className="mb-4 flex items-center justify-center gap-3 text-[10px] font-mono uppercase tracking-[0.28em] text-ink-soft">
-          <span className="h-px w-8 bg-line" />
-          <span>The Cast · Four Agents, One Narrative</span>
-          <span className="h-px w-8 bg-line" />
-        </div>
-        <div className="grid gap-3 md:grid-cols-4">
-          {AGENTS.map((a, i) => (
-            <article
-              key={a.family}
-              className="group relative flex flex-col gap-2 overflow-hidden rounded-md border border-line bg-card/60 p-4 text-left backdrop-blur-sm transition-all hover:border-accent/50 hover:bg-card"
-            >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-50"
-                style={{ background: tokens.signal[a.family].glow }}
-              />
-              <div className="flex items-center justify-between">
-                <SignalChip family={a.family} />
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-soft">0{i + 1}</span>
-              </div>
-              <div className="font-display text-lg tracking-tight">{a.title}</div>
-              <div className="text-xs text-ink-soft">{a.role}</div>
-            </article>
-          ))}
-        </div>
-      </motion.div>
     </section>
   )
 }
@@ -195,7 +201,7 @@ function RevealLine({
         {words.map((w, i) => (
           <span key={i} className={accentLast && i === words.length - 1 ? 'italic text-accent' : undefined}>
             {w}
-            {i < words.length - 1 && ' '}
+            {i < words.length - 1 && ' '}
           </span>
         ))}
       </span>
@@ -213,9 +219,9 @@ function RevealLine({
             'inline-block will-change-transform ' +
             (accentLast && i === words.length - 1 ? 'italic text-accent' : '')
           }
+          style={i < words.length - 1 ? { marginRight: '0.28em' } : undefined}
         >
           {w}
-          {i < words.length - 1 && ' '}
         </motion.span>
       ))}
     </span>
