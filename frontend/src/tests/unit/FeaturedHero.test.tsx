@@ -10,8 +10,8 @@ const films = [
 ]
 
 describe('FeaturedHero', () => {
-  beforeEach(() => vi.useFakeTimers())
-  afterEach(() => vi.useRealTimers())
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
 
   it('shows first film initially', () => {
     render(<MemoryRouter><FeaturedHero films={films as any} /></MemoryRouter>)

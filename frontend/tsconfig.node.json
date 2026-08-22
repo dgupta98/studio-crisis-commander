@@ -6,7 +6,9 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true
+    "outDir": "./.tsbuild-node",
+    "declaration": true,
+    "emitDeclarationOnly": true
   },
   "include": ["vite.config.ts"]
 }
