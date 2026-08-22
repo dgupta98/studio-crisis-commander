@@ -80,7 +80,7 @@ export function HowItWorksFold() {
                 {s.n}
               </div>
               <h3 className="font-display font-light text-2xl tracking-tight md:text-3xl">{s.title}</h3>
-              <p className="text-sm leading-relaxed text-ink-soft md:text-base">{s.body}</p>
+              <p className="font-body text-sm leading-relaxed text-ink-soft md:text-base">{s.body}</p>
             </motion.div>
           ))}
         </div>

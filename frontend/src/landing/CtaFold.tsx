@@ -30,7 +30,7 @@ export function CtaFold() {
         <h2 className="font-display font-light text-5xl leading-[1.05] tracking-tight md:text-7xl">
           Watch it happen <span className="italic text-accent">live.</span>
         </h2>
-        <p className="max-w-xl text-base text-ink-soft md:text-lg">
+        <p className="max-w-xl font-body text-base text-ink-soft md:text-lg">
           Four agents, five endpoints, one dashboard. Every dollar figure links to the query that produced it.
         </p>
         <LiveCounter />

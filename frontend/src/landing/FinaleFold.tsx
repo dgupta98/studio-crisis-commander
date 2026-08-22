@@ -75,7 +75,7 @@ export function FinaleFold() {
                 {s.n}
               </div>
               <h3 className="font-display text-xl tracking-tight md:text-2xl">{s.title}</h3>
-              <p className="text-sm leading-relaxed text-ink-soft">{s.body}</p>
+              <p className="font-body text-sm leading-relaxed text-ink-soft">{s.body}</p>
             </motion.div>
           ))}
         </div>

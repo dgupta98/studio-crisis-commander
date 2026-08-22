@@ -9,7 +9,7 @@ const FAMILIES: SignalFamily[] = ['box_office', 'social', 'reviews', 'streaming'
 export function AmbientTelemetry({ signals }: Props) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="px-1 font-display text-sm tracking-tight">Signals (last 7d)</h3>
+      <h3 className="px-1 font-body text-sm font-semibold tracking-tight text-ink">Signals (last 7d)</h3>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         {FAMILIES.map((family) => (
           <div key={family} className="flex flex-col gap-1 rounded-md border border-line bg-card p-3">

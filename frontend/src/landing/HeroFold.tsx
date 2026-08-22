@@ -153,7 +153,7 @@ export function HeroFold() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
-            className="max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl"
+            className="max-w-2xl font-body text-lg leading-relaxed text-ink-soft md:text-xl"
           >
             Four autonomous agents pipe box office, social, reviews, and streaming into a single crisis narrative — in
             milliseconds.
@@ -254,8 +254,14 @@ function RevealLine({
       </span>
     )
   }
+  // `inline-flex` + column-gap gives reliable word spacing even when the
+  // inline-block children receive framer-motion transforms — much more
+  // robust than trying to enforce marginRight on each span.
   return (
-    <span>
+    <span
+      className="inline-flex flex-wrap items-baseline"
+      style={{ columnGap: '0.28em', rowGap: 0 }}
+    >
       {words.map((w, i) => (
         <motion.span
           key={i}
@@ -266,7 +272,6 @@ function RevealLine({
             'inline-block will-change-transform ' +
             (accentLast && i === words.length - 1 ? 'italic text-accent' : '')
           }
-          style={i < words.length - 1 ? { marginRight: '0.28em' } : undefined}
         >
           {w}
         </motion.span>

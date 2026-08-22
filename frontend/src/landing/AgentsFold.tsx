@@ -56,7 +56,7 @@ export function AgentsFold() {
             Four agents.<br />
             <span className="italic text-ink-soft">One narrative.</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-base text-ink-soft md:text-lg">
+          <p className="mx-auto mt-4 max-w-xl font-body text-base text-ink-soft md:text-lg">
             Each agent owns one contract and one output. Composed via Google ADK. Handed off in sequence.
           </p>
         </motion.div>
@@ -91,7 +91,7 @@ export function AgentsFold() {
                 <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-ink-soft">{a.role}</div>
                 <h3 className="mt-2 font-display font-light text-2xl tracking-tight md:text-3xl">{a.title}</h3>
               </div>
-              <p className="text-sm leading-relaxed text-ink-soft md:text-base">{a.body}</p>
+              <p className="font-body text-sm leading-relaxed text-ink-soft md:text-base">{a.body}</p>
             </motion.article>
           ))}
         </div>
