@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { prefetchDashboard } from '../api/queries'
+import { useRunStore } from '@/store/runStore'
 import { IntakeStrip } from '../panels/IntakeStrip'
 import { AnomalyFeed } from '../panels/AnomalyFeed'
 import { AgentTrace } from '../panels/AgentTrace'
@@ -9,7 +10,13 @@ import { DashboardWorkspace } from '../panels/DashboardWorkspace'
 
 export default function DashboardRoute() {
   const qc = useQueryClient()
-  useEffect(() => { prefetchDashboard(qc) }, [qc])
+  useEffect(() => {
+    prefetchDashboard(qc)
+    // Populate runStore.recentDetections on mount — the anomaly feed and
+    // telemetry strip both read from the store, so without this the panels
+    // show empty/idle until an inject fires.
+    void useRunStore.getState().loadDetections(50)
+  }, [qc])
   return (
     <div data-testid="route-dashboard" className="flex h-full flex-col">
       <IntakeStrip />

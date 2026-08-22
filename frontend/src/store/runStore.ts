@@ -56,7 +56,7 @@ interface RunStore {
 const INITIAL_PANELS: Record<PanelKey, PanelState> = {
   hero: { kind: 'idle' },
   telemetry: { kind: 'idle' },
-  anomaly: { kind: 'empty', hint: 'No anomalies in the last 6 hours — system nominal' },
+  anomaly: { kind: 'empty', hint: 'Loading recent detections…' },
   trace: { kind: 'idle' },
   recommendation: { kind: 'idle' },
   approval: { kind: 'idle' },
@@ -280,7 +280,7 @@ export const useRunStore = create<RunStore>((set, _get) => ({
         : s.recentDetections.length > 0 ? { kind: 'success' }
         : hasRun && s.detection ? { kind: 'success' }
         : hasRun ? { kind: 'loading' }
-        : { kind: 'empty', hint: 'No anomalies in the last 6 hours — system nominal' },
+        : { kind: 'empty', hint: 'Loading recent detections…' },
 
       trace: !hasRun ? { kind: 'idle' }
         : streamError ? { kind: 'error', message: 'Trace stream lost',

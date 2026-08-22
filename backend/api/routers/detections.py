@@ -20,7 +20,7 @@ _COLS = ("metric_ts", "metric", "film_id", "region",
 @router.get("/detections")
 async def detections(
     limit: int = Query(50, ge=1, le=500),
-    since_hours: int = Query(24, ge=1, le=168),
+    since_hours: int = Query(24, ge=1, le=8760),
 ):
     def _run() -> list[list]:
         # LEFT JOIN films so the frontend can show titles in the anomaly
@@ -29,6 +29,11 @@ async def detections(
         # payloads carry produce-time latency captured at ingest by
         # api.detection_source._latency_ms — same field, different clocks.
         # `greatest(0,…)` matches the Python floor for clock-skew safety.
+        #
+        # Anchor the time window on max(metric_ts), not now(), so the feed
+        # is populated whether the synthetic pipeline is actively producing
+        # or the demo is replaying an older snapshot. Falls back to now()
+        # if the table is empty (fresh install).
         sql = (
             f"SELECT toString(d.metric_ts), d.metric, d.film_id, d.region, "
             f"d.detector, d.baseline_value, d.actual_value, d.magnitude, "
@@ -37,7 +42,10 @@ async def detections(
             f"greatest(0, toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(d.metric_ts)) AS latency_ms "
             f"FROM detections AS d "
             f"LEFT JOIN films AS f ON f.film_id = d.film_id "
-            f"WHERE d.metric_ts >= now() - INTERVAL {int(since_hours)} HOUR "
+            f"WHERE d.metric_ts >= coalesce("
+            f"  (SELECT max(metric_ts) FROM detections) - INTERVAL {int(since_hours)} HOUR,"
+            f"  now() - INTERVAL {int(since_hours)} HOUR"
+            f") "
             f"ORDER BY d.severity DESC LIMIT {int(limit)}"
         )
         with client() as c:

@@ -27,14 +27,17 @@ router = APIRouter(prefix="/intake", tags=["intake"])
 
 _POLL_INTERVAL_S = 2.0
 
-# Signal family → (table, time-column, WHERE predicate). Column names and types
-# must match backend/data/schema.sql. box_office uses `date` (Date, daily grain)
-# — a 1-minute window would always be zero — so we widen to "last 1 day".
+# Signal family → (table, time-column, unit). box_office uses `date` (Date,
+# daily grain), the rest use `ts` (DateTime). We anchor the window on the
+# table's max(ts|date) rather than now(), so the strip shows a meaningful
+# non-zero rate whether the synthetic feed is actively producing or the demo
+# is replaying older data. The original now()-based window returned 0
+# whenever the data was stale.
 _FAMILIES: dict[str, tuple[str, str]] = {
-    "box_office": ("box_office_revenue",      "date >= today() - 1"),
-    "social":     ("social_trends",           "ts   >= now() - INTERVAL 1 MINUTE"),
-    "reviews":    ("review_scores",           "ts   >= now() - INTERVAL 1 MINUTE"),
-    "streaming":  ("streaming_watch_minutes", "ts   >= now() - INTERVAL 1 MINUTE"),
+    "box_office": ("box_office_revenue",      "date"),
+    "social":     ("social_trends",           "ts"),
+    "reviews":    ("review_scores",           "ts"),
+    "streaming":  ("streaming_watch_minutes", "ts"),
 }
 
 
@@ -45,12 +48,22 @@ def _rates_sync() -> dict[str, int]:
     # forever, which would silently mask configuration drift.
     out: dict[str, int] = {}
     with client() as c:
-        for family, (table, where) in _FAMILIES.items():
+        for family, (table, col) in _FAMILIES.items():
             try:
-                rows = c.query(
-                    f"SELECT count() FROM {table} WHERE {where}"
-                ).result_rows
-                out[family] = int(rows[0][0]) if rows else 0
+                if col == "date":
+                    # Rows on the most recent day / 1440 → per-minute rate estimate.
+                    sql = (
+                        f"SELECT toUInt64(count() / 1440) FROM {table} "
+                        f"WHERE {col} = (SELECT max({col}) FROM {table})"
+                    )
+                else:
+                    # Rows in the last minute of *available* data (max ts window).
+                    sql = (
+                        f"SELECT count() FROM {table} "
+                        f"WHERE {col} >= (SELECT max({col}) - INTERVAL 1 MINUTE FROM {table})"
+                    )
+                rows = c.query(sql).result_rows
+                out[family] = int(rows[0][0]) if rows and rows[0][0] is not None else 0
             except Exception:  # noqa: BLE001 — schema drift / partition eviction / etc.
                 log.warning("intake rates query failed for %s", family, exc_info=True)
                 out[family] = 0

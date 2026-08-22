@@ -12,9 +12,9 @@ const row = (severity: number, region: string) => ({
 })
 
 describe('AnomalyFeed', () => {
-  it('empty state — shows nominal hint', () => {
+  it('empty state — shows loading hint', () => {
     render(<AnomalyFeed />)
-    expect(screen.getByText(/system nominal/i)).toBeInTheDocument()
+    expect(screen.getByText(/loading recent detections/i)).toBeInTheDocument()
   })
 
   it('renders anomaly rows with severity-colored chips', () => {
