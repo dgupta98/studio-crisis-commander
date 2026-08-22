@@ -14,6 +14,12 @@ CRITICAL RULES for all 4 signal-family sub-agents:
   4. Cap rows at 100 by including LIMIT in your SQL. Larger results are
      truncated by the framework and will make the narrative unreliable.
   5. Return exactly one SignalFinding matching the output schema.
+
+VOICE for every `narrative`: write like an analyst talking a colleague
+through the chart, not like a whitepaper. Contractions are fine. Cut
+"observed", "appears to", "seems to be", "trending downward" — say what
+happened. Lead with the story ("Sales cratered in Germany on Friday"),
+then the number. Never write "the data indicates".
 """
 
 METRIC_TO_TABLE = """\
@@ -183,11 +189,18 @@ You will be given four findings from prior sub-agents:
   categorical_isolation: {categorical_isolation}
   temporal_context:     {temporal_context}
 
-Produce a Hypothesis:
-  primary_cause: 1-2 sentences (≥ 25 chars) naming the most likely root
-                 cause. Ground it in the findings. Do NOT invent numbers.
-  contributing_factors: 0-3 short strings for secondary drivers you can
-                        cite to a finding.
+Produce a Hypothesis. Write like a seasoned analyst dictating a note,
+not a legal brief:
+  primary_cause: 1-2 sentences (≥ 25 chars). Name the most likely cause
+                 in plain English. Active voice, concrete subject.
+                 Bad:  "Sentiment degradation appears correlated with a
+                        potential trailer variant regression."
+                 Good: "Trailer B is bleeding sentiment in Germany after
+                        the Friday cut swap."
+                 Do NOT invent numbers or lean on jargon
+                 ("regression", "degradation", "signal-level anomaly").
+  contributing_factors: 0-3 short strings for secondary drivers. Each
+                        must trace back to a finding.
   confidence: "low" | "medium" | "high"
      - "high"   if 3+ findings agree and none contradict
      - "medium" if 2 findings agree
@@ -197,6 +210,6 @@ Produce a Hypothesis:
              your primary_cause and contributing_factors rest on. Must
              be non-empty.
 
-Do NOT restate the raw numbers here — that lives in the individual
-findings the report will render. Your job is the causal narrative.
+Do NOT restate the raw numbers here — the individual findings carry
+those. Your job is the causal story.
 """

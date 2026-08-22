@@ -82,14 +82,25 @@ export function TelemetryStrip() {
   // Bypass idle wrapper when we have a historical detection to render from —
   // otherwise the panel showed "Idle — awaiting metrics" on cold load while
   // Anomaly Feed was fully populated.
+  const filmLabel = effective?.film_title || (effective ? `Film #${effective.film_id}` : null)
   const body = (
     <Card data-testid="telemetry-strip" className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs uppercase tracking-wider text-ink-soft">
-          Telemetry{isHistorical && ' · last run'}
-        </span>
+      <div className="flex items-center justify-between mb-3 gap-3">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <span className="text-xs uppercase tracking-wider text-ink-soft">
+            Telemetry{isHistorical && ' · last run'}
+          </span>
+          {filmLabel && (
+            <span className="truncate font-display text-sm font-semibold text-ink" title={filmLabel}>
+              {filmLabel}
+              <span className="ml-2 font-mono text-xs font-normal text-ink-soft">
+                · {effective!.region}
+              </span>
+            </span>
+          )}
+        </div>
         {latency !== null && (
-          <span className="font-mono text-xs text-ink-soft">
+          <span className="font-mono text-xs text-ink-soft shrink-0">
             ClickHouse · {latency} ms
           </span>
         )}

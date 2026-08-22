@@ -61,7 +61,7 @@ export function AnomalyFeed() {
         </motion.ul>
         {display.length > 8 && (
           <div className="mt-3 border-t border-line pt-3 text-xs text-ink-soft">
-            +{display.length - 8} more · <a href="/audit" className="underline hover:text-ink">view audit</a>
+            +{display.length - 8} more
           </div>
         )}
       </Card>

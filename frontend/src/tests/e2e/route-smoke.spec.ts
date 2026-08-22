@@ -5,8 +5,6 @@ const routes = [
   { path: '/dashboard', tid: 'route-dashboard' },
   { path: '/movies', tid: 'route-movies' },
   { path: '/movies/1', tid: 'route-movie-detail' },
-  { path: '/audit', tid: 'route-audit' },
-  { path: '/settings', tid: 'route-settings' },
 ]
 
 for (const r of routes) {

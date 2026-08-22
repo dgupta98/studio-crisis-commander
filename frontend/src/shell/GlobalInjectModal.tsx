@@ -134,9 +134,11 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
         magnitude: Number(magnitude),
       })
       onClose()
-      // Client-side nav preserves the store (and the live SSE connection).
-      // A hard window.location swap would wipe both.
-      navigate('/dashboard')
+      // Land on the movie the user just injected against — that page has the
+      // AgentTrace + past-runs timeline, so trace/decision/report populate
+      // in-place instead of the user losing context on a global dashboard.
+      // Client-side nav preserves the store and the live SSE connection.
+      navigate(`/movies/${filmId}`)
     } catch (e: any) {
       setErr(String(e))
       setBusy(false)

@@ -4,8 +4,6 @@ import { BrandMark } from '@/components/BrandMark'
 const LINKS = [
   { to: '/dashboard', label: 'Dashboard', icon: '◉' },
   { to: '/movies', label: 'Movies', icon: '▤' },
-  { to: '/audit', label: 'Audit', icon: '◈' },
-  { to: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
 export function LeftNav() {

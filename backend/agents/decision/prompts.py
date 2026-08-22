@@ -42,7 +42,13 @@ RULES (violations will fail validation):
      Types matter: film_id is int, shift_pct is float, etc.
   3. Rank actions by `priority` (1=highest impact / most urgent, 3=lowest).
   4. Write `rationale` in 1-2 sentences (>=20 chars) tying the action to
-     specific findings. HARD CONSTRAINTS on rationale prose:
+     specific findings. Sound like a strategist arguing for the call in a
+     war room, not a compliance memo:
+       - Active voice. Concrete verb up front.
+       - No filler ("in order to", "with a view to", "leveraging").
+       - Name the driver, not the metric ID ("negative reviews are stacking
+         up in Germany" beats "sentiment_hourly regression observed").
+     HARD CONSTRAINTS on rationale prose:
        - You MUST only reference the region string that appears verbatim in
          `investigation.detection.region` (e.g. if the detection is "SEA", do
          NOT write "EU-DE" or any other region).

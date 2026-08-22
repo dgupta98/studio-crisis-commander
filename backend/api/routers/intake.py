@@ -46,22 +46,23 @@ def _rates_sync() -> dict[str, int]:
     # per-family would triple the poll cost. If the client itself fails to open
     # (missing env), let it propagate to a 500 rather than emit `{0,0,0,0}`
     # forever, which would silently mask configuration drift.
+    #
+    # We report a *per-minute* rate averaged over the last DAY_WINDOW days of
+    # available data. A 1-minute window was too narrow for the synthetic feed
+    # (returned 0 or 1); box_office's old `count()/1440` also truncated to 0
+    # for anything under a full day of rows. Averaging over a wider window
+    # gives a stable, meaningful number that matches user intuition ("how
+    # busy is this pipeline").
     out: dict[str, int] = {}
+    day_window = 7
+    minutes = day_window * 24 * 60
     with client() as c:
         for family, (table, col) in _FAMILIES.items():
             try:
-                if col == "date":
-                    # Rows on the most recent day / 1440 → per-minute rate estimate.
-                    sql = (
-                        f"SELECT toUInt64(count() / 1440) FROM {table} "
-                        f"WHERE {col} = (SELECT max({col}) FROM {table})"
-                    )
-                else:
-                    # Rows in the last minute of *available* data (max ts window).
-                    sql = (
-                        f"SELECT count() FROM {table} "
-                        f"WHERE {col} >= (SELECT max({col}) - INTERVAL 1 MINUTE FROM {table})"
-                    )
+                sql = (
+                    f"SELECT toUInt64(count() / {minutes}) FROM {table} "
+                    f"WHERE {col} >= (SELECT max({col}) - INTERVAL {day_window} DAY FROM {table})"
+                )
                 rows = c.query(sql).result_rows
                 out[family] = int(rows[0][0]) if rows and rows[0][0] is not None else 0
             except Exception:  # noqa: BLE001 — schema drift / partition eviction / etc.
