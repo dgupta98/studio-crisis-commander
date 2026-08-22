@@ -21,15 +21,23 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import data as _data_pkg
 from data.ch_client import client
 
 log = logging.getLogger(__name__)
 
-# repo root: backend/api/catalog/shelves.py → parents[3] is the repo root
+# Resolve via the `data` package so paths work in both layouts:
+#   local dev  → <repo>/backend/data/
+#   container  → /app/data/  (Dockerfile flattens backend/data → /app/data)
+_DATA_ROOT = Path(_data_pkg.__file__).resolve().parent
+_POSTER_JSON = _DATA_ROOT / "seed" / "poster_paths.json"
+_TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w342"
+
+# eval_cache lives at repo root (not under backend/), so it isn't shipped by
+# the current Dockerfile. Featured shelf silently degrades to empty in prod
+# until we start bundling eval_cache into the image.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CACHE_DIR = _REPO_ROOT / "data" / "eval_cache"
-_POSTER_JSON = _REPO_ROOT / "backend" / "data" / "seed" / "poster_paths.json"
-_TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w342"
 
 
 def _load_poster_map() -> dict[int, str]:
