@@ -79,13 +79,8 @@ export function HowItWorksFold() {
               >
                 {s.n}
               </div>
-<<<<<<< HEAD
-              <h3 className="font-display font-light text-2xl tracking-tight md:text-3xl">{s.title}</h3>
-              <p className="font-body text-sm leading-relaxed text-ink-soft md:text-base">{s.body}</p>
-=======
               <h3 className="font-display font-semibold text-xl tracking-tight md:text-2xl text-ink">{s.title}</h3>
               <p className="text-sm leading-relaxed text-ink-soft md:text-base">{s.body}</p>
->>>>>>> 5625b8c (font changes)
             </motion.div>
           ))}
         </div>

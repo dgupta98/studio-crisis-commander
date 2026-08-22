@@ -74,13 +74,8 @@ export function FinaleFold() {
               >
                 {s.n}
               </div>
-<<<<<<< HEAD
-              <h3 className="font-display text-xl tracking-tight md:text-2xl">{s.title}</h3>
-              <p className="font-body text-sm leading-relaxed text-ink-soft">{s.body}</p>
-=======
               <h3 className="font-display font-semibold text-lg tracking-tight md:text-xl text-ink">{s.title}</h3>
               <p className="text-sm leading-relaxed text-ink-soft">{s.body}</p>
->>>>>>> 5625b8c (font changes)
             </motion.div>
           ))}
         </div>
