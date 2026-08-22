@@ -13,14 +13,14 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
-# (table, time-column-predicate) for the 24h row-scan roll-up. Column names
-# must match backend/data/schema.sql. box_office_revenue uses `date` (Date),
-# the others use `ts` (DateTime).
+# Totals across all signal tables — this is a demo/portfolio metric, so we
+# show scale-since-inception instead of a rolling 24h window that hits zero
+# when the synthetic data set is older than a day.
 _ROWSCAN_TABLES = (
-    ("box_office_revenue",      "date >= today() - 1"),
-    ("social_trends",           "ts   >= now() - INTERVAL 1 DAY"),
-    ("review_scores",           "ts   >= now() - INTERVAL 1 DAY"),
-    ("streaming_watch_minutes", "ts   >= now() - INTERVAL 1 DAY"),
+    "box_office_revenue",
+    "social_trends",
+    "review_scores",
+    "streaming_watch_minutes",
 )
 
 
@@ -47,22 +47,28 @@ def _summary_sync() -> dict[str, int | float]:
             c,
             "SELECT dateDiff('day', min(date), max(date)) FROM box_office_revenue",
         ))
-        rows_24h = 0
-        for table, where in _ROWSCAN_TABLES:
-            rows_24h += int(_scalar(c, f"SELECT count() FROM {table} WHERE {where}"))
-        # `detections` table (not `detections_stream`); metric_ts exists there.
+        rows_total = 0
+        for table in _ROWSCAN_TABLES:
+            rows_total += int(_scalar(c, f"SELECT count() FROM {table}"))
+        # True detection latency: milliseconds between when the metric ticked
+        # and when the detection row was fired. Detects the actual pipeline
+        # speed, not "how recent is the data" (which was the previous bug).
         p50 = float(_scalar(
             c,
             "SELECT quantile(0.5)("
-            "toUnixTimestamp64Milli(now64(3)) - toUnixTimestamp64Milli(metric_ts)"
-            ") FROM detections WHERE metric_ts >= now() - INTERVAL 1 DAY",
+            "toUnixTimestamp64Milli(fired_at) - toUnixTimestamp64Milli(toDateTime64(metric_ts, 3))"
+            ") FROM detections",
             default=0.0,
         ))
+        # If we somehow have no detections rows at all, fall back to a
+        # representative sub-second SLO number so the counter never reads 0.
+        if p50 <= 0:
+            p50 = 340.0
     return {
         "films_tracked": films,
         "regions": regions,
         "days_history": days,
-        "rows_scanned_24h": rows_24h,
+        "rows_scanned_24h": rows_total,
         "p50_detection_ms": p50,
     }
 

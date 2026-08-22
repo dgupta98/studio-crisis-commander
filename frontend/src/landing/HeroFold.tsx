@@ -3,6 +3,7 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { useEffect } from 'react'
 import { ParticleCascade } from './ParticleCascade'
 import { LiveCounter } from './LiveCounter'
+import { SignalChip, type SignalFamily } from '../components/SignalChip'
 import { tokens } from '../theme/tokens'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
@@ -11,16 +12,25 @@ const EASE = tokens.motion.ease.cinematic
 const HEADLINE_LINE_1 = ['Investigations', 'that', 'arrive']
 const HEADLINE_LINE_2 = ['before', 'the', 'meeting', 'starts.']
 
+const AGENTS: { family: SignalFamily; title: string; role: string }[] = [
+  { family: 'box_office', title: 'Detection',     role: 'Pure SQL, sub-second' },
+  { family: 'social',     title: 'Investigation', role: 'Grounded via mcp-clickhouse' },
+  { family: 'reviews',    title: 'Decision',      role: 'Ranked with impact SQL' },
+  { family: 'streaming',  title: 'Report',        role: 'Provenance to every row' },
+]
+
 export function HeroFold() {
   const reduced = useReducedMotion()
 
-  // Spotlight follow. Springs smooth the cursor position for buttery motion.
   const mouseX = useMotionValue(0.5)
   const mouseY = useMotionValue(0.5)
   const springX = useSpring(mouseX, { stiffness: 60, damping: 20 })
   const springY = useSpring(mouseY, { stiffness: 60, damping: 20 })
-  const bgX = useTransform(springX, (v) => `${v * 100}%`)
-  const bgY = useTransform(springY, (v) => `${v * 100}%`)
+  const spotlightBg = useTransform(
+    [springX, springY],
+    ([x, y]) =>
+      `radial-gradient(circle at ${(x as number) * 100}% ${(y as number) * 100}%, ${tokens.signal.social.hex}22 0%, transparent 40%)`,
+  )
 
   useEffect(() => {
     if (reduced) return
@@ -33,41 +43,35 @@ export function HeroFold() {
   }, [mouseX, mouseY, reduced])
 
   return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-paper px-6 text-center">
+    <section className="relative flex min-h-screen flex-col items-center overflow-hidden bg-paper px-6 pt-24 pb-16 text-center">
       <ParticleCascade />
 
-      {/* Spotlight — tinted radial gradient tracking the cursor. */}
+      {/* Spotlight */}
       {!reduced && (
         <motion.div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 opacity-70"
-          style={{
-            background: useTransform(
-              [bgX, bgY],
-              ([x, y]) =>
-                `radial-gradient(circle at ${x} ${y}, ${tokens.signal.social.hex}22 0%, transparent 40%)`,
-            ),
-          }}
+          style={{ background: spotlightBg }}
         />
       )}
 
-      {/* Letterbox bars — slide in from top/bottom on load. */}
+      {/* Letterbox bars */}
       <motion.div
         aria-hidden
         initial={{ y: '-100%' }}
         animate={{ y: 0 }}
         transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}
-        className="pointer-events-none absolute inset-x-0 top-0 h-[6vh] bg-black"
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[4vh] bg-black md:h-[5vh]"
       />
       <motion.div
         aria-hidden
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[6vh] bg-black"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[4vh] bg-black md:h-[5vh]"
       />
 
-      {/* Film-grain overlay — very subtle. */}
+      {/* Film grain */}
       {!reduced && (
         <div
           aria-hidden
@@ -79,30 +83,29 @@ export function HeroFold() {
         />
       )}
 
-      <div className="relative z-10 flex max-w-4xl flex-col items-center gap-8">
-        {/* Micro-eyebrow */}
+      {/* HERO block */}
+      <div className="relative z-10 flex max-w-4xl flex-col items-center gap-6">
         <motion.span
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: EASE, delay: 1.3 }}
+          transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
           className="rounded-full border border-line bg-card/60 px-4 py-1.5 text-[11px] font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
         >
-          <span className="inline-block h-1.5 w-1.5 -translate-y-0.5 rounded-full bg-accent mr-2 align-middle animate-pulse" />
+          <span className="mr-2 inline-block h-1.5 w-1.5 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
           Detecting data as it lands
         </motion.span>
 
-        {/* Headline — word-by-word blur-clear reveal */}
-        <h1 className="font-display font-light text-5xl leading-[1.02] tracking-tight md:text-7xl lg:text-8xl">
-          <RevealLine words={HEADLINE_LINE_1} delay={0.9} reduced={reduced} />
+        <h1 className="font-display font-light text-5xl leading-[1.02] tracking-tight md:text-6xl lg:text-7xl">
+          <RevealLine words={HEADLINE_LINE_1} delay={0.7} reduced={reduced} />
           <br />
-          <RevealLine words={HEADLINE_LINE_2} delay={1.4} reduced={reduced} accentLast />
+          <RevealLine words={HEADLINE_LINE_2} delay={1.15} reduced={reduced} accentLast />
         </h1>
 
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 1.9 }}
-          className="max-w-xl text-lg text-ink-soft md:text-xl"
+          transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
+          className="max-w-2xl text-base text-ink-soft md:text-lg"
         >
           Four autonomous agents pipe box office, social, reviews, and streaming into a single crisis narrative — in
           milliseconds.
@@ -111,7 +114,7 @@ export function HeroFold() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 2.1 }}
+          transition={{ duration: 0.9, ease: EASE, delay: 1.8 }}
           className="flex items-center gap-3"
         >
           <Link
@@ -119,10 +122,6 @@ export function HeroFold() {
             className="group relative overflow-hidden rounded-md border border-accent bg-accent px-6 py-3 text-sm font-medium tracking-wide text-white transition-transform hover:-translate-y-0.5 hover:brightness-110"
           >
             <span className="relative z-10">Open Dashboard →</span>
-            <span
-              aria-hidden
-              className="absolute inset-0 -z-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-            />
           </Link>
           <Link
             to="/movies"
@@ -135,27 +134,44 @@ export function HeroFold() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 1.2, ease: EASE, delay: 2.4 }}
-          className="mt-10 w-full border-t border-line/60 pt-8"
+          transition={{ duration: 1.2, ease: EASE, delay: 2.0 }}
+          className="mt-6 w-full border-t border-line/50 pt-6"
         >
           <LiveCounter />
         </motion.div>
       </div>
 
-      {/* Scroll cue */}
+      {/* AGENTS strip — compact 4-up under the hero */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.6 }}
-        transition={{ duration: 1, delay: 2.8 }}
-        className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-[10px] font-mono uppercase tracking-[0.3em] text-ink-soft"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, ease: EASE, delay: 2.3 }}
+        className="relative z-10 mt-14 w-full max-w-6xl"
       >
-        <div className="flex flex-col items-center gap-2">
-          <span>scroll</span>
-          <motion.span
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-            className="block h-4 w-px bg-ink-soft"
-          />
+        <div className="mb-4 flex items-center justify-center gap-3 text-[10px] font-mono uppercase tracking-[0.28em] text-ink-soft">
+          <span className="h-px w-8 bg-line" />
+          <span>The Cast · Four Agents, One Narrative</span>
+          <span className="h-px w-8 bg-line" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          {AGENTS.map((a, i) => (
+            <article
+              key={a.family}
+              className="group relative flex flex-col gap-2 overflow-hidden rounded-md border border-line bg-card/60 p-4 text-left backdrop-blur-sm transition-all hover:border-accent/50 hover:bg-card"
+            >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-50"
+                style={{ background: tokens.signal[a.family].glow }}
+              />
+              <div className="flex items-center justify-between">
+                <SignalChip family={a.family} />
+                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-soft">0{i + 1}</span>
+              </div>
+              <div className="font-display text-lg tracking-tight">{a.title}</div>
+              <div className="text-xs text-ink-soft">{a.role}</div>
+            </article>
+          ))}
         </div>
       </motion.div>
     </section>
@@ -199,7 +215,7 @@ function RevealLine({
           }
         >
           {w}
-          {i < words.length - 1 && ' '}
+          {i < words.length - 1 && ' '}
         </motion.span>
       ))}
     </span>
