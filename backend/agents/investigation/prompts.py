@@ -183,15 +183,36 @@ Return a SignalFinding:
 SYNTHESIS_PROMPT = """\
 You are the synthesis sub-agent. You do NOT call any tools.
 
-You will be given four findings from prior sub-agents:
-  numeric_context:      {numeric_context}
-  text_reason:          {text_reason}
+You will be given the original detection plus four findings from prior sub-agents:
+  detection:             {detection}
+  numeric_context:       {numeric_context}
+  text_reason:           {text_reason}
   categorical_isolation: {categorical_isolation}
-  temporal_context:     {temporal_context}
+  temporal_context:      {temporal_context}
+
+The detection carries the anomaly's fingerprint (metric, film_id, region,
+magnitude, severity, business_impact). Use it as the ANCHOR when you
+weigh the four findings — a "high" severity detection with a large
+magnitude should not resolve to a "low"-confidence hypothesis unless the
+four findings genuinely contradict each other. Conversely, a low-severity
+detection should not be inflated to "high" confidence just because one
+finding is loud.
+
+Confidence calibration guidance (use alongside the majority rule):
+  - Detection severity="high" AND 3+ findings agree AND none contradict
+    -> confidence="high"
+  - Detection severity="medium" AND 2-3 findings agree
+    -> confidence="medium"
+  - Detection severity="low" OR findings split roughly 2-2
+    -> confidence="low"
+  - Findings unanimously disagree with the detection's implied direction
+    (e.g. detector flagged a sentiment collapse but text_reason found
+    only positive reviews) -> confidence="low", and say so plainly in
+    primary_cause ("evidence contradicts the detector's fingerprint").
 
 Produce a Hypothesis. Write like a seasoned analyst dictating a note,
 not a legal brief:
-  primary_cause: 1-2 sentences (≥ 25 chars). Name the most likely cause
+  primary_cause: 1-2 sentences (>= 25 chars). Name the most likely cause
                  in plain English. Active voice, concrete subject.
                  Bad:  "Sentiment degradation appears correlated with a
                         potential trailer variant regression."
@@ -201,15 +222,12 @@ not a legal brief:
                  ("regression", "degradation", "signal-level anomaly").
   contributing_factors: 0-3 short strings for secondary drivers. Each
                         must trace back to a finding.
-  confidence: "low" | "medium" | "high"
-     - "high"   if 3+ findings agree and none contradict
-     - "medium" if 2 findings agree
-     - "low"    if findings are inconclusive or contradictory
+  confidence: "low" | "medium" | "high" — per calibration above.
   citations: subset of {{numeric_context, text_reason,
              categorical_isolation, temporal_context}} — the findings
              your primary_cause and contributing_factors rest on. Must
              be non-empty.
 
 Do NOT restate the raw numbers here — the individual findings carry
-those. Your job is the causal story.
+those. Your job is the causal story, calibrated against the detection.
 """

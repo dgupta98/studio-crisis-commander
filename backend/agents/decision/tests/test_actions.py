@@ -61,22 +61,42 @@ def test_validate_params_rejects_unknown_action():
         validate_params("nuke_from_orbit", {})   # type: ignore[arg-type]
 
 
+def test_validate_params_rejects_out_of_enum_channel():
+    """Out-of-enum channels (e.g. 'tiktok') must raise — the seed only
+    knows email/display/social/affiliate, so anything else silently
+    yields impact_usd=$0."""
+    with pytest.raises(ValueError, match="must be one of"):
+        validate_params("shift_marketing_spend", {
+            "film_id": 42, "region": "EU-West",
+            "from_channel": "tiktok", "to_channel": "social",
+            "shift_pct": 30.0, "window_days": 14,
+        })
+
+
+def test_validate_params_rejects_out_of_enum_variant():
+    with pytest.raises(ValueError, match="must be one of"):
+        validate_params("swap_trailer_variant", {
+            "film_id": 42, "region": "EU-West",
+            "from_variant": "A", "to_variant": "C",
+        })
+
+
 # ---- SQL render ----
 
 def test_render_shift_marketing_spend_produces_sql():
     sql = render_action_sql(
         "shift_marketing_spend",
         {
-            "film_id": 42, "region": "EU-DE",
-            "from_channel": "tiktok", "to_channel": "youtube",
+            "film_id": 42, "region": "EU-West",
+            "from_channel": "display", "to_channel": "social",
             "shift_pct": 30.0, "window_days": 14,
         },
     )
     assert "roll_campaign_daily" in sql
     assert "42" in sql
-    assert "'EU-DE'" in sql
-    assert "'tiktok'" in sql
-    assert "'youtube'" in sql
+    assert "'EU-West'" in sql
+    assert "'display'" in sql
+    assert "'social'" in sql
     assert "impact_usd" in sql
 
 

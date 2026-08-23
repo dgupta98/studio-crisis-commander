@@ -59,18 +59,32 @@ class InvestigationTimeout(RuntimeError):
 
 
 def build_investigation_agent() -> SequentialAgent:
-    """Return a fresh 5-sub-agent SequentialAgent. Layer 4 calls this to
-    get the raw agent for run_async event streaming."""
+    """Return a fresh 5-sub-agent SequentialAgent.
+
+    The 4 signal sub-agents share ONE MCPToolset (= one mcp-clickhouse
+    subprocess) — see subagents.py "POOLED TOOLSET" note — so we pay the
+    subprocess spawn + TLS handshake cost once per investigation instead
+    of four times (roughly 15s saved on cold Cloud Run containers, where
+    each spawn was costing ~5s).
+
+    Safe because SequentialAgent guarantees only one sub-agent talks to
+    the pooled toolset at a time; the JSON-RPC stdio server can serialize
+    one request at a time without ambiguity. If we ever introduce a
+    ParallelAgent variant, each parallel branch needs its own toolset.
+
+    Layer 4 calls this to get the raw agent for run_async event streaming.
+    """
+    shared_toolset = build_toolset()
     return SequentialAgent(
         name="investigation",
         sub_agents=[
-            build_numeric_context(),
-            build_text_reason(),
-            build_categorical_isolation(),
-            build_temporal_context(),
+            build_numeric_context(shared_toolset),
+            build_text_reason(shared_toolset),
+            build_categorical_isolation(shared_toolset),
+            build_temporal_context(shared_toolset),
             build_synthesis(),
         ],
-        description="4 signal-family sub-agents + synthesis, sequential.",
+        description="4 signal-family sub-agents (pooled MCP) + synthesis.",
     )
 
 

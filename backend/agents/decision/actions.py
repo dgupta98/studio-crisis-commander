@@ -59,6 +59,29 @@ PARAM_SPECS: dict[str, dict[str, type]] = {
 }
 
 
+# Enum whitelists for params whose value must match a real column value in
+# the seed. Enforced by validate_params — out-of-enum values raise instead
+# of silently rendering SQL that returns $0.
+#
+# Kept in sync with:
+#   - shift_marketing_spend channels: roll_campaign_daily channel column
+#     (seed inserts exactly these four in backend/data/generator.py)
+#   - swap_trailer_variant variants: roll_trailer_hourly variant column
+#     (base seed emits "A"; crisis injector adds "B" for the underperformance
+#      crisis type)
+#   - region: canonical 15-region taxonomy from data.region_split.REGIONS
+PARAM_ENUMS: dict[str, dict[str, tuple[str, ...]]] = {
+    "shift_marketing_spend": {
+        "from_channel": ("email", "display", "social", "affiliate"),
+        "to_channel":   ("email", "display", "social", "affiliate"),
+    },
+    "swap_trailer_variant": {
+        "from_variant": ("A", "B"),
+        "to_variant":   ("A", "B"),
+    },
+}
+
+
 DEFAULT_THRESHOLDS_USD: dict[str, float] = {
     "shift_marketing_spend": 10_000.0,
     "pause_campaign":        20_000.0,
@@ -241,10 +264,14 @@ FROM sent, ticket
 def validate_params(action_type: str, params: dict) -> None:
     """Raise ValueError if params don't match the spec for action_type.
 
-    Enforces (a) known action_type, (b) exact key set, (c) value types.
-    Enum whitelisting for region/channel/variant is handled by ClickHouse
-    at query time — if the LLM sends garbage, the query returns empty
-    rather than crashing.
+    Enforces (a) known action_type, (b) exact key set, (c) value types,
+    (d) enum whitelist for channel/variant params (see PARAM_ENUMS).
+
+    Enum enforcement short-circuits an old failure mode: Flash would emit
+    from_channel='paid_social' or to_variant='C' — ClickHouse returned
+    zero rows, impact_usd came back $0, and the action looked "valid" but
+    produced no signal. Raising here surfaces the mistake as
+    impact_error="param validation: ..." so the operator sees why.
     """
     if action_type not in PARAM_SPECS:
         raise ValueError(f"unknown action_type: {action_type!r}")
@@ -268,6 +295,13 @@ def validate_params(action_type: str, params: dict) -> None:
             raise ValueError(
                 f"param {k!r} for {action_type} expected type "
                 f"{expected.__name__}, got {type(v).__name__}"
+            )
+    for k, allowed in PARAM_ENUMS.get(action_type, {}).items():
+        v = params[k]
+        if v not in allowed:
+            raise ValueError(
+                f"param {k!r} for {action_type} must be one of "
+                f"{list(allowed)}, got {v!r}"
             )
 
 

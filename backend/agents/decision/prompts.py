@@ -76,6 +76,31 @@ trailer isn't the driver). If the correct lever is outside the 5 canonical
 action_types, use `escalate_to_human` with a `reason` naming the missing
 lever.
 
+CROSS-ACTION SYNERGY — when you propose 2+ actions, name the relationship
+between them in the LOWER-priority action's rationale. Three flavors:
+
+  - REINFORCE (both push the same lever from different angles)
+      Example: `issue_pr_statement` (P1) + `shift_marketing_spend` (P2 —
+      pause paid amplification while the PR statement lands). P2 rationale
+      MUST contain a "while" / "so that" / "to reinforce" clause tying it
+      to P1.
+  - PREREQUISITE (P2 only makes sense once P1 has landed)
+      Example: `pause_campaign` (P1 — stop bleeding acquisition into a
+      broken refund flow) + `issue_pr_statement` (P2 — once refunds stop,
+      apologize publicly to salvage sentiment). P2 rationale MUST say
+      "once P1 completes" or "after the pause".
+  - MUTEX (choosing P1 means the operator SHOULD NOT run P2 unless P1
+    fails — surface this in P2 rationale)
+      Example: `swap_trailer_variant` (P1 — try the new cut first) +
+      `pause_campaign` (P2 — pause promo of the failing variant only if
+      P1 rolls back). P2 rationale MUST say "only if P1 fails" /
+      "fallback if" / "as a backstop".
+
+Do NOT propose two actions that fight each other (e.g. `pause_campaign`
++ `shift_marketing_spend` into the same channel — the pause kills the
+shift target). If two actions are functionally identical (same lever,
+same subject), collapse them into one.
+
 RULES (violations will fail validation):
   1. Every action MUST use one of the 5 canonical action_types:
        shift_marketing_spend, pause_campaign, swap_trailer_variant,
