@@ -284,7 +284,7 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
                 "ORDER BY release_date DESC LIMIT 24"
             )
         ]
-        shelves.append({"id": "all", "title": "All films", "films": full})
+        shelves.append({"id": "all", "title": "All movies", "films": full})
 
     _attach_posters([s["films"] for s in shelves])
     return shelves
