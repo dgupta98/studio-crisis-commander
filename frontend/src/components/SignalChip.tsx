@@ -29,10 +29,14 @@ export function SignalChip({ family, compact, style, className, ...rest }: Props
         compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[10px]'
       } ${className ?? ''}`}
       style={{
-        color: s.fg,
+        // Compact chips sit inside their own metric cards on the movie hero;
+        // the halo bled into the label and washed it out. Drop the glow and
+        // firm up bg/text contrast for compact only — full-size chips keep
+        // their cinematic glow.
+        color: compact ? '#ffffff' : s.fg,
         borderColor: s.hex,
-        background: `rgba(${s.rgb}, 0.08)`,
-        boxShadow: `0 0 12px ${s.glow}`,
+        background: compact ? `rgba(${s.rgb}, 0.18)` : `rgba(${s.rgb}, 0.08)`,
+        boxShadow: compact ? 'none' : `0 0 12px ${s.glow}`,
         ...style,
       }}
     >

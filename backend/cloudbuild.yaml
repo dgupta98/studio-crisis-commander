@@ -1,0 +1,89 @@
+# Cloud Build config for the backend — stage eval_cache + build + push + deploy.
+#
+# Two callers:
+#   1. `scripts/deploy_backend.sh` (manual CLI runs — currently uses `gcloud
+#      builds submit --tag`, will migrate to `--config=backend/cloudbuild.yaml`)
+#   2. A Cloud Build Trigger on push to main (scoped by `backend/**` filter)
+#
+# The Dockerfile build context is `backend/`, which can't reach `../data/eval_cache/`.
+# So step `stage-cache` copies the top-level cache into `backend/data/eval_cache/`
+# before the image build so the demo triples ship inside the container.
+#
+# Secrets & env vars mirror scripts/deploy_backend.sh — Secret Manager entries
+# (CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DB) must
+# already exist. Cloud Build SA needs Secret Manager Accessor on each secret,
+# plus Cloud Run Admin + Service Account User to deploy.
+substitutions:
+  _IMAGE: gcr.io/$PROJECT_ID/scc-api:$SHORT_SHA
+  _LATEST_IMAGE: gcr.io/$PROJECT_ID/scc-api:latest
+  _SERVICE: scc-api
+  _REGION: us-east1
+  _VERTEX_LOCATION: us-east4
+  _FLASH_MODEL: gemini-2.5-flash
+  _PRO_MODEL: gemini-2.5-pro
+
+steps:
+  - id: stage-cache
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        if [ -d data/eval_cache ]; then
+          echo "Staging data/eval_cache into backend/data/eval_cache"
+          mkdir -p backend/data/eval_cache
+          cp data/eval_cache/*.json backend/data/eval_cache/ 2>/dev/null || true
+        else
+          echo "No data/eval_cache directory to stage — continuing"
+        fi
+
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    dir: backend
+    args:
+      - build
+      - -t
+      - ${_IMAGE}
+      - -t
+      - ${_LATEST_IMAGE}
+      - .
+
+  - id: push-sha
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_IMAGE}"]
+
+  - id: push-latest
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_LATEST_IMAGE}"]
+
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --image=${_IMAGE}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=2Gi
+      - --cpu=2
+      - --min-instances=0
+      - --max-instances=5
+      - --concurrency=4
+      - --timeout=300
+      - --set-env-vars=CLICKHOUSE_PORT=8443,GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=${_VERTEX_LOCATION},GEMINI_MODEL_FLASH=${_FLASH_MODEL},GEMINI_MODEL_PRO=${_PRO_MODEL}
+      - --set-secrets=CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest
+
+images:
+  - ${_IMAGE}
+  - ${_LATEST_IMAGE}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 1800s
