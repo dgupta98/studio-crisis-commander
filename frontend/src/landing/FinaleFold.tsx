@@ -26,6 +26,39 @@ const STEPS = [
   },
 ]
 
+const NEXT_FEATURES: { title: string; body: string; family: keyof typeof tokens.signal }[] = [
+  { title: 'Trailers and Teasers', body: 'Video previews, teaser drops, and official campaign highlights.', family: 'box_office' },
+  { title: 'Reels and Promotions', body: 'Short-form promo clips, countdowns, and branded campaign activity.', family: 'social' },
+  { title: 'News, Blogs, and Wikipedia', body: 'Stories, editorial coverage, and reference pages around every release.', family: 'reviews' },
+  { title: 'Reviews and Ratings', body: 'Critic scores, audience reactions, and verdict summaries in one place.', family: 'streaming' },
+  { title: 'IMDb and OTT Details', body: 'Cast, runtime, platform availability, and metadata from major sources.', family: 'box_office' },
+  { title: 'Social Media Discussions', body: 'Threads, fan reactions, and public sentiment across social channels.', family: 'social' },
+  { title: 'Sentiment Analysis', body: 'Positive, negative, and neutral reaction tracking across sources.', family: 'reviews' },
+  { title: 'Trend Tracking', body: 'What is rising, fading, and being discussed across the movie cycle.', family: 'streaming' },
+  { title: 'Real-Time Updates', body: 'Live changes across releases, reactions, and platform activity.', family: 'box_office' },
+  { title: 'Regional and Language Filtering', body: 'Browse content by geography, language, and market-specific buzz.', family: 'social' },
+  { title: 'Cast and Crew Insights', body: 'Career updates, interviews, performance trends, and feature coverage.', family: 'reviews' },
+  { title: 'Release and OTT Alerts', body: 'Track premieres, streaming windows, and launch-day updates.', family: 'streaming' },
+  { title: 'Box Office Data', body: 'Collections, performance trends, and day-over-day momentum.', family: 'box_office' },
+  { title: 'Audience vs Critic Comparison', body: 'Compare public reactions against professional reviews side by side.', family: 'social' },
+  { title: 'Recommendation Engine', body: 'Surface matches based on genre, discourse, and audience overlap.', family: 'reviews' },
+  { title: 'Fake News and Duplicate Content Filtering', body: 'Separate signal from noise and reduce redundant mentions.', family: 'streaming' },
+  { title: 'All Movie Keywords in One Place', body: 'A single intelligence hub for every movie topic, platform, and format.', family: 'box_office' },
+]
+
+const SOURCES = [
+  'YouTube',
+  'Instagram',
+  'TikTok',
+  'X / Twitter',
+  'IMDb',
+  'Wikipedia',
+  'Reviews',
+  'Blogs',
+  'News Portals',
+  'OTT Platforms',
+]
+
 export function FinaleFold() {
   return (
     <section className="relative flex min-h-screen flex-col overflow-hidden bg-paper pt-20">
@@ -79,6 +112,74 @@ export function FinaleFold() {
             </motion.div>
           ))}
         </div>
+
+        {/* What Next? vision section */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-15%' }}
+          transition={{ duration: 0.8, ease: EASE }}
+          className="rounded-2xl border border-line bg-card/40 p-6 md:p-8"
+        >
+          <div className="mb-6 flex flex-col gap-4 text-center md:text-left">
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">
+              What Next?
+            </span>
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <h2 className="max-w-2xl font-display font-bold text-3xl leading-tight tracking-tight md:text-5xl">
+                A single movie intelligence <span className="text-accent">hub.</span>
+              </h2>
+              <p className="max-w-xl text-sm leading-relaxed text-ink-soft md:text-base">
+                In the future, the platform will collect movie content across formats and platforms using relevant keywords,
+                turning scattered signals into one complete view of every film.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {NEXT_FEATURES.map((feature, i) => (
+              <motion.article
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-10%' }}
+                transition={{ duration: 0.55, ease: EASE, delay: i * 0.04 }}
+                className="group relative overflow-hidden rounded-xl border border-line bg-paper/80 p-4 transition-colors hover:border-accent/50 hover:bg-card"
+              >
+                <div
+                  aria-hidden
+                  className="absolute inset-x-0 top-0 h-px opacity-80"
+                  style={{ background: `linear-gradient(90deg, transparent, ${tokens.signal[feature.family].hex}, transparent)` }}
+                />
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span
+                    className="inline-flex h-2.5 w-2.5 rounded-full"
+                    style={{ background: tokens.signal[feature.family].hex, boxShadow: `0 0 14px ${tokens.signal[feature.family].glow}` }}
+                  />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">Future</span>
+                </div>
+                <h3 className="font-display text-lg font-semibold tracking-tight text-ink">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{feature.body}</p>
+              </motion.article>
+            ))}
+          </div>
+
+          <div className="mt-7 rounded-2xl border border-line bg-card/30 p-5">
+            <div className="mb-3 text-[11px] font-mono font-semibold uppercase tracking-[0.28em] text-accent">
+              Coverage across platforms
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {SOURCES.map((source) => (
+                <span
+                  key={source}
+                  className="rounded-full border border-line bg-paper/80 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-ink-soft"
+                >
+                  {source}
+                </span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
 
         {/* CTA row — compact, tucked between steps and marquee */}
         <motion.div
