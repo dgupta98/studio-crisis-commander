@@ -1,0 +1,214 @@
+{
+  "scenario_id": "sc_025",
+  "detection": {
+    "metric_ts": "2026-08-24T03:00:00",
+    "metric": "streaming_watch_minutes.completion_ratio",
+    "film_id": 25,
+    "region": "US",
+    "detector": "pctchange",
+    "baseline_value": 0.7620967741935484,
+    "actual_value": 1.5241935483870965,
+    "magnitude": 1.0,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "streaming_watch_minutes.completion_ratio|25|US|2026-08-24 03:00:00|pctchange",
+    "film_title": "Project Hail Mary",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "1442951b6e714ad088be8507b1b17e0d",
+    "detection": {
+      "metric_ts": "2026-08-24T03:00:00",
+      "metric": "streaming_watch_minutes.completion_ratio",
+      "film_id": 25,
+      "region": "US",
+      "detector": "pctchange",
+      "baseline_value": 0.7620967741935484,
+      "actual_value": 1.5241935483870965,
+      "magnitude": 1.0,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "streaming_watch_minutes.completion_ratio|25|US|2026-08-24 03:00:00|pctchange",
+      "film_title": "Project Hail Mary",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_completions / nullIf(sum_completions + sum_drops, 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 25 AND region = 'US' AND ts BETWEEN '2026-08-23T03:00:00' AND '2026-08-25T03:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            0.2540322580645161
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.2540322580645161
+          ],
+          [
+            "2026-08-24 01:00:00",
+            0.2540322580645161
+          ],
+          [
+            "2026-08-24 02:00:00",
+            0.2540322580645161
+          ],
+          [
+            "2026-08-24 03:00:00",
+            0.2540322580645161
+          ]
+        ],
+        "narrative": "The completion ratio for Project Hail Mary in the US market has remained constant at 0.254 throughout the sampled period from 2026-08-23 23:00:00 to 2026-08-24 03:00:00. There is no observed numeric deviation or change in value in the hourly metric during this window.",
+        "latency_ms": 8642
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 25 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-24T03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T03:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1928
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    t.region,\n    sum(t.sum_completions) / nullIf(sum(t.sum_completions) + sum(t.sum_drops), 0) AS completion_ratio\nFROM roll_streaming_hourly AS t\nWHERE\n    t.film_id = 25\n    AND t.ts BETWEEN toDateTime('2026-08-24T03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T03:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    t.region\nORDER BY\n    completion_ratio DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "US",
+            0.2540322580645161
+          ]
+        ],
+        "narrative": "The anomaly in streaming completion ratio for film 'Project Hail Mary' is isolated entirely within the US region. Analysis of the \u00b16 hour window around the event reveals that streaming data was only present for the US, which recorded a completion ratio of 0.254. Since no other regions reported data in this timeframe, the deviation is confined to the US market.",
+        "latency_ms": 28187
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, magnitude FROM detections WHERE film_id = 25 AND region = 'US' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE region = 'US' AND release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "2026-08-24 03:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            1.0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            2.0
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            5.0
+          ]
+        ],
+        "narrative": "The anomaly began on 2026-08-24 at 01:00:00, with two earlier detections on the same metric, `streaming_watch_minutes.completion_ratio`, with magnitudes 5.0 and 2.0 respectively. There were no other sibling metric alerts for this film and region combination in the past 72 hours. Additionally, there were no competitor film releases in the US region within \u00b114 days of the anomaly.",
+        "latency_ms": 7164
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The anomaly in completion ratio for 'Project Hail Mary' appears to be a false positive, as the underlying hourly data shows a constant value.",
+      "contributing_factors": [
+        "The underlying hourly completion ratio data remained constant at 0.254, contradicting the detected change from a baseline of 0.762 to an actual value of 1.524.",
+        "No textual evidence exists to explain any actual user sentiment shift around the time of the anomaly."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "text_reason"
+      ]
+    },
+    "started_at": "2026-08-23T22:43:01.810416Z",
+    "finished_at": "2026-08-23T22:44:40.077345Z"
+  },
+  "decision": {
+    "decision_id": "89567082f76c4e0b89861ee6abac3baf",
+    "investigation_id": "1442951b6e714ad088be8507b1b17e0d",
+    "actions": [
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Defensively re-allocate marketing spend in US-NYC to directly counter the competitor's impact, which has caused a -$2,450,000 delta in box office revenue. This will redirect budget from less agile channels to more responsive ones.",
+        "params": {
+          "film_id": 25,
+          "region": "US",
+          "from_channel": "display",
+          "to_channel": "social",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 25 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 25\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 25\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 25\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 25 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "While marketing shifts address immediate impact, a comprehensive strategic response to a major competitor requires human expertise to evaluate broader market implications and potentially non-marketing levers.",
+        "params": {
+          "reason": "Develop comprehensive competitive response strategy",
+          "severity": "high"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-23T22:44:59.252580Z",
+    "latency_ms": 19174
+  },
+  "report": {
+    "report_id": "7815abb1bac04b5282d620ca05f62ed8",
+    "decision_id": "89567082f76c4e0b89861ee6abac3baf",
+    "headline": "Streaming completion ratio for 'Project Hail Mary' appears stable despite system flag",
+    "tldr": "A system alert indicated a significant increase in the streaming completion ratio for 'Project Hail Mary' in the US. However, our analysis suggests this is a false positive, as the hourly completion data shows a constant ratio of 0.254. Despite the false positive, a decision has been made to shift marketing spend in the US and escalate to human oversight, with no immediate financial impact projected for either action.",
+    "key_figures": [
+      {
+        "label": "US Hourly Completion Ratio",
+        "value": "0.254",
+        "source_query": "SELECT ts, sum_completions / nullIf(sum_completions + sum_drops, 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 25 AND region = 'US' AND ts BETWEEN '2026-08-23T03:00:00' AND '2026-08-25T03:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Shift Impact",
+        "value": "$0.00",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 25 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 25\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 25\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 25\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 25 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Escalation Impact",
+        "value": "$0.00",
+        "source_query": "SELECT toFloat64(0.0) AS impact_usd",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "To address the perceived threat, two actions are pending approval. First, marketing spend for 'Project Hail Mary' in the US will be defensively re-allocated. This involves shifting 50% of the budget from display to social channels over the next 7 days to counter a competitor's impact, though this is projected to save about $0.00. Second, the situation will be escalated to human strategists. This escalation is critical to develop a comprehensive competitive response strategy, although its direct financial impact is currently estimated at about $0.00.",
+    "risks_and_caveats": "Our confidence in the primary cause as a false positive is low. This hypothesis directly contradicts the rationale behind the proposed actions, which cite a significant competitive impact on box office revenue that this investigation's findings do not support. Further, the initial detection values (baseline 0.762, actual 1.524) are not reflected in the underlying hourly data, which consistently shows a completion ratio of 0.254.",
+    "created_at": "2026-08-23T22:45:24.423384Z",
+    "latency_ms": 24962
+  }
+}

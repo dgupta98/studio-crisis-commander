@@ -1,0 +1,209 @@
+{
+  "scenario_id": "sc_005",
+  "detection": {
+    "metric_ts": "2026-08-23T22:25:02",
+    "metric": "social_trends.avg_virality",
+    "film_id": 5,
+    "region": "US",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.31,
+    "magnitude": 0.31,
+    "business_impact": 0.31,
+    "severity": 0.31,
+    "dedup_key": "social_trends.avg_virality|5|US|2026-08-23T22:25:02|synth",
+    "film_title": "The Odyssey",
+    "latency_ms": 25338
+  },
+  "investigation": {
+    "investigation_id": "22cc9452a23d444a83e73fce6b4c1794",
+    "detection": {
+      "metric_ts": "2026-08-23T22:25:02",
+      "metric": "social_trends.avg_virality",
+      "film_id": 5,
+      "region": "US",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.31,
+      "magnitude": 0.31,
+      "business_impact": 0.31,
+      "severity": 0.31,
+      "dedup_key": "social_trends.avg_virality|5|US|2026-08-23T22:25:02|synth",
+      "film_title": "The Odyssey",
+      "latency_ms": 25338
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 5 AND region = 'US' AND ts BETWEEN '2026-08-22 22:25:02' AND '2026-08-24 22:25:02' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-23 22:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-23 22:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-23 23:00:00",
+            0.3100000023841858
+          ],
+          [
+            "2026-08-23 23:00:00",
+            0.3100000023841858
+          ]
+        ],
+        "narrative": "The average virality metric for The Odyssey in the US shows a sustained plateau at approximately 0.31. This is a significant increase from the baseline value of 0.0. The elevated values, starting around 2026-08-23 22:00:00, persist for at least two hours until 2026-08-23 23:00:00.",
+        "latency_ms": 5016
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 5 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-23T22:25:02') - INTERVAL 6 HOUR AND toDateTime('2026-08-23T22:25:02') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1694
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    region,\n    platform,\n    avg(virality) AS avg_virality,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 5\n    AND ts BETWEEN '2026-08-23 16:25:02' AND '2026-08-24 04:25:02'\nGROUP BY\n    region, platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "platform",
+          "avg_virality",
+          "total_mentions"
+        ],
+        "rows": [
+          [
+            "US",
+            "twitter",
+            0.3100000023841858,
+            31000
+          ]
+        ],
+        "narrative": "The spike in virality for 'The Odyssey' is entirely isolated to a single slice of the audience. The combination of the US region and the Twitter platform shows an average virality of 0.31 with 31,000 mentions during the anomalous period. No other platforms or regions show any unusual activity.",
+        "latency_ms": 8077
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, severity FROM detections WHERE film_id = 5 AND region = 'US' AND metric_ts >= toDateTime('2026-08-23T22:25:02') - INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, release_date, competitor_film_id FROM competitor_releases WHERE region = 'US' AND release_date >= toDate('2026-08-23') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-23') + INTERVAL 14 DAY AND film_id = 5",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "severity"
+        ],
+        "rows": [],
+        "narrative": "The anomaly began with this detection; no other anomalies for 'The Odyssey' in the US have fired in the preceding 72 hours. There are also no competitor films released in the US market within two weeks of the anomaly's onset. The timing of this virality spike does not appear to be correlated with any other tracked metrics or competitive events.",
+        "latency_ms": 11863
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "A significant virality spike for 'The Odyssey' is occurring exclusively on Twitter within the US.",
+      "contributing_factors": [
+        "The virality is sustained over several hours.",
+        "This is the first such anomaly for the film in this region and is not correlated with competitor activities or other tracked metrics."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:25:27.338485Z",
+    "finished_at": "2026-08-23T22:26:37.701884Z"
+  },
+  "decision": {
+    "decision_id": "3179dc05776c42f8809452a8922e202e",
+    "investigation_id": "22cc9452a23d444a83e73fce6b4c1794",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Immediately replace the underperforming Trailer the affected variant, which only achieves a 22% watch time percentage in US-DE, with the affected variant, which has proven to deliver a much higher 58% watch time.",
+        "params": {
+          "film_id": 5,
+          "region": "US",
+          "from_variant": "A",
+          "to_variant": "B"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 5 AND region = 'US'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 5\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 5\n    AND region = 'US'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 5\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 5 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Redirect of marketing spend for the next 7 days from the 'social' channel in US-DE, which currently shows a low 20% watch time for Trailer the affected variant, to 'display' to reinforce the visibility and impact of the newly swapped trailer variant.",
+        "params": {
+          "film_id": 5,
+          "region": "US",
+          "from_channel": "social",
+          "to_channel": "display",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 5 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 5\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 5\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 5\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 5 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-23T22:26:51.877168Z",
+    "latency_ms": 14174
+  },
+  "report": {
+    "report_id": "2a0d88497059491b97be08034515da9c",
+    "decision_id": "3179dc05776c42f8809452a8922e202e",
+    "headline": "The Odyssey is seeing a significant virality spike on US Twitter.",
+    "tldr": "A significant virality spike for 'The Odyssey' has been detected on Twitter within the US, reaching an average virality of 0.31 from a baseline of 0.0, driven by 31,000 mentions. This sustained increase is the first of its kind for the film in this region and isn't linked to competitor activity. To capitalize on this, we're immediately replacing the current US trailer variant with a better-performing one. We are also shifting marketing spend from the social channel to display to reinforce the visibility and impact of the new trailer.",
+    "key_figures": [
+      {
+        "label": "US Twitter avg virality",
+        "value": "0.31",
+        "source_query": "SELECT\n    region,\n    platform,\n    avg(virality) AS avg_virality,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 5\n    AND ts BETWEEN '2026-08-23 16:25:02' AND '2026-08-24 04:25:02'\nGROUP BY\n    region, platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "US Twitter total mentions",
+        "value": "31,000",
+        "source_query": "SELECT\n    region,\n    platform,\n    avg(virality) AS avg_virality,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 5\n    AND ts BETWEEN '2026-08-23 16:25:02' AND '2026-08-24 04:25:02'\nGROUP BY\n    region, platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer swap estimated impact",
+        "value": "$0.0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 5 AND region = 'US'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 5\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 5\n    AND region = 'US'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 5\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 5 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing shift estimated impact",
+        "value": "$0.0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 5 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 5\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 5\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 5\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 5 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We're immediately replacing the underperforming Trailer A variant in the US, which achieves only a 22% watch time, with Trailer B, which has proven to deliver a much higher 58% watch time. This action has an estimated impact of $0.0. Second, we are redirecting 50% of marketing spend for the next 7 days from the social channel in the US, which currently shows a low 20% watch time for Trailer A, to display. This will reinforce the visibility and impact of the newly swapped trailer variant, with an estimated impact of $0.0.",
+    "risks_and_caveats": "Our hypothesis confidence is high. However, we did not find significant text evidence in the review data, which could provide deeper context for the virality spike. This suggests the trend might be primarily driven by media sharing rather than direct user commentary on review platforms.",
+    "created_at": "2026-08-23T22:27:13.196497Z",
+    "latency_ms": 21118
+  }
+}

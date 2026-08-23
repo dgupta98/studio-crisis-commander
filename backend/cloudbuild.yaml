@@ -87,6 +87,11 @@ steps:
       - --max-instances=5
       - --concurrency=4
       - --timeout=300
+      # PipelineRuntime is process-local (in-memory dict). Without affinity,
+      # a POST /inject-crisis on instance A followed by GET /stream/... can
+      # land on instance B and 404 with "unknown run_id". Session affinity
+      # sends a GOOGCLB cookie the LB uses to pin the client to one instance.
+      - --session-affinity
       - --set-env-vars=CLICKHOUSE_PORT=8443,GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${_VERTEX_LOCATION},GEMINI_MODEL_FLASH=${_FLASH_MODEL},GEMINI_MODEL_PRO=${_PRO_MODEL}
       - --set-secrets=CLICKHOUSE_HOST=CLICKHOUSE_HOST:latest,CLICKHOUSE_USER=CLICKHOUSE_USER:latest,CLICKHOUSE_PASSWORD=CLICKHOUSE_PASSWORD:latest,CLICKHOUSE_DB=CLICKHOUSE_DB:latest
 

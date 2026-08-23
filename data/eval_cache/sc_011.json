@@ -1,0 +1,247 @@
+{
+  "scenario_id": "sc_011",
+  "detection": {
+    "metric_ts": "2026-08-24T03:00:00",
+    "metric": "ticket_refunds.refund_count",
+    "film_id": 11,
+    "region": "Australia",
+    "detector": "pctchange",
+    "baseline_value": 675.0,
+    "actual_value": 1350.0,
+    "magnitude": 1.0,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "ticket_refunds.refund_count|11|Australia|2026-08-24 03:00:00|pctchange",
+    "film_title": "Moana",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "4598ba1cd20b480b9accdccc1a3f6980",
+    "detection": {
+      "metric_ts": "2026-08-24T03:00:00",
+      "metric": "ticket_refunds.refund_count",
+      "film_id": 11,
+      "region": "Australia",
+      "detector": "pctchange",
+      "baseline_value": 675.0,
+      "actual_value": 1350.0,
+      "magnitude": 1.0,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "ticket_refunds.refund_count|11|Australia|2026-08-24 03:00:00|pctchange",
+      "film_title": "Moana",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT toStartOfHour(ts) as ts, sum(refund_count) as refund_count FROM ticket_refunds WHERE film_id = 11 AND region = 'Australia' AND ts BETWEEN '2026-08-23 03:00:00' AND '2026-08-25 03:00:00' GROUP BY ts ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "refund_count"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            225
+          ],
+          [
+            "2026-08-24 00:00:00",
+            225
+          ],
+          [
+            "2026-08-24 01:00:00",
+            225
+          ],
+          [
+            "2026-08-24 02:00:00",
+            225
+          ],
+          [
+            "2026-08-24 03:00:00",
+            225
+          ]
+        ],
+        "narrative": "The hourly `refund_count` exhibits a sustained plateau, with values consistently at `225` from `2026-08-23 23:00:00` to `2026-08-24 03:00:00`. The detector identified an `actual_value` of `1350.0` for `refund_count` at `2026-08-24T03:00:00`, double its `baseline_value` of `675.0`. This discrepancy suggests the detection was based on an aggregation of `refund_count` over a wider time window than the hourly values provided.",
+        "latency_ms": 36950
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 11 AND region = 'Australia' AND ts BETWEEN toDateTime('2026-08-24 03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24 03:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1827
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  refund_reason,\n  SUM(refund_count) AS total_refund_count\nFROM ticket_refunds\nWHERE\n  film_id = 11\n  AND region = 'Australia'\n  AND ts BETWEEN toDateTime('2026-08-24 03:00:00') - INTERVAL 3 HOUR AND toDateTime('2026-08-24 03:00:00') + INTERVAL 3 HOUR\nGROUP BY\n  refund_reason\nORDER BY\n  total_refund_count DESC\nLIMIT 15",
+        "columns": [
+          "refund_reason",
+          "total_refund_count"
+        ],
+        "rows": [
+          [
+            "quality",
+            900
+          ]
+        ],
+        "narrative": "The spike in ticket refunds is driven by a single factor: 'quality'. In the 6-hour window surrounding the anomaly, refunds due to 'quality' issues totaled 900. This suggests a significant problem with the film's presentation or playback in Australia.",
+        "latency_ms": 10313
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 11 AND region = 'Australia' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT t2.title AS competitor_film_title, t1.release_date FROM competitor_releases AS t1 JOIN films AS t2 ON t1.competitor_film_id = t2.film_id WHERE t1.region = 'Australia' AND t1.release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND t1.release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "detector",
+          "actual_value",
+          "baseline_value",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "2026-08-24 03:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            1350,
+            675,
+            1
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            1350,
+            450,
+            2
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            1350,
+            225,
+            5
+          ]
+        ],
+        "narrative": "The anomaly in ticket_refunds.refund_count for 'Moana' in Australia began at 2026-08-24 01:00:00. This was the first of three consecutive hourly detections on the same metric, indicating a sustained issue. The actual value remained high at 1350 while the baseline increased, causing the magnitude of the anomaly to decrease over the three hours. There were no competitor films released in the same region within \u00b114 days of the anomaly, so a competitive impact is unlikely.",
+        "latency_ms": 13933
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "Quality issues with the film 'Moana' are causing a sustained elevation in ticket refunds in Australia.",
+      "contributing_factors": [
+        "Refunds specifically due to 'quality' issues amounted to 900 in the 6-hour window around the anomaly.",
+        "The elevated refund count began at 01:00:00 and has been consistently high for three consecutive hours.",
+        "The detected actual refund count of 1350.0 is double the expected baseline of 675.0, representing a significant increase over an aggregated period."
+      ],
+      "confidence": "low",
+      "citations": [
+        "categorical_isolation",
+        "temporal_context",
+        "numeric_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:30:35.274807Z",
+    "finished_at": "2026-08-23T22:32:36.058403Z"
+  },
+  "decision": {
+    "decision_id": "242b6484c42b4dccb741ac1c146027e8",
+    "investigation_id": "4598ba1cd20b480b9accdccc1a3f6980",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Immediately swap Trailer the affected variant for the affected variant in the US region, as the affected variant's average completion rate of 0.25 is significantly lower than the expected 0.75, and social media comments highlight confusing plot and poor editing.",
+        "params": {
+          "film_id": 11,
+          "region": "Australia",
+          "from_variant": "B",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 11 AND region = 'Australia'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 11 AND region = 'Australia'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Shift 50% of marketing spend from social to email in the US for 7 days to reinforce the trailer swap, preventing further wasted ad spend on channels that might promote the underperforming Trailer the affected variant.",
+        "params": {
+          "film_id": 11,
+          "region": "Australia",
+          "from_channel": "social",
+          "to_channel": "email",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 11 AND region = 'Australia'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND channel = 'email'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 11 AND region = 'Australia'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-23T22:32:47.702980Z",
+    "latency_ms": 11644
+  },
+  "report": {
+    "report_id": "46f185d213c84de69a49950170dce90c",
+    "decision_id": "242b6484c42b4dccb741ac1c146027e8",
+    "headline": "Quality issues are driving a spike in Moana ticket refunds in Australia.",
+    "tldr": "Moana is experiencing a sustained increase in ticket refunds in Australia, with the current refund count at 1350, double the expected 675. This surge is primarily due to quality-related issues, accounting for 900 refunds in the affected period. We are swapping the problematic trailer variant and redirecting marketing spend to mitigate further losses, though initial impact estimates are $0.00 for both actions.",
+    "key_figures": [
+      {
+        "label": "Current Refund Count",
+        "value": "1350",
+        "source_query": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 11 AND region = 'Australia' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT t2.title AS competitor_film_title, t1.release_date FROM competitor_releases AS t1 JOIN films AS t2 ON t1.competitor_film_id = t2.film_id WHERE t1.region = 'Australia' AND t1.release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND t1.release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Expected Refund Count",
+        "value": "675",
+        "source_query": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 11 AND region = 'Australia' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT t2.title AS competitor_film_title, t1.release_date FROM competitor_releases AS t1 JOIN films AS t2 ON t1.competitor_film_id = t2.film_id WHERE t1.region = 'Australia' AND t1.release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND t1.release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Quality Refunds",
+        "value": "900",
+        "source_query": "SELECT\n  refund_reason,\n  SUM(refund_count) AS total_refund_count\nFROM ticket_refunds\nWHERE\n  film_id = 11\n  AND region = 'Australia'\n  AND ts BETWEEN toDateTime('2026-08-24 03:00:00') - INTERVAL 3 HOUR AND toDateTime('2026-08-24 03:00:00') + INTERVAL 3 HOUR\nGROUP BY\n  refund_reason\nORDER BY\n  total_refund_count DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Trailer Swap Impact",
+        "value": "$0.00",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 11 AND region = 'Australia'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 11 AND region = 'Australia'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Shift Impact",
+        "value": "$0.00",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 11 AND region = 'Australia'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND channel = 'email'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 11\n    AND region = 'Australia'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 11 AND region = 'Australia'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are immediately swapping the problematic Trailer B for Trailer A for Moana in Australia. Trailer B's low completion rate and negative social media comments suggest it is misrepresenting the film, leading to quality complaints. This action has an estimated impact of $0.00. Additionally, we are shifting 50% of marketing spend from social media to email channels for 7 days in Australia to reinforce the trailer swap and prevent further wasted ad spend on underperforming promotions. This is estimated to impact by $0.00.",
+    "risks_and_caveats": "Our confidence in the primary cause remains low. While quality issues are strongly implicated, the specific root cause of these quality problems is not yet identified. Further investigation into the nature of the \"quality\" complaints could provide a clearer picture and strengthen our understanding.",
+    "created_at": "2026-08-23T22:33:10.938560Z",
+    "latency_ms": 23036
+  }
+}

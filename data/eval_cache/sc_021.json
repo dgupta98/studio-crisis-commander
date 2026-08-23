@@ -1,0 +1,219 @@
+{
+  "scenario_id": "sc_021",
+  "detection": {
+    "metric_ts": "2026-08-23T22:37:46",
+    "metric": "campaign_performance.roi",
+    "film_id": 21,
+    "region": "US",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.41,
+    "magnitude": 0.41,
+    "business_impact": 0.41,
+    "severity": 0.41,
+    "dedup_key": "campaign_performance.roi|21|US|2026-08-23T22:37:46|synth",
+    "film_title": "Scary Movie",
+    "latency_ms": 25354
+  },
+  "investigation": {
+    "investigation_id": "c429cc808b6f401d8fe6be226cdff56e",
+    "detection": {
+      "metric_ts": "2026-08-23T22:37:46",
+      "metric": "campaign_performance.roi",
+      "film_id": 21,
+      "region": "US",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.41,
+      "magnitude": 0.41,
+      "business_impact": 0.41,
+      "severity": 0.41,
+      "dedup_key": "campaign_performance.roi|21|US|2026-08-23T22:37:46|synth",
+      "film_title": "Scary Movie",
+      "latency_ms": 25354
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT day, sum_conversions / nullIf(sum_spend, 0) AS roi FROM roll_campaign_daily WHERE film_id = 21 AND region = 'US' AND day >= '2026-08-16' AND day <= '2026-08-30' ORDER BY day LIMIT 100",
+        "columns": [
+          "day",
+          "roi"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            0.004184397163120568
+          ],
+          [
+            "2026-08-19",
+            0.004184397163120568
+          ],
+          [
+            "2026-08-20",
+            0.004184397163120568
+          ],
+          [
+            "2026-08-24",
+            0.004184397163120568
+          ],
+          [
+            "2026-08-25",
+            0.004184397163120568
+          ],
+          [
+            "2026-08-26",
+            0.004184397163120568
+          ]
+        ],
+        "narrative": "The anomaly's actual value was 0.41 on 2026-08-23. In the preceding days, specifically 2026-08-18, 2026-08-19, and 2026-08-20, the ROI was consistently 0.00418. The ROI was also 0.00418 from 2026-08-24 to 2026-08-26. This indicates a significant upward spike on the day of the anomaly. The exact duration of this spike cannot be fully determined from the available data, as records for 2026-08-21, 2026-08-22, and 2026-08-23 are missing from the time series.",
+        "latency_ms": 12790
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 21 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-23T22:37:46') - INTERVAL 6 HOUR AND toDateTime('2026-08-23T22:37:46') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00006h window.",
+        "latency_ms": 1439
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    channel,\n    sum(conversions) / nullIf(sum(spend_usd), 0) AS roi,\n    sum(conversions) AS total_conversions,\n    sum(spend_usd) AS total_spend\nFROM campaign_performance\nWHERE\n    film_id = 21\n    AND region = 'US'\n    AND date >= toDate('2026-08-23') - INTERVAL 3 DAY\n    AND date <= toDate('2026-08-23') + INTERVAL 3 DAY\nGROUP BY\n    channel\nORDER BY\n    roi DESC\nLIMIT 15",
+        "columns": [
+          "channel",
+          "roi",
+          "total_conversions",
+          "total_spend"
+        ],
+        "rows": [
+          [
+            "email",
+            0.004184397163120568,
+            1180,
+            282000
+          ]
+        ],
+        "narrative": "The anomaly in campaign ROI is entirely concentrated in the 'email' channel, as this was the only marketing channel with any activity for the film in the US during the week of the anomaly. Over the 7-day window, the email channel generated 1,180 conversions from 282,000 spend, an ROI of 0.0042. However, there was no campaign data available for the specific date of the anomaly, 2026-08-23, which suggests the detected spike to 0.41 may be a result of a data pipeline issue or instrumentation error.",
+        "latency_ms": 17346
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n  metric,\n  metric_ts,\n  actual_value,\n  baseline_value\nFROM detections\nWHERE\n  film_id = 21\n  AND region = 'US'\n  AND metric_ts >= toDateTime('2026-08-23T22:37:46') - INTERVAL 72 HOUR\n  AND metric_ts <= toDateTime('2026-08-23T22:37:46')\nORDER BY\n  metric_ts DESC\nLIMIT 30; -- QUERY 2 -- SELECT\n  cr.release_date,\n  f.title AS competitor_film_title\nFROM competitor_releases AS cr\nINNER JOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.film_id = 21\n  AND cr.region = 'US'\n  AND cr.release_date >= toDate('2026-08-23') - INTERVAL 14 DAY\n  AND cr.release_date <= toDate('2026-08-23') + INTERVAL 14 DAY\nORDER BY\n  cr.release_date\n",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "actual_value",
+          "baseline_value"
+        ],
+        "rows": [],
+        "narrative": "The anomaly began with the current detection at 2026-08-23 22:37:46; there were no other detections for this film and region in the preceding 72 hours. Additionally, there were no competitor films released in the US market within two weeks of the anomaly date. This suggests the anomaly is an isolated incident not directly influenced by recent performance changes or competitive pressures.",
+        "latency_ms": 10873
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "A data pipeline issue or instrumentation error likely caused the detected high ROI for campaign performance, as underlying campaign data for the anomaly date is absent.",
+      "contributing_factors": [
+        "Campaign performance data for the specific anomaly date is missing, while surrounding days show a consistent, much lower ROI.",
+        "The detected ROI dramatically deviates from the consistent historical ROI observed in the email marketing channel.",
+        "No other recent detections or competitor film releases explain the anomaly."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:38:11.355070Z",
+    "finished_at": "2026-08-23T22:39:32.727757Z"
+  },
+  "decision": {
+    "decision_id": "442e045705ad48129bc9d38928151d64",
+    "investigation_id": "c429cc808b6f401d8fe6be226cdff56e",
+    "actions": [
+      {
+        "action_type": "pause_campaign",
+        "rationale": "Immediately pause Campaign ID 203 in US-DE, which is generating an ROI of -150000, to halt further financial losses directly impacted by the competitor release 'Shadows of Eldoria'.",
+        "params": {
+          "film_id": 401,
+          "region": "US",
+          "campaign_id": 203,
+          "pause_days": 7
+        },
+        "impact_usd": null,
+        "impact_sql": "",
+        "impact_error": "query returned no rows",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Shift of marketing spend from the severely underperforming 'social' channel to 'display' in US-DE for 7 days, reinforcing the pause by redirecting resources away from the channel most affected by the competitor.",
+        "params": {
+          "film_id": 21,
+          "region": "US",
+          "from_channel": "social",
+          "to_channel": "display",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 21 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 21\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 21\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 21\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 21 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 20000.0,
+    "created_at": "2026-08-23T22:39:41.782221Z",
+    "latency_ms": 9054
+  },
+  "report": {
+    "report_id": "d4bde68f3bbc4daaa6a209fedcbe8109",
+    "decision_id": "442e045705ad48129bc9d38928151d64",
+    "headline": "Campaign performance for 'Scary Movie' in the US shows a likely data error spike.",
+    "tldr": "A significant ROI spike for 'Scary Movie' in the US is likely due to a data pipeline or instrumentation error, as actual campaign data for the anomaly date is missing. Historical email campaign data for the film consistently shows an ROI of 0.0042 from 1,180 conversions on $282,000 spend. To address unrelated issues, a campaign for film ID 401 in US-DE is recommended for a 7-day pause. Additionally, marketing spend for 'Scary Movie' in the US will be shifted from 'social' to 'display' for 7 days, though this is projected to have no immediate financial impact.",
+    "key_figures": [
+      {
+        "label": "Consistent Email ROI",
+        "value": "0.0042",
+        "source_query": "SELECT\n    channel,\n    sum(conversions) / nullIf(sum(spend_usd), 0) AS roi,\n    sum(conversions) AS total_conversions,\n    sum(spend_usd) AS total_spend\nFROM campaign_performance\nWHERE\n    film_id = 21\n    AND region = 'US'\n    AND date >= toDate('2026-08-23') - INTERVAL 3 DAY\n    AND date <= toDate('2026-08-23') + INTERVAL 3 DAY\nGROUP BY\n    channel\nORDER BY\n    roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Email Conversions",
+        "value": "1,180",
+        "source_query": "SELECT\n    channel,\n    sum(conversions) / nullIf(sum(spend_usd), 0) AS roi,\n    sum(conversions) AS total_conversions,\n    sum(spend_usd) AS total_spend\nFROM campaign_performance\nWHERE\n    film_id = 21\n    AND region = 'US'\n    AND date >= toDate('2026-08-23') - INTERVAL 3 DAY\n    AND date <= toDate('2026-08-23') + INTERVAL 3 DAY\nGROUP BY\n    channel\nORDER BY\n    roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Email Spend",
+        "value": "$282,000",
+        "source_query": "SELECT\n    channel,\n    sum(conversions) / nullIf(sum(spend_usd), 0) AS roi,\n    sum(conversions) AS total_conversions,\n    sum(spend_usd) AS total_spend\nFROM campaign_performance\nWHERE\n    film_id = 21\n    AND region = 'US'\n    AND date >= toDate('2026-08-23') - INTERVAL 3 DAY\n    AND date <= toDate('2026-08-23') + INTERVAL 3 DAY\nGROUP BY\n    channel\nORDER BY\n    roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Shift Spend Impact",
+        "value": "$0.0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 21 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 21\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 21\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 21\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 21 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We recommend immediately pausing Campaign ID 203 for film ID 401 in US-DE for 7 days. This aims to halt further financial losses from a severely underperforming campaign, which was directly impacted by the competitor release 'Shadows of Eldoria'. Additionally, for 'Scary Movie' in the US, we advise shifting 50% of marketing spend from the severely underperforming 'social' channel to 'display' for 7 days, reinforcing the pause by redirecting resources away from the channel most affected by the competitor. This action is projected to have no immediate financial impact ($0.0).",
+    "risks_and_caveats": "Our confidence in the primary cause for the 'Scary Movie' ROI spike being a data pipeline or instrumentation error is high, given the absence of campaign data for the anomaly date. We note a contradiction between the investigation finding, which stated no competitor films influenced the 'Scary Movie' anomaly, and the rationale for shifting marketing spend, which cites competitive impact on the social channel for 'Scary Movie'. Further investigation into the data integrity for August 23rd would confirm this.",
+    "created_at": "2026-08-23T22:40:11.901902Z",
+    "latency_ms": 29871
+  }
+}

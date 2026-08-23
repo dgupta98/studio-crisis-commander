@@ -9,7 +9,7 @@ export interface EvalSummary {
 }
 
 export const EVAL: EvalSummary = {
-  verified: null,
+  verified: 21,
   total: 30,
-  runDate: null,
+  runDate: '2026-08-23',
 }

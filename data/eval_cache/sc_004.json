@@ -1,0 +1,291 @@
+{
+  "scenario_id": "sc_004",
+  "detection": {
+    "metric_ts": "2026-08-24T00:00:00",
+    "metric": "social_trends.avg_virality",
+    "film_id": 4,
+    "region": "Japan",
+    "detector": "pctchange",
+    "baseline_value": 0.47999998927116394,
+    "actual_value": 2.8799999356269836,
+    "magnitude": 5.0,
+    "business_impact": 0.04189670458436012,
+    "severity": 0.20948351919651031,
+    "dedup_key": "social_trends.avg_virality|4|Japan|2026-08-24 00:00:00|pctchange",
+    "film_title": "Supergirl",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "131e393a03384988b218d03435dd0734",
+    "detection": {
+      "metric_ts": "2026-08-24T00:00:00",
+      "metric": "social_trends.avg_virality",
+      "film_id": 4,
+      "region": "Japan",
+      "detector": "pctchange",
+      "baseline_value": 0.47999998927116394,
+      "actual_value": 2.8799999356269836,
+      "magnitude": 5.0,
+      "business_impact": 0.04189670458436012,
+      "severity": 0.20948351919651031,
+      "dedup_key": "social_trends.avg_virality|4|Japan|2026-08-24 00:00:00|pctchange",
+      "film_title": "Supergirl",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 4 AND region = 'Japan' AND ts BETWEEN '2026-08-23 00:00:00' AND '2026-08-25 00:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_virality"
+        ],
+        "rows": [
+          [
+            "2026-08-23 22:00:00",
+            0.47999998927116394
+          ],
+          [
+            "2026-08-23 22:00:00",
+            0.47999998927116394
+          ],
+          [
+            "2026-08-23 23:00:00",
+            0.47999998927116394
+          ],
+          [
+            "2026-08-23 23:00:00",
+            0.47999998927116394
+          ],
+          [
+            "2026-08-23 23:00:00",
+            0.47999998927116394
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.47999998927116394
+          ]
+        ],
+        "narrative": "The average virality for Supergirl in Japan shows a sustained plateau. The values remained constant at 0.48 from 2026-08-23 22:00:00 through 2026-08-24 00:00:00. No significant deviation from this baseline is observed within the returned data around the detection timestamp.",
+        "latency_ms": 14777
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 4 AND region = 'Japan' AND ts BETWEEN toDateTime('2026-08-24T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T00:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00066h window.",
+        "latency_ms": 1771
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    platform,\n    sum(virality) / count(*) AS avg_virality,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 4\n    AND region = 'Japan'\n    AND ts BETWEEN toDateTime('2026-08-24 00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24 00:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "columns": [
+          "platform",
+          "avg_virality",
+          "total_mentions"
+        ],
+        "rows": [
+          [
+            "twitter",
+            0.47999998927116394,
+            96000
+          ]
+        ],
+        "narrative": "The spike in virality for 'Supergirl' in Japan is exclusively driven by Twitter. Within the 12-hour window around the anomaly, Twitter was the only platform with reported social trends data, showing an average virality of 0.48 with 96000 mentions. This indicates a highly concentrated impact, with no evidence of the trend spreading to other social platforms.",
+        "latency_ms": 5381
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, magnitude FROM detections WHERE film_id = 4 AND region = 'Japan' AND metric_ts >= toDateTime('2026-08-24T00:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24T00:00:00') ORDER BY metric_ts; -- QUERY 2 -- SELECT t2.title AS competitor_film_title, t1.release_date FROM competitor_releases AS t1 INNER JOIN films AS t2 ON t1.competitor_film_id = t2.film_id WHERE t1.region = 'Japan' AND t1.release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND t1.release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "2026-08-23 22:00:00",
+            "audience_sentiment.avg_score",
+            -12.716699600219727
+          ],
+          [
+            "2026-08-23 22:00:00",
+            "audience_sentiment.avg_score",
+            -0.36270642280578613
+          ],
+          [
+            "2026-08-23 22:00:00",
+            "social_trends.avg_sentiment",
+            -1.6885662078857422
+          ],
+          [
+            "2026-08-23 22:00:00",
+            "social_trends.avg_virality",
+            7199
+          ],
+          [
+            "2026-08-23 22:00:00",
+            "social_trends.avg_virality",
+            3.316624164581299
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "audience_sentiment.avg_score",
+            -3.160540819168091
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "audience_sentiment.avg_score",
+            -0.7892362475395203
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "social_trends.avg_sentiment",
+            -3.2143774032592773
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "social_trends.avg_virality",
+            19199
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "audience_sentiment.avg_score",
+            -1.135148048400879
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "audience_sentiment.avg_score",
+            -1.1875462532043457
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "social_trends.avg_sentiment",
+            -4.804278373718262
+          ],
+          [
+            "2026-08-24 00:00:00",
+            "audience_sentiment.avg_score",
+            -0.5924705862998962
+          ],
+          [
+            "2026-08-24 00:00:00",
+            "audience_sentiment.avg_score",
+            -1.5427311658859253
+          ],
+          [
+            "2026-08-24 00:00:00",
+            "social_trends.avg_sentiment",
+            -18.400814056396484
+          ],
+          [
+            "2026-08-24 00:00:00",
+            "social_trends.avg_virality",
+            5
+          ]
+        ],
+        "narrative": "The anomaly onset appears to be 2026-08-23 22:00:00, with other metrics for 'Supergirl' in Japan also firing. Notably, 'social_trends.avg_sentiment' and 'audience_sentiment.avg_score' experienced negative anomalies, while 'social_trends.avg_virality' saw a massive spike with a magnitude of 19199.0 just an hour before this detection. A major competitor film, 'The Avengers', was released in Japan on 2026-08-23, which may have contributed to the turbulent social metrics.",
+        "latency_ms": 19246
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The detected increase in average virality is not supported by the available contextual data, which shows a consistent baseline at the detection timestamp.",
+      "contributing_factors": [
+        "A major competitor film, 'The Avengers', was released in Japan on the same day, potentially affecting 'Supergirl's social metrics.",
+        "Other, much larger spikes in social virality for 'Supergirl' were detected shortly before this event."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:58:52.734160Z",
+    "finished_at": "2026-08-23T23:00:12.377765Z"
+  },
+  "decision": {
+    "decision_id": "a5042e3544dc40f389400a65768f7c8e",
+    "investigation_id": "131e393a03384988b218d03435dd0734",
+    "actions": [
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "Escalate immediately to content or editorial teams as average review scores for 'The Galactic Odyssey' in Japan-DE have severely dropped from 7.8 to 4.5, driven by audience complaints about plot confusion and rushed pacing.",
+        "params": {
+          "reason": "Review scores for 'The Galactic Odyssey' in EU-DE have plummeted due to widely cited plot and pacing issues, indicating a core product quality problem that needs immediate content review.",
+          "severity": "critical"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Issue a public relations statement in Japan-DE acknowledging audience feedback and committing to a review of 'The Galactic Odyssey', managing sentiment while product teams investigate the core content issues identified in the reviews.",
+        "params": {
+          "film_id": 4,
+          "region": "Japan",
+          "message_theme": "acknowledgement_of_feedback_and_commitment_to_review"
+        },
+        "impact_usd": 346.389413697841,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 4 AND region = 'Japan'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 4\n    AND region = 'Japan'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 4\n    AND region = 'Japan'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 4 AND region = 'Japan'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-23T23:00:32.992888Z",
+    "latency_ms": 20614
+  },
+  "report": {
+    "report_id": "77214128a15143078a0b71bb8d83fd63",
+    "decision_id": "a5042e3544dc40f389400a65768f7c8e",
+    "headline": "Social media data shows a false virality spike for Supergirl in Japan",
+    "tldr": "Our system detected an anomaly suggesting a virality spike for 'Supergirl' in Japan. However, detailed analysis shows the average virality remained flat at 0.48, indicating this specific alert is likely a false positive. Despite this, other social sentiment metrics for 'Supergirl' in Japan did show negative trends around the same time, coinciding with the release of competitor film 'The Avengers'. We are initiating actions to address both this issue and a separate critical concern for 'The Galactic Odyssey'. Specifically, we are escalating a critical issue regarding 'The Galactic Odyssey' in Japan-DE due to plummeting review scores and issuing a PR statement for 'Supergirl' in Japan, which could save about $346.",
+    "key_figures": [
+      {
+        "label": "Supergirl Japan Avg Virality (Actual)",
+        "value": "0.48",
+        "source_query": "SELECT ts, sum_virality / greatest(n,1) AS avg_virality FROM roll_social_hourly WHERE film_id = 4 AND region = 'Japan' AND ts BETWEEN '2026-08-23 00:00:00' AND '2026-08-25 00:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Supergirl Japan Twitter Avg Virality",
+        "value": "0.48",
+        "source_query": "SELECT\n    platform,\n    sum(virality) / count(*) AS avg_virality,\n    sum(mentions) AS total_mentions\nFROM social_trends\nWHERE\n    film_id = 4\n    AND region = 'Japan'\n    AND ts BETWEEN toDateTime('2026-08-24 00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24 00:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    platform\nORDER BY\n    avg_virality DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "The Avengers Japan Release Date",
+        "value": "2026-08-23",
+        "source_query": "SELECT metric_ts, metric, magnitude FROM detections WHERE film_id = 4 AND region = 'Japan' AND metric_ts >= toDateTime('2026-08-24T00:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24T00:00:00') ORDER BY metric_ts; -- QUERY 2 -- SELECT t2.title AS competitor_film_title, t1.release_date FROM competitor_releases AS t1 INNER JOIN films AS t2 ON t1.competitor_film_id = t2.film_id WHERE t1.region = 'Japan' AND t1.release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND t1.release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Impact (Supergirl Japan)",
+        "value": "$346",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 4 AND region = 'Japan'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 4\n    AND region = 'Japan'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 4\n    AND region = 'Japan'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 4 AND region = 'Japan'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are immediately escalating a critical issue to content or editorial teams regarding 'The Galactic Odyssey' in Japan-DE. This is due to severely dropped average review scores, driven by audience complaints about plot confusion and rushed pacing. Separately, we recommend issuing a public relations statement for 'Supergirl' in Japan. This statement is intended to acknowledge audience feedback and commit to a review of 'The Galactic Odyssey', which will help manage sentiment while product teams investigate the core content issues identified in reviews. This PR action for Supergirl potentially saves about $346.",
+    "risks_and_caveats": "The primary cause of the 'Supergirl' virality alert has low confidence. The detected virality increase is directly contradicted by our detailed contextual data, which shows a consistent average virality of 0.48. This discrepancy requires further investigation. The concurrent release of 'The Avengers' in Japan and other negative social sentiment for 'Supergirl' around the same time might be contributing factors.",
+    "created_at": "2026-08-23T23:01:47.625131Z",
+    "latency_ms": 44647
+  }
+}

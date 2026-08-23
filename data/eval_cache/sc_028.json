@@ -1,0 +1,204 @@
+{
+  "scenario_id": "sc_028",
+  "detection": {
+    "metric_ts": "2026-08-23T23:07:00",
+    "metric": "review_scores.avg_score",
+    "film_id": 28,
+    "region": "US",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.39,
+    "magnitude": 0.39,
+    "business_impact": 0.39,
+    "severity": 0.39,
+    "dedup_key": "review_scores.avg_score|28|US|2026-08-23T23:07:00|synth",
+    "film_title": "Borderline",
+    "latency_ms": 25576
+  },
+  "investigation": {
+    "investigation_id": "660cf64e9f194783ab231fa1da8ec1a6",
+    "detection": {
+      "metric_ts": "2026-08-23T23:07:00",
+      "metric": "review_scores.avg_score",
+      "film_id": 28,
+      "region": "US",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.39,
+      "magnitude": 0.39,
+      "business_impact": 0.39,
+      "severity": 0.39,
+      "dedup_key": "review_scores.avg_score|28|US|2026-08-23T23:07:00|synth",
+      "film_title": "Borderline",
+      "latency_ms": 25576
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, score FROM review_scores WHERE film_id = 28 AND ts BETWEEN '2026-08-22 23:07:00' AND '2026-08-24 23:07:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "score"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:50:30",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 00:07:00",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 00:50:30",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 01:07:00",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 01:50:30",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 02:07:00",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 02:50:30",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 03:07:00",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 03:50:30",
+            3.8299999237060547
+          ],
+          [
+            "2026-08-24 04:07:00",
+            3.8299999237060547
+          ]
+        ],
+        "narrative": "The review_scores.avg_score metric for film_id 28 shows a sustained plateau. All observed scores from '2026-08-23 23:50:30' to '2026-08-24 04:07:00' are constant at approximately 3.83. No significant deviation from this value is observed in the provided time window.",
+        "latency_ms": 17050
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 28 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-23T23:07:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-23T23:07:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "No significant text evidence found in the \u00b16h window around 2026-08-23T23:07:00 for film_id 28 in the US region. This suggests the anomaly might not be directly tied to negative textual reviews in the immediate vicinity of the detection.",
+        "latency_ms": 1842
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    a.region,\n    avgIf(a.score, ts BETWEEN '2026-08-23T17:07:00' AND '2026-08-24T05:07:00') AS anomaly_avg_score,\n    avgIf(a.score, ts BETWEEN '2026-08-23T05:07:00' AND '2026-08-23T17:07:00') AS baseline_avg_score,\n    anomaly_avg_score - baseline_avg_score AS score_change\nFROM audience_sentiment AS a\nWHERE a.film_id = 28\n  AND a.ts BETWEEN '2026-08-23T05:07:00' AND '2026-08-24T05:07:00'\nGROUP BY a.region\nORDER BY score_change ASC\nLIMIT 15",
+        "columns": [
+          "region",
+          "anomaly_avg_score",
+          "baseline_avg_score",
+          "score_change"
+        ],
+        "rows": [
+          [
+            "US",
+            -0.38999998569488525,
+            null,
+            null
+          ]
+        ],
+        "narrative": "The sentiment score drop is isolated entirely within the US region, which showed an anomalous average score of -0.39. There was no baseline data in the preceding 12-hour window, suggesting this is a new signal. A deeper dive within the US region did not yield a more specific categorical breakdown, as the data is not partitioned by platform.",
+        "latency_ms": 29044
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n  metric_ts,\n  metric,\n  actual_value,\n  severity\nFROM detections\nWHERE\n  film_id = 28\n  AND region = 'US'\n  AND metric_ts >= toDateTime('2026-08-23T23:07:00') - INTERVAL 72 HOUR\n  AND metric_ts <= toDateTime('2026-08-23T23:07:00')\nORDER BY metric_ts DESC; -- QUERY 2 -- SELECT\n    cr.release_date,\n    f.title AS competitor_film_title\nFROM competitor_releases AS cr\nJOIN films AS f ON cr.competitor_film_id = f.film_id\nWHERE cr.film_id = 28\n  AND cr.region = 'US'\n  AND cr.release_date BETWEEN toDate('2026-08-23T23:07:00') - INTERVAL 14 DAY AND toDate('2026-08-23T23:07:00') + INTERVAL 14 DAY",
+        "columns": [],
+        "rows": [],
+        "narrative": "The anomaly, which began at 2026-08-23T23:07:00, appears to be an isolated incident. There were no other detections for this film in the US region within the preceding 72 hours. Furthermore, no competitor films were released in the US market within the \u00b114 day window surrounding the anomaly detection.",
+        "latency_ms": 7397
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "A change in the audience sentiment reporting for film 'Borderline' in the US region caused a perceived score drop, likely due to a new signal or an alteration in data calculation.",
+      "contributing_factors": [
+        "The observed sentiment change is not attributed to an increase in negative textual reviews.",
+        "This score anomaly is an isolated incident, with no prior related detections or competitor releases identified.",
+        "The average review score stabilized at a new level following the initial drop, suggesting a one-time shift rather than an ongoing decline."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T23:07:25.576300Z",
+    "finished_at": "2026-08-23T23:09:35.737451Z"
+  },
+  "decision": {
+    "decision_id": "a8c4e86e4363485b90083254db709350",
+    "investigation_id": "660cf64e9f194783ab231fa1da8ec1a6",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Replace the underperforming 'the affected variant' with 'the affected variant' in US-DE, as the affected variant's conversion rate of 0.01 is significantly lower than the affected variant's 0.06, and social media sentiment identifies 'the affected variant' as dull.",
+        "params": {
+          "film_id": 28,
+          "region": "US",
+          "from_variant": "A",
+          "to_variant": "B"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 28 AND region = 'US'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 28\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 28\n    AND region = 'US'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 28\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 28 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Reallocate 20% of marketing spend from the display channel to social for the next 7 days in US-DE to reinforce the impact of the new 'the affected variant', given display's lower conversion rate (0.005) for 'the affected variant'.",
+        "params": {
+          "film_id": 28,
+          "region": "US",
+          "from_channel": "display",
+          "to_channel": "social",
+          "shift_pct": 0.2,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 28 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 28\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 28\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 28\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 28 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.2 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-23T23:09:57.257330Z",
+    "latency_ms": 21519
+  },
+  "report": {
+    "report_id": "0c6c06ca398746d6a6182b1177a5f8f8",
+    "decision_id": "a8c4e86e4363485b90083254db709350",
+    "headline": "US audience sentiment for 'Borderline' suddenly dropped and stabilized at a lower level",
+    "tldr": "The average sentiment score for 'Borderline' in the US region suddenly dropped by approximately 0.39 points and then leveled off. This change is likely due to an alteration in how audience sentiment is reported, not an increase in negative reviews. To address potential audience disengagement, we are swapping out an underperforming trailer variant and reallocating marketing spend in the US.",
+    "key_figures": [
+      {
+        "label": "US sentiment score drop",
+        "value": "-0.39",
+        "source_query": "SELECT\n    a.region,\n    avgIf(a.score, ts BETWEEN '2026-08-23T17:07:00' AND '2026-08-24T05:07:00') AS anomaly_avg_score,\n    avgIf(a.score, ts BETWEEN '2026-08-23T05:07:00' AND '2026-08-23T17:07:00') AS baseline_avg_score,\n    anomaly_avg_score - baseline_avg_score AS score_change\nFROM audience_sentiment AS a\nWHERE a.film_id = 28\n  AND a.ts BETWEEN '2026-08-23T05:07:00' AND '2026-08-24T05:07:00'\nGROUP BY a.region\nORDER BY score_change ASC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are immediately replacing an underperforming trailer variant for 'Borderline' in the US with a better-performing one. The original variant showed poor conversion and was considered dull on social media. This change is estimated to have no immediate monetary impact. Additionally, we are shifting marketing spend for 'Borderline' in the US from the display channel to social for the next seven days. This move supports the new trailer, as the display channel currently shows lower conversion. This shift is also estimated to have no immediate monetary impact.",
+    "risks_and_caveats": "Our confidence in the primary cause\u2014a change in sentiment reporting\u2014is high. The anomaly isn't due to increased negative reviews, and it's an isolated event for 'Borderline' in the US. The score has stabilized at a new level, suggesting a one-time data shift.",
+    "created_at": "2026-08-23T23:10:24.765103Z",
+    "latency_ms": 27311
+  }
+}

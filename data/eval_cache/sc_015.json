@@ -1,0 +1,200 @@
+{
+  "scenario_id": "sc_015",
+  "detection": {
+    "metric_ts": "2026-08-24T03:00:00",
+    "metric": "streaming_watch_minutes.completion_ratio",
+    "film_id": 15,
+    "region": "Germany",
+    "detector": "pctchange",
+    "baseline_value": 0.5520833333333334,
+    "actual_value": 1.1041666666666667,
+    "magnitude": 1.0,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "streaming_watch_minutes.completion_ratio|15|Germany|2026-08-24 03:00:00|pctchange",
+    "film_title": "Backrooms",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "bac95f9e3314445a9bcf509f5764594b",
+    "detection": {
+      "metric_ts": "2026-08-24T03:00:00",
+      "metric": "streaming_watch_minutes.completion_ratio",
+      "film_id": 15,
+      "region": "Germany",
+      "detector": "pctchange",
+      "baseline_value": 0.5520833333333334,
+      "actual_value": 1.1041666666666667,
+      "magnitude": 1.0,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "streaming_watch_minutes.completion_ratio|15|Germany|2026-08-24 03:00:00|pctchange",
+      "film_title": "Backrooms",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_completions / nullIf(sum_completions + sum_drops, 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 15 AND region = 'Germany' AND ts BETWEEN '2026-08-23 03:00:00' AND '2026-08-25 03:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            0.1840277777777778
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.1840277777777778
+          ],
+          [
+            "2026-08-24 01:00:00",
+            0.1840277777777778
+          ],
+          [
+            "2026-08-24 02:00:00",
+            0.1840277777777778
+          ],
+          [
+            "2026-08-24 03:00:00",
+            0.1840277777777778
+          ]
+        ],
+        "narrative": "The completion ratio for film_id 15 in Germany showed a sustained plateau, remaining constant at approximately 0.184 from 2026-08-23 23:00:00 to 2026-08-24 03:00:00. Both the earlier period and the time near the detection at 2026-08-24 03:00:00 exhibit this same value.",
+        "latency_ms": 14025
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 15 AND region = 'Germany' AND ts BETWEEN toDateTime('2026-08-24T03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T03:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1505
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    s.region,\n    SUM(s.completions) / NULLIF(SUM(s.completions) + SUM(s.drops), 0) AS completion_ratio\nFROM\n    streaming_watch_minutes s\nWHERE\n    s.film_id = 15\n    AND s.ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 6 HOUR\n    AND s.ts <= toDateTime('2026-08-24 03:00:00') + INTERVAL 6 HOUR\nGROUP BY\n    s.region\nORDER BY\n    completion_ratio DESC\nLIMIT 15;",
+        "columns": [
+          "region",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "Germany",
+            0.1840277777777778
+          ]
+        ],
+        "narrative": "The anomaly in streaming completion ratio for 'Backrooms' is entirely isolated to Germany. Within the 12-hour window around the detection time, Germany was the only region with any streaming data. The completion ratio in Germany during this period was approximately 0.184.",
+        "latency_ms": 12057
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, magnitude FROM detections WHERE film_id = 15 AND region = 'Germany' AND metric_ts >= toDateTime('2026-08-24T03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24T03:00:00') ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE region = 'Germany' AND release_date >= toDate('2026-08-24T03:00:00') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24T03:00:00') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "2026-08-24 03:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            1
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            2
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            5
+          ]
+        ],
+        "narrative": "The anomaly on streaming completion ratio for 'Backrooms' in Germany began at 2026-08-24 01:00:00, with two subsequent hourly detections on the same metric. There were no other sibling detections on other metrics for this film and region in the last 72 hours. Additionally, no competitor films were released in Germany within \u00b114 days of the anomaly detection.",
+        "latency_ms": 11506
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The detector's reported anomaly in the completion ratio for 'Backrooms' in Germany directly contradicts the raw streaming data, which shows a stable and much lower completion ratio.",
+      "contributing_factors": [
+        "The completion ratio in Germany consistently measured at 0.184, while the detector reported a baseline of 0.552 and an actual value of 1.104.",
+        "Germany was the sole region reporting streaming data for this film within the analysis window.",
+        "No external events like competitor releases or changes in review sentiment correlate with the detected anomaly."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "text_reason",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:33:34.694182Z",
+    "finished_at": "2026-08-23T22:34:55.290781Z"
+  },
+  "decision": {
+    "decision_id": "14a59f24aa2148a3a0287fe7ff81709d",
+    "investigation_id": "bac95f9e3314445a9bcf509f5764594b",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Switch to a proven asset. Trailer the affected variant in Germany-DE shows a significantly lower conversion rate of 0.005 compared to the affected variant's 0.015, which indicates poor performance.",
+        "params": {
+          "film_id": 15,
+          "region": "Germany",
+          "from_variant": "B",
+          "to_variant": "A"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 15 AND region = 'Germany'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 15\n    AND region = 'Germany'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 15\n    AND region = 'Germany'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 15\n    AND region = 'Germany'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 15 AND region = 'Germany'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Reduce investment into channels promoting the underperforming trailer variant. The social channel has significant spend on the affected variant (50000) while yielding poor conversions, necessitating a shift away.",
+        "params": {
+          "film_id": 15,
+          "region": "Germany",
+          "from_channel": "social",
+          "to_channel": "display",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 15 AND region = 'Germany'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 15\n    AND region = 'Germany'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 15\n    AND region = 'Germany'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 15\n    AND region = 'Germany'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 15 AND region = 'Germany'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-23T22:35:06.798305Z",
+    "latency_ms": 11506
+  },
+  "report": {
+    "report_id": "5bc93be02e974106bdc206659e0983ff",
+    "decision_id": "14a59f24aa2148a3a0287fe7ff81709d",
+    "headline": "Poor trailer variant performance is affecting 'Backrooms' engagement in Germany.",
+    "tldr": "An initial alert signaled an anomaly in 'Backrooms' completion ratio in Germany, but further analysis shows the metric was consistently low at 0.184, indicating a problem rather than a sudden spike. The real issue identified is an underperforming trailer variant that is hindering viewer engagement. We are switching to a better-performing trailer and reallocating marketing spend to improve performance.",
+    "key_figures": [
+      {
+        "label": "Germany Completion Ratio",
+        "value": "0.184",
+        "source_query": "SELECT ts, sum_completions / nullIf(sum_completions + sum_drops, 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 15 AND region = 'Germany' AND ts BETWEEN '2026-08-23 03:00:00' AND '2026-08-25 03:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      }
+    ],
+    "recommended_actions_prose": "We have automatically executed two actions to address the underlying issue. First, we are swapping out the current trailer variant for 'Backrooms' in Germany with a proven asset because the affected variant shows significantly lower conversion rates. This action has an estimated impact of $0.00. Second, we are shifting marketing spend away from the 'social' channel to 'display' in Germany, reducing investment in channels promoting the underperforming trailer variant. This shift also has an estimated impact of $0.00.",
+    "risks_and_caveats": "Our confidence in this hypothesis is low. The initial anomaly detection contradicted the raw data, which showed a stable but low completion ratio rather than a detected increase. The actions taken address an inferred underlying problem with trailer performance, not the specific anomaly reported. Further investigation may be needed to confirm the direct link between trailer performance and the low completion ratio.",
+    "created_at": "2026-08-23T22:35:24.308876Z",
+    "latency_ms": 17309
+  }
+}

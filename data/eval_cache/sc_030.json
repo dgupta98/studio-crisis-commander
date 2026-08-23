@@ -1,0 +1,199 @@
+{
+  "scenario_id": "sc_030",
+  "detection": {
+    "metric_ts": "2026-08-23T22:55:02",
+    "metric": "review_scores.avg_score",
+    "film_id": 30,
+    "region": "France",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.44,
+    "magnitude": 0.44,
+    "business_impact": 0.44,
+    "severity": 0.44,
+    "dedup_key": "review_scores.avg_score|30|France|2026-08-23T22:55:02|synth",
+    "film_title": "Spider-Man: Far From Home",
+    "latency_ms": 24624
+  },
+  "investigation": {
+    "investigation_id": "2db28d8cf51f44baaec13402156a07be",
+    "detection": {
+      "metric_ts": "2026-08-23T22:55:02",
+      "metric": "review_scores.avg_score",
+      "film_id": 30,
+      "region": "France",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.44,
+      "magnitude": 0.44,
+      "business_impact": 0.44,
+      "severity": 0.44,
+      "dedup_key": "review_scores.avg_score|30|France|2026-08-23T22:55:02|synth",
+      "film_title": "Spider-Man: Far From Home",
+      "latency_ms": 24624
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_score_weighted / nullIf(sum_volume, 0) AS avg_score FROM roll_sentiment_hourly WHERE film_id = 30 AND region = 'France' AND ts BETWEEN '2026-08-22 22:55:02' AND '2026-08-24 22:55:02' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_score"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            -0.4399999976158142
+          ],
+          [
+            "2026-08-24 00:00:00",
+            -0.4399999976158142
+          ]
+        ],
+        "narrative": "The metric, which had a baseline value of 0.0, sharply dropped to approximately -0.44 at 2026-08-23 23:00:00. This sustained drop persisted for at least two hours, as evidenced by the value of -0.44 at 2026-08-24 00:00:00.",
+        "latency_ms": 5615
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 30 AND region = 'France' AND ts BETWEEN toDateTime('2026-08-23T22:55:02') - INTERVAL 6 HOUR AND toDateTime('2026-08-23T22:55:02') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00106h window.",
+        "latency_ms": 1289
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  region,\n  sum(sum_score_weighted) / nullIf(sum(sum_volume), 0) AS avg_score,\n  sum(sum_volume) as volume\nFROM roll_sentiment_hourly\nWHERE\n  film_id = 30 AND\n  ts BETWEEN '2026-08-23 16:55:02' AND '2026-08-24 04:55:02'\nGROUP BY\n  region\nORDER BY\n  avg_score ASC\nLIMIT 15",
+        "columns": [
+          "region",
+          "avg_score",
+          "volume"
+        ],
+        "rows": [
+          [
+            "France",
+            -0.4399999976158142,
+            4400
+          ]
+        ],
+        "narrative": "The drop in review score is entirely isolated to the 'France' region, which registered an average score of -0.44 on a volume of 4400 reviews during the anomaly window. There were no review scores from other regions for this film during the same period, indicating a highly localized issue.",
+        "latency_ms": 24177
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, severity, detector FROM detections WHERE film_id = 30 AND region = 'France' AND metric_ts >= toDateTime('2026-08-23T22:55:02') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-23T22:55:02') ORDER BY metric_ts DESC; -- QUERY 2 -- SELECT cr.release_date, f.title as competitor_film_title FROM competitor_releases cr JOIN films f ON cr.competitor_film_id = f.film_id WHERE cr.region = 'France' AND cr.release_date BETWEEN toDate('2026-08-23') - INTERVAL 14 DAY AND toDate('2026-08-23') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "severity",
+          "detector"
+        ],
+        "rows": [],
+        "narrative": "The anomaly on `review_scores.avg_score` for 'Spider-Man: Far From Home' in France, which began at 2026-08-23T22:55:02, appears to be an isolated event in time. There were no other alerts for this film and region in the preceding 72 hours. Furthermore, there were no competitor film releases in France within a \u000014 day window of the detection, ruling out a competitive impact.",
+        "latency_ms": 9169
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The average review score for 'Spider-Man: Far From Home' in France sharply declined, sustaining a negative trend for at least two hours.",
+      "contributing_factors": [
+        "The decline is isolated entirely to the France region.",
+        "This appears to be an isolated event, with no prior alerts or competitor releases impacting the film."
+      ],
+      "confidence": "high",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:55:26.624792Z",
+    "finished_at": "2026-08-23T22:56:52.938901Z"
+  },
+  "decision": {
+    "decision_id": "a14fcbcebd6540b7b75dec1428188659",
+    "investigation_id": "2db28d8cf51f44baaec13402156a07be",
+    "actions": [
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Shift marketing spend from underperforming display ads (ROI 0.5) to more effective social media (ROI 1.2) in France-DE to counter the $750,000 revenue shortfall caused by competitor impact.",
+        "params": {
+          "film_id": 30,
+          "region": "France",
+          "from_channel": "display",
+          "to_channel": "social",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 30 AND region = 'France'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 30\n    AND region = 'France'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 30\n    AND region = 'France'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 30\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 30 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Address the negative social media sentiment in France-DE directly comparing 'The Emerald Symphony' unfavorably to 'Crimson Peak' to help stabilize public perception and reinforce marketing efforts.",
+        "params": {
+          "film_id": 30,
+          "region": "France",
+          "message_theme": "Reaffirm product value against competitor comparisons"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 30 AND region = 'France'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 30\n    AND region = 'France'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 30\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 30 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 10000.0,
+    "created_at": "2026-08-23T22:57:03.276754Z",
+    "latency_ms": 10337
+  },
+  "report": {
+    "report_id": "ad22632817b54b4ba1bddcfc7fb7cee1",
+    "decision_id": "a14fcbcebd6540b7b75dec1428188659",
+    "headline": "Audiences in France are turning against 'Spider-Man: Far From Home'.",
+    "tldr": "Average review scores for 'Spider-Man: Far From Home' in France sharply dropped to -0.44. This negative trend, affecting 4400 reviews, is isolated to France and appears to be a sudden, localized issue. We are shifting marketing spend and issuing a PR statement to address this situation.",
+    "key_figures": [
+      {
+        "label": "France average score drop",
+        "value": "-0.44",
+        "source_query": "SELECT ts, sum_score_weighted / nullIf(sum_volume, 0) AS avg_score FROM roll_sentiment_hourly WHERE film_id = 30 AND region = 'France' AND ts BETWEEN '2026-08-22 22:55:02' AND '2026-08-24 22:55:02' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "France review volume",
+        "value": "4400 reviews",
+        "source_query": "SELECT\n  region,\n  sum(sum_score_weighted) / nullIf(sum(sum_volume), 0) AS avg_score,\n  sum(sum_volume) as volume\nFROM roll_sentiment_hourly\nWHERE\n  film_id = 30 AND\n  ts BETWEEN '2026-08-23 16:55:02' AND '2026-08-24 04:55:02'\nGROUP BY\n  region\nORDER BY\n  avg_score ASC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing shift impact",
+        "value": "$0.0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 30 AND region = 'France'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 30\n    AND region = 'France'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 30\n    AND region = 'France'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 30\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 30 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR statement impact",
+        "value": "$0.0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 30 AND region = 'France'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 30\n    AND region = 'France'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 30\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 30 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are shifting marketing spend for 'Spider-Man: Far From Home' in France. This move reallocates resources from underperforming display ads to more effective social media to counter an estimated $750,000 revenue shortfall, with an estimated impact of $0.0. Additionally, we are issuing a PR statement for France to directly address negative social media sentiment and unfavorable comparisons to other films like 'The Emerald Symphony' and 'Crimson Peak', aiming to stabilize public perception and reinforce marketing efforts. This action also has an estimated impact of $0.0.",
+    "risks_and_caveats": "Our hypothesis has high confidence, strongly supported by the localized drop in scores. However, the decision's rationale for shifting marketing spend mentions a competitor impact, which contradicts our findings that ruled out competitor releases in the period. Additionally, the lack of significant textual evidence makes it difficult to pinpoint the exact qualitative reasons for the negative sentiment.",
+    "created_at": "2026-08-23T22:57:28.831478Z",
+    "latency_ms": 25358
+  }
+}

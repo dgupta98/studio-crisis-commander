@@ -1,0 +1,267 @@
+{
+  "scenario_id": "sc_026",
+  "detection": {
+    "metric_ts": "2026-08-24T03:00:00",
+    "metric": "streaming_watch_minutes.completion_ratio",
+    "film_id": 26,
+    "region": "India",
+    "detector": "pctchange",
+    "baseline_value": 1.163265306122449,
+    "actual_value": 2.326530612244898,
+    "magnitude": 1.0,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "streaming_watch_minutes.completion_ratio|26|India|2026-08-24 03:00:00|pctchange",
+    "film_title": "The Debt Collector",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "39e8d7a8c41e49559736fe5ac04a04d9",
+    "detection": {
+      "metric_ts": "2026-08-24T03:00:00",
+      "metric": "streaming_watch_minutes.completion_ratio",
+      "film_id": 26,
+      "region": "India",
+      "detector": "pctchange",
+      "baseline_value": 1.163265306122449,
+      "actual_value": 2.326530612244898,
+      "magnitude": 1.0,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "streaming_watch_minutes.completion_ratio|26|India|2026-08-24 03:00:00|pctchange",
+      "film_title": "The Debt Collector",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_completions / nullIf(sum_completions + sum_drops, 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 26 AND region = 'India' AND ts BETWEEN '2026-08-24 03:00:00' - INTERVAL 24 HOUR AND '2026-08-24 03:00:00' + INTERVAL 24 HOUR ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 01:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 01:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 02:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 02:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 03:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 03:00:00",
+            0.3877551020408163
+          ],
+          [
+            "2026-08-24 04:00:00",
+            0.3877551020408163
+          ]
+        ],
+        "narrative": "The completion_ratio for film 26 in India remained consistently at 0.3878 across the observed period from 2026-08-23 23:00:00 to 2026-08-24 04:00:00. This indicates a sustained plateau, with values staying flat around the detection's metric_ts of 2026-08-24 03:00:00. No significant deviation, such as a spike or drop, is evident in the retrieved data to explain the detected anomaly.",
+        "latency_ms": 21780
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 26 AND region = 'India' AND ts BETWEEN toDateTime('2026-08-24 03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24 03:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00136h window.",
+        "latency_ms": 1692
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "WITH anomaly_ts AS (SELECT toDateTime('2026-08-24 03:00:00') AS ts), film_id AS (SELECT 26 AS id) SELECT s.region, sum(s.sum_completions) / nullIf(sum(s.sum_completions) + sum(s.sum_drops), 0) AS completion_ratio, w.weight FROM roll_streaming_hourly AS s JOIN film_region_weight AS w ON s.film_id = w.film_id AND s.region = w.region WHERE s.film_id = (SELECT id FROM film_id) AND s.ts BETWEEN (SELECT ts FROM anomaly_ts) - INTERVAL 6 HOUR AND (SELECT ts FROM anomaly_ts) + INTERVAL 6 HOUR GROUP BY s.region, w.weight ORDER BY completion_ratio DESC LIMIT 15",
+        "columns": [
+          "region",
+          "completion_ratio",
+          "weight"
+        ],
+        "rows": [
+          [
+            "India",
+            0.3877551020408163,
+            0.0517241396009922
+          ]
+        ],
+        "narrative": "The anomaly is isolated to the 'India' region. No other regions had streaming data for this film in the \u00136 hour window around the anomaly. India, with a completion ratio of 0.3878, has a regional weight of 0.0517 for this film. The lack of data from other regions suggests the issue is not broad-based.",
+        "latency_ms": 8914
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, detector, magnitude FROM detections WHERE film_id = 26 AND region = 'India' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE film_id = 26 AND region = 'India' AND release_date >= toDate('2026-08-24 03:00:00') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24 03:00:00') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "detector",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "2026-08-24 00:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            5.0
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            5.0
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            1.0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            2.0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            0.5
+          ],
+          [
+            "2026-08-24 03:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            1.0
+          ]
+        ],
+        "narrative": "The anomaly began at 2026-08-24 00:00:00 with a series of alerts exclusively on the streaming_watch_minutes.completion_ratio metric, indicating a sustained issue with this specific KPI. No other metrics for this film and region fired during the 72-hour window. Additionally, there were no competitor films released in India within \u00b114 days of the anomaly, ruling out a competitive impact.",
+        "latency_ms": 11095
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The detector for completion ratio appears to be misfiring for 'The Debt Collector' in India, as the actual metric value remained consistently flat despite the reported 100% increase.",
+      "contributing_factors": [
+        "The anomaly has been repeatedly flagged by the detector for several hours, suggesting a sustained issue with the detection mechanism.",
+        "The issue is localized to India, with no other regions exhibiting similar streaming data for this film."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "temporal_context",
+        "categorical_isolation"
+      ]
+    },
+    "started_at": "2026-08-23T23:04:50.434222Z",
+    "finished_at": "2026-08-23T23:06:13.621923Z"
+  },
+  "decision": {
+    "decision_id": "bbe8920937d749c7b6bf366093139ca0",
+    "investigation_id": "39e8d7a8c41e49559736fe5ac04a04d9",
+    "actions": [
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Redirect marketing spend from the underperforming social channel in India-DE, which contributed to a $700,000 box office deficit, to the more efficient email channel to mitigate competitor impact and improve overall revenue.",
+        "params": {
+          "film_id": 26,
+          "region": "India",
+          "from_channel": "social",
+          "to_channel": "email",
+          "shift_pct": 0.4,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 26 AND region = 'India'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 26\n    AND region = 'India'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 26\n    AND region = 'India'\n    AND channel = 'email'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 26\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 26 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.4 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "Escalate to human review to develop a comprehensive strategic response to the strong competitor impact observed in India-DE, as the current anomaly suggests deeper market dynamics beyond immediate marketing spend adjustments.",
+        "params": {
+          "reason": "Strategic response to competitor impact and market dynamics",
+          "severity": "high"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-23T23:06:31.497558Z",
+    "latency_ms": 17874
+  },
+  "report": {
+    "report_id": "056f746c5e9648719282ed55ddc94de0",
+    "decision_id": "bbe8920937d749c7b6bf366093139ca0",
+    "headline": "The completion ratio metric for 'The Debt Collector' in India is showing false positives.",
+    "tldr": "A detector reported a 100% increase in the completion ratio for 'The Debt Collector' in India, but the actual metric remained flat at 0.3878 across the monitored period. This anomaly has been repeatedly flagged for several hours, suggesting a sustained issue with the detection mechanism rather than actual performance. We are shifting marketing spend and escalating for a strategic review to address the underlying market dynamics.",
+    "key_figures": [
+      {
+        "label": "Reported Completion Ratio Increase",
+        "value": "100%",
+        "source_query": "SELECT metric_ts, metric, detector, magnitude FROM detections WHERE film_id = 26 AND region = 'India' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') + INTERVAL 72 HOUR ORDER BY metric_ts; -- QUERY 2 -- SELECT competitor_film_id, release_date FROM competitor_releases WHERE film_id = 26 AND region = 'India' AND release_date >= toDate('2026-08-24 03:00:00') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24 03:00:00') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Actual Completion Ratio in India",
+        "value": "0.3878",
+        "source_query": "WITH anomaly_ts AS (SELECT toDateTime('2026-08-24 03:00:00') AS ts), film_id AS (SELECT 26 AS id) SELECT s.region, sum(s.sum_completions) / nullIf(sum(s.sum_completions) + sum(s.sum_drops), 0) AS completion_ratio, w.weight FROM roll_streaming_hourly AS s JOIN film_region_weight AS w ON s.film_id = w.film_id AND s.region = w.region WHERE s.film_id = (SELECT id FROM film_id) AND s.ts BETWEEN (SELECT ts FROM anomaly_ts) - INTERVAL 6 HOUR AND (SELECT ts FROM anomaly_ts) + INTERVAL 6 HOUR GROUP BY s.region, w.weight ORDER BY completion_ratio DESC LIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Marketing Spend Shift Impact",
+        "value": "$0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 26 AND region = 'India'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 26\n    AND region = 'India'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 26\n    AND region = 'India'\n    AND channel = 'email'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 26\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 26 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.4 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Escalation Impact",
+        "value": "$0",
+        "source_query": "SELECT toFloat64(0.0) AS impact_usd",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We will shift 40% of marketing spend from the social channel to the email channel for 'The Debt Collector' in India over the next 7 days. This redirects resources from an underperforming channel to a more efficient one. This action is currently estimated to have no direct financial impact. Additionally, we are escalating this issue for human review to develop a comprehensive strategic response to the competitor impact and broader market dynamics in India, as the current anomaly suggests deeper issues beyond immediate marketing adjustments. This escalation also has no direct financial impact.",
+    "risks_and_caveats": "Our confidence in the primary cause is low. The detector appears to be misfiring, repeatedly flagging a 100% increase in completion ratio despite the actual metric remaining flat. This suggests the anomaly is likely an artifact of the detection system rather than a real performance issue for the film.",
+    "created_at": "2026-08-23T23:07:00.281349Z",
+    "latency_ms": 28589
+  }
+}

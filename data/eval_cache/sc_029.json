@@ -1,0 +1,215 @@
+{
+  "scenario_id": "sc_029",
+  "detection": {
+    "metric_ts": "2026-08-24T00:00:00",
+    "metric": "audience_sentiment.avg_score",
+    "film_id": 29,
+    "region": "Japan",
+    "detector": "pctchange",
+    "baseline_value": 3.335459589958191,
+    "actual_value": 0.4855351448059082,
+    "magnitude": -0.8544322848320007,
+    "business_impact": 0.047868501394987106,
+    "severity": 0.040900394320487976,
+    "dedup_key": "audience_sentiment.avg_score|29|Japan|2026-08-24 00:00:00|pctchange",
+    "film_title": "The Devil Wears Prada 2",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "d2fb726a9ece417dbf2f84d3ae0705b2",
+    "detection": {
+      "metric_ts": "2026-08-24T00:00:00",
+      "metric": "audience_sentiment.avg_score",
+      "film_id": 29,
+      "region": "Japan",
+      "detector": "pctchange",
+      "baseline_value": 3.335459589958191,
+      "actual_value": 0.4855351448059082,
+      "magnitude": -0.8544322848320007,
+      "business_impact": 0.047868501394987106,
+      "severity": 0.040900394320487976,
+      "dedup_key": "audience_sentiment.avg_score|29|Japan|2026-08-24 00:00:00|pctchange",
+      "film_title": "The Devil Wears Prada 2",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, sum_score_weighted / nullIf(sum_volume, 0) AS avg_score FROM roll_sentiment_hourly WHERE film_id = 29 AND region = 'Japan' AND ts BETWEEN '2026-08-23 00:00:00' AND '2026-08-25 00:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "avg_score"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            -0.30000001192092896
+          ],
+          [
+            "2026-08-24 00:00:00",
+            -0.30000001192092896
+          ]
+        ],
+        "narrative": "The avg_score for audience sentiment in Japan for film_id 29 was consistently around -0.30 in the hours leading up to and including the detection timestamp. Specifically, the score was -0.30 at '2026-08-23 23:00:00' and remained at -0.30 at '2026-08-24 00:00:00'. This indicates a sustained plateau at -0.30, with no significant drop observed in the queried data.",
+        "latency_ms": 13181
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 29 AND region = 'Japan' AND ts BETWEEN toDateTime('2026-08-24T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T00:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1490
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "WITH regional_sentiment AS (\n  SELECT\n    region,\n    avg(score) AS avg_score,\n    sum(volume) AS total_volume\n  FROM audience_sentiment\n  WHERE\n    film_id = 29\n    AND ts BETWEEN toDateTime('2026-08-24T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T00:00:00') + INTERVAL 6 HOUR\n  GROUP BY\n    region\n)\nSELECT\n  r.region,\n  r.avg_score,\n  r.total_volume,\n  w.weight\nFROM regional_sentiment r\nLEFT JOIN film_region_weight w\n  ON r.region = w.region AND w.film_id = 29\nORDER BY\n  r.avg_score ASC\nLIMIT 15",
+        "columns": [
+          "region",
+          "avg_score",
+          "total_volume",
+          "weight"
+        ],
+        "rows": [
+          [
+            "Japan",
+            -0.30000001192092896,
+            3000,
+            0.05415162444114685
+          ]
+        ],
+        "narrative": "The drop in audience sentiment for 'The Devil Wears Prada 2' appears to be isolated to Japan, as it is the only region with sentiment data within the \u00b16 hour window of the anomaly. The average sentiment score in Japan was -0.3 during this period. Within Japan, the negative sentiment was not attributable to any single platform, suggesting a broad-based issue within the region.",
+        "latency_ms": 17117
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, magnitude, severity FROM detections WHERE film_id = 29 AND region = 'Japan' AND metric_ts >= toDateTime('2026-08-24T00:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24T00:00:00') ORDER BY metric_ts; -- QUERY 2 -- SELECT cr.release_date, f.title AS competitor_film_title FROM competitor_releases cr JOIN films f ON cr.competitor_film_id = f.film_id WHERE cr.region = 'Japan' AND cr.release_date BETWEEN toDate('2026-08-24') - INTERVAL 14 DAY AND toDate('2026-08-24') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "magnitude",
+          "severity"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            "audience_sentiment.avg_score",
+            -4.132912635803223,
+            0.19783633947372437
+          ],
+          [
+            "2026-08-23 23:00:00",
+            "audience_sentiment.avg_score",
+            -0.5731820464134216,
+            0.0274373646825552
+          ],
+          [
+            "2026-08-24 00:00:00",
+            "audience_sentiment.avg_score",
+            -12.035873413085938,
+            0.5761392116546631
+          ],
+          [
+            "2026-08-24 00:00:00",
+            "audience_sentiment.avg_score",
+            -0.8544322848320007,
+            0.040900394320487976
+          ]
+        ],
+        "narrative": "The drop in audience sentiment for 'The Devil Wears Prada 2' in Japan began at 23:00 on August 23, 2026, one hour before the specified detection, with several related alerts on the same metric firing around the same time. This timing coincides with the release of a major competitor film, 'The Avengers', in the same region on August 23, 2026. Another significant competitor, 'The Fantastic 4: First Steps', was also released shortly before on August 20, 2026, which may have contributed to the negative sentiment.",
+        "latency_ms": 9814
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The release of competitor films in Japan, including 'The Avengers' and 'The Fantastic 4: First Steps', triggered a sharp decline in audience sentiment for 'The Devil Wears Prada 2'.",
+      "contributing_factors": [
+        "The negative sentiment was localized to Japan.",
+        "Audience sentiment was consistently very low around the detection timestamp."
+      ],
+      "confidence": "medium",
+      "citations": [
+        "temporal_context",
+        "numeric_context",
+        "categorical_isolation"
+      ]
+    },
+    "started_at": "2026-08-23T22:52:55.232667Z",
+    "finished_at": "2026-08-23T22:54:27.055093Z"
+  },
+  "decision": {
+    "decision_id": "4d9e408ab63b42119727963d179ac4ba",
+    "investigation_id": "d2fb726a9ece417dbf2f84d3ae0705b2",
+    "actions": [
+      {
+        "action_type": "swap_trailer_variant",
+        "rationale": "Immediately replace the underperforming trailer the affected variant with the affected variant in Japan-DE, as the affected variant's completion rate is significantly lower at 0.45 compared to the affected variant's 0.70.",
+        "params": {
+          "film_id": 29,
+          "region": "Japan",
+          "from_variant": "A",
+          "to_variant": "B"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 29 AND region = 'Japan'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 29 AND region = 'Japan'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Address the negative social media sentiment in Japan-DE regarding trailer A's awkward pacing and unclear plot by issuing a public statement to rebuild audience confidence.",
+        "params": {
+          "film_id": 29,
+          "region": "Japan",
+          "message_theme": "address concerns about trailer quality and plot clarity"
+        },
+        "impact_usd": 54.02279351308371,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 29 AND region = 'Japan'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 29 AND region = 'Japan'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "auto_executed",
+    "threshold_usd": 15000.0,
+    "created_at": "2026-08-23T22:54:38.293404Z",
+    "latency_ms": 11237
+  },
+  "report": {
+    "report_id": "266be3285fc24ab18cb5799680d4c1f6",
+    "decision_id": "4d9e408ab63b42119727963d179ac4ba",
+    "headline": "Audience sentiment for 'The Devil Wears Prada 2' in Japan sharply declined.",
+    "tldr": "Audience sentiment for 'The Devil Wears Prada 2' in Japan dropped sharply to an average score of -0.30, impacting 3,000 recorded interactions. This decline started around the release of competitor films 'The Avengers' and 'The Fantastic 4: First Steps'. The issue is localized to Japan. We are immediately replacing the underperforming trailer variant in Japan and issuing a public statement to address concerns, which is estimated to save about $54.",
+    "key_figures": [
+      {
+        "label": "Japan Avg Sentiment Score",
+        "value": "-0.30",
+        "source_query": "SELECT ts, sum_score_weighted / nullIf(sum_volume, 0) AS avg_score FROM roll_sentiment_hourly WHERE film_id = 29 AND region = 'Japan' AND ts BETWEEN '2026-08-23 00:00:00' AND '2026-08-25 00:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Japan Sentiment Volume",
+        "value": "3,000",
+        "source_query": "WITH regional_sentiment AS (\n  SELECT\n    region,\n    avg(score) AS avg_score,\n    sum(volume) AS total_volume\n  FROM audience_sentiment\n  WHERE\n    film_id = 29\n    AND ts BETWEEN toDateTime('2026-08-24T00:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24T00:00:00') + INTERVAL 6 HOUR\n  GROUP BY\n    region\n)\nSELECT\n  r.region,\n  r.avg_score,\n  r.total_volume,\n  w.weight\nFROM regional_sentiment r\nLEFT JOIN film_region_weight w\n  ON r.region = w.region AND w.film_id = 29\nORDER BY\n  r.avg_score ASC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR Statement Impact",
+        "value": "$54",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 29 AND region = 'Japan'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 29\n    AND region = 'Japan'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 29 AND region = 'Japan'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are implementing two immediate actions. First, we will swap the current trailer variant for 'The Devil Wears Prada 2' in Japan with a better-performing one. The current variant has a significantly lower completion rate, and this swap aims to improve audience engagement. Our model currently estimates no immediate monetary impact from this change. Second, we will issue a public relations statement in Japan. This addresses the negative social media sentiment surrounding the trailer's pacing and plot clarity, and is estimated to save about $54.",
+    "risks_and_caveats": "Our confidence in the primary cause of competitor films is medium. Further investigation into the specific content of negative sentiment, beyond general concerns about trailer quality, would strengthen our understanding.",
+    "created_at": "2026-08-23T22:55:01.619223Z",
+    "latency_ms": 23086
+  }
+}

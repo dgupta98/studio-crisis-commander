@@ -1,0 +1,291 @@
+{
+  "scenario_id": "sc_009",
+  "detection": {
+    "metric_ts": "2026-08-24T03:00:00",
+    "metric": "ticket_refunds.refund_count",
+    "film_id": 9,
+    "region": "US",
+    "detector": "pctchange",
+    "baseline_value": 450.0,
+    "actual_value": 1500.0,
+    "magnitude": 2.3333332538604736,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "ticket_refunds.refund_count|9|US|2026-08-24 03:00:00|pctchange",
+    "film_title": "The Death of Robin Hood",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "b5600b0e289c4c9e9372522bd0c4e1a2",
+    "detection": {
+      "metric_ts": "2026-08-24T03:00:00",
+      "metric": "ticket_refunds.refund_count",
+      "film_id": 9,
+      "region": "US",
+      "detector": "pctchange",
+      "baseline_value": 450.0,
+      "actual_value": 1500.0,
+      "magnitude": 2.3333332538604736,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "ticket_refunds.refund_count|9|US|2026-08-24 03:00:00|pctchange",
+      "film_title": "The Death of Robin Hood",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT toStartOfHour(ts) AS ts, sum(refund_count) AS refund_count FROM ticket_refunds WHERE film_id = 9 AND region = 'US' AND ts BETWEEN '2026-08-23 03:00:00' AND '2026-08-25 03:00:00' GROUP BY ts ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "refund_count"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            300
+          ],
+          [
+            "2026-08-24 00:00:00",
+            300
+          ],
+          [
+            "2026-08-24 01:00:00",
+            300
+          ],
+          [
+            "2026-08-24 02:00:00",
+            300
+          ],
+          [
+            "2026-08-24 03:00:00",
+            300
+          ]
+        ],
+        "narrative": "The detected anomaly indicates a spike in ticket refunds to 1500 at 2026-08-24 03:00:00, from a baseline of 450. However, the retrieved data shows a consistent refund count of 300 per hour from 2026-08-23 23:00:00 to 2026-08-24 03:00:00. This suggests a sustained plateau at 300 refunds per hour, contradicting the reported spike.",
+        "latency_ms": 13565
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 9 AND region = 'US' AND ts BETWEEN toDateTime('2026-08-24 03:00:00') - INTERVAL 6 HOUR AND toDateTime('2026-08-24 03:00:00') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1438
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT t.region, sum(t.refund_count) AS total_refunds, round(sum(t.refund_count) / (SELECT sum(refund_count) FROM ticket_refunds WHERE film_id = 9 AND ts BETWEEN '2026-08-23 21:00:00' AND '2026-08-24 09:00:00') * 100, 2) AS percentage_of_total, frw.weight FROM ticket_refunds AS t LEFT JOIN film_region_weight AS frw ON t.film_id = frw.film_id AND t.region = frw.region WHERE t.film_id = 9 AND t.ts BETWEEN '2026-08-23 21:00:00' AND '2026-08-24 09:00:00' GROUP BY t.region, frw.weight ORDER BY total_refunds DESC LIMIT 15",
+        "columns": [
+          "region",
+          "total_refunds",
+          "percentage_of_total",
+          "weight"
+        ],
+        "rows": [
+          [
+            "US",
+            1500,
+            100,
+            0
+          ]
+        ],
+        "narrative": "The ticket refund anomaly for 'The Death of Robin Hood' is entirely isolated to the US region. Within the \u00b16 hour window around the anomaly, the US region accounted for 1,500 ticket refunds, representing 100% of the total refunds for this film during this period.",
+        "latency_ms": 13541
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, detector, magnitude, severity FROM detections WHERE film_id = 9 AND region = 'US' AND metric_ts >= toDateTime('2026-08-24 03:00:00') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-24 03:00:00') ORDER BY metric_ts; -- QUERY 2 -- SELECT cr.release_date, f.title FROM competitor_releases AS cr JOIN films AS f ON cr.competitor_film_id = f.film_id WHERE cr.region = 'US' AND cr.film_id = 9 AND cr.release_date BETWEEN toDate('2026-08-24') - INTERVAL 14 DAY AND toDate('2026-08-24') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "detector",
+          "magnitude",
+          "severity"
+        ],
+        "rows": [
+          [
+            "2026-08-24 01:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            5.0,
+            0
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            5.0,
+            0
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            7.0,
+            0
+          ],
+          [
+            "2026-08-24 01:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            5.0,
+            0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            2.0,
+            0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            2.0,
+            0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            3.5,
+            0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            2.0,
+            0
+          ],
+          [
+            "2026-08-24 03:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            1.0,
+            0
+          ],
+          [
+            "2026-08-24 03:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            1.0,
+            0
+          ],
+          [
+            "2026-08-24 03:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            2.3333332538604736,
+            0
+          ],
+          [
+            "2026-08-24 03:00:00",
+            "ticket_refunds.refund_count",
+            "pctchange",
+            1.0,
+            0
+          ]
+        ],
+        "narrative": "The refund anomaly for 'The Death of Robin Hood' in the US began at 2026-08-24 01:00:00, with several subsequent refund-related detections leading up to the current event. No anomalies on other metrics for this film and region were found in the last 72 hours. Additionally, there were no competitor film releases in the US within a \u00b114 day window of the anomaly.",
+        "latency_ms": 11659
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The reported spike in ticket refunds is likely a false positive, as the underlying numeric data indicates a consistent refund rate rather than a sudden increase.",
+      "contributing_factors": [
+        "The event is specifically isolated to the US region for this film.",
+        "Similar refund-related detections for this film and region have been observed in the hours leading up to this event, suggesting a potential ongoing issue or pattern in the detector's flagging."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:27:35.978755Z",
+    "finished_at": "2026-08-23T22:28:55.007709Z"
+  },
+  "decision": {
+    "decision_id": "41377726f88b4bde8b5497e9ac5b9c95",
+    "investigation_id": "b5600b0e289c4c9e9372522bd0c4e1a2",
+    "actions": [
+      {
+        "action_type": "pause_campaign",
+        "rationale": "Immediately pause Campaign 113 in US-DE to stop the significant financial loss, as its ROI is a highly negative -15.42, indicating a broken conversion funnel and high spend of 17290.06.",
+        "params": {
+          "film_id": 203,
+          "region": "US",
+          "campaign_id": 113,
+          "pause_days": 7
+        },
+        "impact_usd": null,
+        "impact_sql": "",
+        "impact_error": "query returned no rows",
+        "priority": 1
+      },
+      {
+        "action_type": "shift_marketing_spend",
+        "rationale": "Re-allocate marketing spend from 'display' to 'social' in US-DE, reinforcing the pause by directing resources away from potentially underperforming segments while Campaign 113 is inactive and its negative ROI is investigated.",
+        "params": {
+          "film_id": 9,
+          "region": "US",
+          "from_channel": "display",
+          "to_channel": "social",
+          "shift_pct": 0.5,
+          "window_days": 7
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 9 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 9\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 9\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 9\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 9 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 20000.0,
+    "created_at": "2026-08-23T22:29:09.489000Z",
+    "latency_ms": 14480
+  },
+  "report": {
+    "report_id": "4cd66b2f55cc40968e8ce9aefafa2eb5",
+    "decision_id": "41377726f88b4bde8b5497e9ac5b9c95",
+    "headline": "A refund spike for 'The Death of Robin Hood' in the US appears to be a false alarm.",
+    "tldr": "Our system detected a significant refund spike for 'The Death of Robin Hood' in the US. However, raw data for the specific hour of the alert indicates a consistent 300 refunds, rather than a spike. Over a broader 12-hour window, the US region recorded 1500 total refunds for this film. This suggests the initial detection may be a false alarm due to data discrepancies. To address operational considerations, we are pausing an underperforming campaign for a different film and reallocating marketing spend for 'The Death of Robin Hood' in the US, with an estimated $0 impact.",
+    "key_figures": [
+      {
+        "label": "Observed Hourly Refunds (03:00)",
+        "value": "300 refunds",
+        "source_query": "SELECT toStartOfHour(ts) AS ts, sum(refund_count) AS refund_count FROM ticket_refunds WHERE film_id = 9 AND region = 'US' AND ts BETWEEN '2026-08-23 03:00:00' AND '2026-08-25 03:00:00' GROUP BY ts ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Total US Refunds (12hr window)",
+        "value": "1500 refunds",
+        "source_query": "SELECT t.region, sum(t.refund_count) AS total_refunds, round(sum(t.refund_count) / (SELECT sum(refund_count) FROM ticket_refunds WHERE film_id = 9 AND ts BETWEEN '2026-08-23 21:00:00' AND '2026-08-24 09:00:00') * 100, 2) AS percentage_of_total, frw.weight FROM ticket_refunds AS t LEFT JOIN film_region_weight AS frw ON t.film_id = frw.film_id AND t.region = frw.region WHERE t.film_id = 9 AND t.ts BETWEEN '2026-08-23 21:00:00' AND '2026-08-24 09:00:00' GROUP BY t.region, frw.weight ORDER BY total_refunds DESC LIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Estimated Impact of Spend Shift",
+        "value": "$0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 9 AND region = 'US'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 9\n    AND region = 'US'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 9\n    AND region = 'US'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 9\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 9 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "First, we are pausing Campaign 113 for film 203 in the US to stop significant financial losses due to a broken conversion funnel and high spend. Next, we are reallocating 50% of marketing spend for 'The Death of Robin Hood' in the US from 'display' to 'social' channels. This reinforces the campaign pause by directing resources away from potentially underperforming segments while Campaign 113 is inactive, with an estimated $0 impact.",
+    "risks_and_caveats": "Our confidence in the primary cause is low because the raw data directly contradicts the initially reported spike, showing a sustained rate instead. This suggests a potential data discrepancy or an issue with the anomaly detection algorithm itself. Further investigation is needed to reconcile the conflicting data points and refine the detection sensitivity.",
+    "created_at": "2026-08-23T22:30:12.430435Z",
+    "latency_ms": 38513
+  }
+}

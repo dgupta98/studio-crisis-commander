@@ -1,0 +1,214 @@
+{
+  "scenario_id": "sc_019",
+  "detection": {
+    "metric_ts": "2026-08-23T23:01:48",
+    "metric": "trailer_analytics.completion_rate",
+    "film_id": 19,
+    "region": "Mexico",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.43,
+    "magnitude": 0.43,
+    "business_impact": 0.43,
+    "severity": 0.43,
+    "dedup_key": "trailer_analytics.completion_rate|19|Mexico|2026-08-23T23:01:48|synth",
+    "film_title": "Avatar Aang: The Last Airbender",
+    "latency_ms": 24836
+  },
+  "investigation": {
+    "investigation_id": "3248f6bfa1674a92b41b3d3e48bba0aa",
+    "detection": {
+      "metric_ts": "2026-08-23T23:01:48",
+      "metric": "trailer_analytics.completion_rate",
+      "film_id": 19,
+      "region": "Mexico",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.43,
+      "magnitude": 0.43,
+      "business_impact": 0.43,
+      "severity": 0.43,
+      "dedup_key": "trailer_analytics.completion_rate|19|Mexico|2026-08-23T23:01:48|synth",
+      "film_title": "Avatar Aang: The Last Airbender",
+      "latency_ms": 24836
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT toStartOfHour(ts) AS hour_ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 19 AND region = 'Mexico' AND ts BETWEEN toDateTime('2026-08-23T23:01:48') - INTERVAL 24 HOUR AND toDateTime('2026-08-23T23:01:48') + INTERVAL 24 HOUR GROUP BY hour_ts ORDER BY hour_ts LIMIT 100",
+        "columns": [
+          "hour_ts",
+          "completion_rate"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            0.17000000178813934
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.17000000178813934
+          ],
+          [
+            "2026-08-24 01:00:00",
+            0.17000000178813934
+          ],
+          [
+            "2026-08-24 02:00:00",
+            0.17000000178813934
+          ],
+          [
+            "2026-08-24 03:00:00",
+            0.17000000178813934
+          ],
+          [
+            "2026-08-24 04:00:00",
+            0.17000000178813934
+          ]
+        ],
+        "narrative": "The completion rate for the film at 2026-08-23T23:01:48 was detected as anomalous. Compared to a baseline of 0.0, the hourly data shows a completion rate of 0.17 at 2026-08-23 23:00:00. This value then remained constant at 0.17 through 2026-08-24 04:00:00, indicating a sustained plateau that has persisted for at least 6 hours.",
+        "latency_ms": 23896
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 19 AND region = 'Mexico' AND ts BETWEEN toDateTime('2026-08-23T23:01:48') - INTERVAL 6 HOUR AND toDateTime('2026-08-23T23:01:48') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u0006h window.",
+        "latency_ms": 1420
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n    t.region,\n    sum(t.sum_completion_x_views) / nullIf(sum(t.sum_views), 0) AS completion_rate,\n    sum(t.sum_views) AS views,\n    any(frw.weight) as weight\nFROM roll_trailer_hourly AS t\nLEFT JOIN film_region_weight AS frw\n    ON t.film_id = frw.film_id AND t.region = frw.region\nWHERE\n    t.film_id = 19\n    AND t.ts BETWEEN toDateTime('2026-08-23T23:01:48') - INTERVAL 24 HOUR AND toDateTime('2026-08-23T23:01:48') + INTERVAL 24 HOUR\nGROUP BY\n    t.region\nORDER BY\n    completion_rate DESC\nLIMIT 15",
+        "columns": [
+          "region",
+          "completion_rate",
+          "views",
+          "weight"
+        ],
+        "rows": [
+          [
+            "Mexico",
+            0.17000000178813934,
+            5700,
+            0
+          ]
+        ],
+        "narrative": "The anomaly in trailer completion rate is isolated to the Mexico region. Within Mexico, there is only a single trailer variant ('A'), indicating the issue is not variant-specific. The completion rate in Mexico is 0.17, and no other regions reported data in the 24-hour window around the anomaly, suggesting the issue is concentrated entirely in Mexico.",
+        "latency_ms": 20549
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT\n  metric,\n  metric_ts,\n  magnitude,\n  detector\nFROM detections\nWHERE\n  film_id = 19\n  AND region = 'Mexico'\n  AND metric_ts >= toDateTime('2026-08-23T23:01:48') - INTERVAL 72 HOUR\n  AND metric_ts <= toDateTime('2026-08-23T23:01:48')\nORDER BY\n    metric_ts; -- QUERY 2 -- SELECT\n  f.title,\n  cr.release_date\nFROM competitor_releases AS cr\nJOIN films AS f\n  ON cr.competitor_film_id = f.film_id\nWHERE\n  cr.region = 'Mexico'\n  AND cr.release_date >= toDate('2026-08-23T23:01:48') - INTERVAL 14 DAY\n  AND cr.release_date <= toDate('2026-08-23T23:01:48') + INTERVAL 14 DAY",
+        "columns": [
+          "metric",
+          "metric_ts",
+          "magnitude",
+          "detector"
+        ],
+        "rows": [],
+        "narrative": "The anomaly, which began at 2026-08-23T23:01:48, is the earliest detection for this film and region in the last 72 hours. There were no other sibling detections on other metrics. Additionally, no competitor films were released in Mexico within \u00b114 days of the anomaly.",
+        "latency_ms": 6615
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The trailer completion rate for 'Avatar Aang: The Last Airbender' in Mexico has experienced a sudden and sustained elevation.",
+      "contributing_factors": [
+        "The actual hourly completion rate is consistently reported lower than the initial detection's magnitude.",
+        "The anomaly is isolated to the Mexico region, without involvement of other regions or trailer variants.",
+        "This is the first detected anomaly for this film and region in the last 72 hours, with no external competitor influence."
+      ],
+      "confidence": "medium",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T23:02:12.836316Z",
+    "finished_at": "2026-08-23T23:03:56.164638Z"
+  },
+  "decision": {
+    "decision_id": "65511f3f5e9940e5b480a101373e91d6",
+    "investigation_id": "3248f6bfa1674a92b41b3d3e48bba0aa",
+    "actions": [
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "Escalate to the product and editorial teams to investigate the widespread critical feedback in Mexico-DE regarding 'plot holes' and 'pacing issues' from influential reviewers like 'Frankfurter Allgemeine Zeitung' and 'S\u00fcddeutsche Zeitung' which gave scores as low as 2/10 and 3/10.",
+        "params": {
+          "reason": "Product/content team needs to address critical feedback on 'plot holes' and 'pacing issues' identified by major critics in EU-DE.",
+          "severity": "high"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Issue a public relations statement in Mexico-DE to acknowledge and address the critical reception regarding film quality, once the product and editorial teams have investigated and formulated a response to the identified issues.",
+        "params": {
+          "film_id": 19,
+          "region": "Mexico",
+          "message_theme": "address concerns about film quality"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 19 AND region = 'Mexico'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 19\n    AND region = 'Mexico'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 19\n    AND region = 'Mexico'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 19 AND region = 'Mexico'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-23T23:04:05.266241Z",
+    "latency_ms": 9101
+  },
+  "report": {
+    "report_id": "0bb31996df374192a2449f204682773d",
+    "decision_id": "65511f3f5e9940e5b480a101373e91d6",
+    "headline": "Trailer completion rates for Avatar Aang in Mexico are unusually high.",
+    "tldr": "The trailer completion rate for 'Avatar Aang: The Last Airbender' in Mexico has significantly increased, with hourly rates at 0.17 for an extended period, far above the baseline. This anomaly is isolated to Mexico, suggesting a localized issue or a data reporting problem for the 5700 views captured. We are escalating this to product and editorial to investigate critical feedback and preparing a public relations statement to address quality concerns.",
+    "key_figures": [
+      {
+        "label": "Sustained hourly completion rate",
+        "value": "0.17",
+        "source_query": "SELECT toStartOfHour(ts) AS hour_ts, sum(sum_completion_x_views) / nullIf(sum(sum_views), 0) AS completion_rate FROM roll_trailer_hourly WHERE film_id = 19 AND region = 'Mexico' AND ts BETWEEN toDateTime('2026-08-23T23:01:48') - INTERVAL 24 HOUR AND toDateTime('2026-08-23T23:01:48') + INTERVAL 24 HOUR GROUP BY hour_ts ORDER BY hour_ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Total views in Mexico",
+        "value": "5700",
+        "source_query": "SELECT\n    t.region,\n    sum(t.sum_completion_x_views) / nullIf(sum(t.sum_views), 0) AS completion_rate,\n    sum(t.sum_views) AS views,\n    any(frw.weight) as weight\nFROM roll_trailer_hourly AS t\nLEFT JOIN film_region_weight AS frw\n    ON t.film_id = frw.film_id AND t.region = frw.region\nWHERE\n    t.film_id = 19\n    AND t.ts BETWEEN toDateTime('2026-08-23T23:01:48') - INTERVAL 24 HOUR AND toDateTime('2026-08-23T23:01:48') + INTERVAL 24 HOUR\nGROUP BY\n    t.region\nORDER BY\n    completion_rate DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Escalation impact estimate",
+        "value": "$0",
+        "source_query": "SELECT toFloat64(0.0) AS impact_usd",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "PR statement impact estimate",
+        "value": "$0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 19 AND region = 'Mexico'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 19\n    AND region = 'Mexico'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 19\n    AND region = 'Mexico'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 19 AND region = 'Mexico'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are escalating this to the product and editorial teams to investigate widespread critical feedback in Mexico-DE regarding 'plot holes' and 'pacing issues' from influential reviewers like 'Frankfurter Allgemeine Zeitung' and 'S\u00fcddeutsche Zeitung', which gave scores as low as 2/10 and 3/10. This action is not yet quantified in terms of monetary impact, reflecting an estimated $0. Once these teams have investigated and formulated a response, we will issue a public relations statement in Mexico-DE to acknowledge and address the critical reception regarding film quality, also with an estimated $0 in immediate impact.",
+    "risks_and_caveats": "Our confidence in the primary cause is medium. The investigation found no significant text evidence for critical feedback in Mexico, which contradicts the decision to escalate based on widespread negative reviews in Mexico-DE from specific German outlets. Additionally, the initially detected completion rate varies significantly from the sustained hourly rate reported in the numeric context, suggesting potential data interpretation inconsistencies or a reporting delay.",
+    "created_at": "2026-08-23T23:04:27.552627Z",
+    "latency_ms": 22104
+  }
+}

@@ -32,6 +32,11 @@ def parse() -> argparse.Namespace:
                    default=os.getenv("EVAL_BACKEND_URL", "http://127.0.0.1:8000"))
     p.add_argument("--cache-dir", type=Path,
                    default=REPO_ROOT / "data" / "eval_cache")
+    # Skip scenarios whose cache file already exists — useful when the
+    # cache is partially populated (e.g. only 16/30 present) and you want
+    # to fill the gap without re-spending Gemini calls on the good ones.
+    p.add_argument("--skip-existing", action="store_true",
+                   help="Skip scenarios whose {id}.json is already on disk")
     return p.parse_args()
 
 
@@ -43,8 +48,19 @@ async def _record_one(ac: httpx.AsyncClient, scn: Scenario, cache_dir: Path) -> 
     r.raise_for_status()
     run_id = r.json()["run_id"]
 
+    # On Cloud Run without session affinity, the SSE GET can land on a
+    # different instance than the POST and 404 with "unknown run_id".
+    # Surface that clearly (empty aiter_lines() otherwise looks identical
+    # to a hung pipeline) instead of falling through to "incomplete triple".
     detection = investigation = decision = report = None
     async with ac.stream("GET", f"/stream/investigation/{run_id}") as s:
+        if s.status_code == 404:
+            body_txt = (await s.aread()).decode("utf-8", errors="replace")[:200]
+            raise RuntimeError(
+                f"{scn.id}: stream 404 for run_id {run_id} — likely cross-instance "
+                f"routing (enable Cloud Run session affinity). body={body_txt}"
+            )
+        s.raise_for_status()
         async for line in s.aiter_lines():
             if not line.startswith("data: "):
                 continue
@@ -82,8 +98,20 @@ async def _record_one(ac: httpx.AsyncClient, scn: Scenario, cache_dir: Path) -> 
 
 async def main() -> int:
     args = parse()
-    scenarios = load_scenarios()
-    print(f"recording {len(scenarios)} scenarios → {args.cache_dir}", file=sys.stderr)
+    all_scenarios = load_scenarios()
+    if args.skip_existing:
+        scenarios = [s for s in all_scenarios
+                     if not (args.cache_dir / f"{s.id}.json").exists()]
+        skipped = len(all_scenarios) - len(scenarios)
+        print(f"recording {len(scenarios)} scenarios ({skipped} already cached) "
+              f"→ {args.cache_dir}", file=sys.stderr)
+    else:
+        scenarios = all_scenarios
+        print(f"recording {len(scenarios)} scenarios → {args.cache_dir}",
+              file=sys.stderr)
+    if not scenarios:
+        print("nothing to record — all cache files already exist", file=sys.stderr)
+        return 0
     async with httpx.AsyncClient(base_url=args.backend_url.rstrip("/"),
                                  timeout=300) as ac:
         for i, scn in enumerate(scenarios, 1):

@@ -1,0 +1,188 @@
+{
+  "scenario_id": "sc_024",
+  "detection": {
+    "metric_ts": "2026-08-23T22:40:12",
+    "metric": "campaign_performance.roi",
+    "film_id": 24,
+    "region": "Australia",
+    "detector": "synth",
+    "baseline_value": 0.0,
+    "actual_value": 0.34,
+    "magnitude": 0.34,
+    "business_impact": 0.34,
+    "severity": 0.34,
+    "dedup_key": "campaign_performance.roi|24|Australia|2026-08-23T22:40:12|synth",
+    "film_title": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
+    "latency_ms": 25454
+  },
+  "investigation": {
+    "investigation_id": "708252fc05d44acb8dc994862fcf1902",
+    "detection": {
+      "metric_ts": "2026-08-23T22:40:12",
+      "metric": "campaign_performance.roi",
+      "film_id": 24,
+      "region": "Australia",
+      "detector": "synth",
+      "baseline_value": 0.0,
+      "actual_value": 0.34,
+      "magnitude": 0.34,
+      "business_impact": 0.34,
+      "severity": 0.34,
+      "dedup_key": "campaign_performance.roi|24|Australia|2026-08-23T22:40:12|synth",
+      "film_title": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
+      "latency_ms": 25454
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT day, sum_conversions / nullIf(sum_spend, 0) AS roi FROM roll_campaign_daily WHERE film_id = 24 AND region = 'Australia' AND day BETWEEN toDate('2026-08-23') - INTERVAL 7 DAY AND toDate('2026-08-23') + INTERVAL 7 DAY ORDER BY day LIMIT 100",
+        "columns": [
+          "day",
+          "roi"
+        ],
+        "rows": [
+          [
+            "2026-08-18",
+            0.00491044776119403
+          ],
+          [
+            "2026-08-19",
+            0.00491044776119403
+          ],
+          [
+            "2026-08-20",
+            0.00491044776119403
+          ],
+          [
+            "2026-08-24",
+            0.00491044776119403
+          ],
+          [
+            "2026-08-25",
+            0.00491044776119403
+          ],
+          [
+            "2026-08-26",
+            0.00491044776119403
+          ]
+        ],
+        "narrative": "The campaign performance ROI for Film ID 24 in Australia shows a sustained plateau, with values of approximately 0.0049 observed on August 18th-20th and August 24th-26th, 2026. The values consistently hover around 0.0049, with no significant deviation within the available data points in the \u00b17-day window. Data for some days, including August 23rd, 2026, is not present in the results.",
+        "latency_ms": 31808
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 24 AND region = 'Australia' AND ts BETWEEN toDateTime('2026-08-23T22:40:12') - INTERVAL 6 HOUR AND toDateTime('2026-08-23T22:40:12') + INTERVAL 6 HOUR ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "No significant text evidence found in the \u00b16h window around the anomaly. This suggests the anomaly is not directly related to negative reviews during that period.",
+        "latency_ms": 1606
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT\n  channel,\n  sum(sum_conversions) / nullIf(sum(sum_spend), 0) AS roi,\n  sum(sum_spend) AS total_spend\nFROM roll_campaign_daily\nWHERE\n  film_id = 24\n  AND region = 'Australia'\n  AND day BETWEEN toDate('2026-08-23') - INTERVAL 3 DAY AND toDate('2026-08-23') + INTERVAL 3 DAY\nGROUP BY\n  channel\nORDER BY\n  roi DESC\nLIMIT 15",
+        "columns": [
+          "channel",
+          "roi",
+          "total_spend"
+        ],
+        "rows": [
+          [
+            "email",
+            0.00491044776119403,
+            268000
+          ]
+        ],
+        "narrative": "The anomaly in campaign performance ROI is entirely isolated to the 'email' channel. Within the evaluated period, this was the only active channel, registering an ROI of approximately 0.0049 with a total spend of 268,000. Since no other channels were active, the 'email' channel is the sole driver of the observed performance.",
+        "latency_ms": 5676
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric, metric_ts, actual_value, baseline_value FROM detections WHERE film_id = 24 AND region = 'Australia' AND metric_ts >= toDateTime('2026-08-23T22:40:12') - INTERVAL 72 HOUR AND metric_ts <= toDateTime('2026-08-23T22:40:12') ORDER BY metric_ts; -- QUERY 2 -- SELECT f.title, cr.release_date FROM competitor_releases AS cr JOIN films AS f ON cr.competitor_film_id = f.film_id WHERE cr.film_id = 24 AND cr.region = 'Australia' AND cr.release_date >= toDate('2026-08-23') - INTERVAL 14 DAY AND cr.release_date <= toDate('2026-08-23') + INTERVAL 14 DAY",
+        "columns": [],
+        "rows": [],
+        "narrative": "The anomaly appears to have begun at the time of detection, 2026-08-23T22:40:12, as there were no other related detections for this film in Australia within the preceding 72 hours. Furthermore, no competitor films were released in the same region within a \u00b114 day window of the anomaly. The event seems to be isolated in time without any obvious temporal triggers from competition or other recent performance issues.",
+        "latency_ms": 6150
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The detector reported an incorrect campaign performance ROI of 0.34 from a 0.0 baseline; the underlying data consistently shows the actual ROI for Film ID 24 in Australia is around 0.0049.",
+      "contributing_factors": [
+        "The observed ROI is exclusively from the email marketing channel.",
+        "There are no recent temporal triggers or prior detections suggesting a true performance anomaly."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:40:37.454583Z",
+    "finished_at": "2026-08-23T22:41:56.411165Z"
+  },
+  "decision": {
+    "decision_id": "440279cce83b4c6f89518144ea38dfab",
+    "investigation_id": "708252fc05d44acb8dc994862fcf1902",
+    "actions": [
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "Escalate this critical issue to creative and production leadership for urgent review. The consistent negative feedback on narrative and characters suggests a fundamental flaw that only internal content changes could potentially address.",
+        "params": {
+          "reason": "Critical reviews consistently highlight fundamental issues with the film's narrative pacing and character development, which are beyond marketing's scope and require creative or production team intervention to evaluate potential content adjustments.",
+          "severity": "critical"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Prepare and issue a public relations statement to acknowledge the significant critical feedback on 'The Midnight Echo' in the GLOBAL region. This helps manage public perception and reaffirms the studio's dedication to artistic quality while a deeper content review is underway.",
+        "params": {
+          "film_id": 24,
+          "region": "Australia",
+          "message_theme": "addressing critical feedback and commitment to artistic integrity"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 24 AND region = 'Australia'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 24\n    AND region = 'Australia'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 24\n    AND region = 'Australia'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 24 AND region = 'Australia'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-23T22:42:12.230935Z",
+    "latency_ms": 15819
+  },
+  "report": {
+    "report_id": "c6f2950f609a42139dcfe627351edb98",
+    "decision_id": "440279cce83b4c6f89518144ea38dfab",
+    "headline": "System incorrectly flagged a high campaign ROI for Demon Slayer in Australia.",
+    "tldr": "The system detected an unusually high campaign ROI for 'Demon Slayer: Kimetsu no Yaiba Infinity Castle' in Australia, but our analysis indicates this is likely a false alarm. Actual performance data consistently shows the ROI is significantly lower, around 0.0049, driven solely by email marketing. While the ROI alert appears erroneous, we are simultaneously addressing more fundamental issues related to critical feedback on the film's narrative and characters, escalating these concerns to creative and production teams, and preparing a public relations statement.",
+    "key_figures": [
+      {
+        "label": "Actual Campaign ROI",
+        "value": "0.0049",
+        "source_query": "SELECT day, sum_conversions / nullIf(sum_spend, 0) AS roi FROM roll_campaign_daily WHERE film_id = 24 AND region = 'Australia' AND day BETWEEN toDate('2026-08-23') - INTERVAL 7 DAY AND toDate('2026-08-23') + INTERVAL 7 DAY ORDER BY day LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Email Channel Spend",
+        "value": "268,000",
+        "source_query": "SELECT\n  channel,\n  sum(sum_conversions) / nullIf(sum(sum_spend), 0) AS roi,\n  sum(sum_spend) AS total_spend\nFROM roll_campaign_daily\nWHERE\n  film_id = 24\n  AND region = 'Australia'\n  AND day BETWEEN toDate('2026-08-23') - INTERVAL 3 DAY AND toDate('2026-08-23') + INTERVAL 3 DAY\nGROUP BY\n  channel\nORDER BY\n  roi DESC\nLIMIT 15",
+        "source": {
+          "signal": "categorical_isolation",
+          "query_index": 0
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are escalating this critical issue to creative and production leadership for urgent review. The consistent negative feedback on the narrative and characters of 'The Midnight Echo' suggests a fundamental flaw requiring intervention from creative or production teams to evaluate potential content adjustments. This action shows no immediate financial impact. We are also preparing and issuing a public relations statement to acknowledge the significant critical feedback on 'The Midnight Echo' in Australia. This helps manage public perception and reaffirms the studio's dedication to artistic quality while a deeper content review is underway, also with no direct financial impact.",
+    "risks_and_caveats": "The confidence in the primary hypothesis is low because the initial ROI detection appears to be a misreporting rather than a true performance anomaly. Furthermore, the recommended actions address critical feedback for 'The Midnight Echo', which appears to be a separate issue from the detected campaign ROI anomaly for 'Demon Slayer: Kimetsu no Yaiba Infinity Castle', despite sharing the same film ID.",
+    "created_at": "2026-08-23T22:42:38.712895Z",
+    "latency_ms": 26282
+  }
+}

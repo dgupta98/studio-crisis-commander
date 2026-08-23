@@ -1,0 +1,243 @@
+{
+  "scenario_id": "sc_027",
+  "detection": {
+    "metric_ts": "2026-08-24T03:00:00",
+    "metric": "streaming_watch_minutes.completion_ratio",
+    "film_id": 27,
+    "region": "Germany",
+    "detector": "pctchange",
+    "baseline_value": 0.5342465753424657,
+    "actual_value": 1.0684931506849316,
+    "magnitude": 1.0,
+    "business_impact": 0.0,
+    "severity": 0.0,
+    "dedup_key": "streaming_watch_minutes.completion_ratio|27|Germany|2026-08-24 03:00:00|pctchange",
+    "film_title": "Shake, Rattle & Roll: Evil Origins",
+    "latency_ms": 0
+  },
+  "investigation": {
+    "investigation_id": "7f87d10fba9d4e9885813b0b5e8a29be",
+    "detection": {
+      "metric_ts": "2026-08-24T03:00:00",
+      "metric": "streaming_watch_minutes.completion_ratio",
+      "film_id": 27,
+      "region": "Germany",
+      "detector": "pctchange",
+      "baseline_value": 0.5342465753424657,
+      "actual_value": 1.0684931506849316,
+      "magnitude": 1.0,
+      "business_impact": 0.0,
+      "severity": 0.0,
+      "dedup_key": "streaming_watch_minutes.completion_ratio|27|Germany|2026-08-24 03:00:00|pctchange",
+      "film_title": "Shake, Rattle & Roll: Evil Origins",
+      "latency_ms": 0
+    },
+    "findings": [
+      {
+        "signal": "numeric_context",
+        "sql": "SELECT ts, toFloat64(sum_completions) / nullIf(toFloat64(sum_completions) + toFloat64(sum_drops), 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 27 AND region = 'Germany' AND ts >= '2026-08-23 03:00:00' AND ts <= '2026-08-25 03:00:00' ORDER BY ts LIMIT 100",
+        "columns": [
+          "ts",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "2026-08-23 23:00:00",
+            0.1780821917808219
+          ],
+          [
+            "2026-08-24 00:00:00",
+            0.1780821917808219
+          ],
+          [
+            "2026-08-24 01:00:00",
+            0.1780821917808219
+          ],
+          [
+            "2026-08-24 02:00:00",
+            0.1780821917808219
+          ],
+          [
+            "2026-08-24 03:00:00",
+            0.1780821917808219
+          ]
+        ],
+        "narrative": "The completion_ratio for film_id 27 in Germany exhibits a sustained plateau, remaining constant at approximately 0.178 from 2026-08-23 23:00:00 to 2026-08-24 03:00:00. This trend indicates no numeric deviation from a steady state in the roll_streaming_hourly data during the observed window. The queried data does not show the anomaly described in the detection.",
+        "latency_ms": 16503
+      },
+      {
+        "signal": "text_reason",
+        "sql": "SELECT raw_text, sentiment_score, source, ts FROM reviews_text WHERE film_id = 27 AND region = 'Germany' AND ts BETWEEN '2026-08-23 21:00:00' AND '2026-08-24 09:00:00' ORDER BY sentiment_score ASC LIMIT 10",
+        "columns": [],
+        "rows": [],
+        "narrative": "no significant text evidence in the \u00b16h window.",
+        "latency_ms": 1849
+      },
+      {
+        "signal": "categorical_isolation",
+        "sql": "SELECT s.region, w.weight, sum(s.sum_completions) / nullIf(sum(s.sum_completions) + sum(s.sum_drops), 0) AS completion_ratio FROM roll_streaming_hourly AS s LEFT JOIN film_region_weight AS w ON s.film_id = w.film_id AND s.region = w.region WHERE s.film_id = 27 AND s.ts >= '2026-08-23 21:00:00' AND s.ts <= '2026-08-24 09:00:00' GROUP BY s.region, w.weight ORDER BY completion_ratio DESC LIMIT 15",
+        "columns": [
+          "region",
+          "weight",
+          "completion_ratio"
+        ],
+        "rows": [
+          [
+            "Germany",
+            0,
+            0.1780821917808219
+          ]
+        ],
+        "narrative": "A categorical breakdown by region reveals that Germany is the only region with streaming data for film_id 27 in the \u00b16 hour window surrounding the anomaly. The completion ratio for Germany was 0.178. The film region weight for Germany was 0.0. Without data from other regions, it is not possible to determine if the anomaly is isolated to Germany or if it is part of a broader trend.",
+        "latency_ms": 8339
+      },
+      {
+        "signal": "temporal_context",
+        "sql": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 27 AND region = 'Germany' AND metric_ts >= '2026-08-21 03:00:00' AND metric_ts <= '2026-08-24 03:00:00' ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, release_date, competitor_film_id FROM competitor_releases WHERE region = 'Germany' AND release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "columns": [
+          "metric_ts",
+          "metric",
+          "detector",
+          "actual_value",
+          "baseline_value",
+          "magnitude"
+        ],
+        "rows": [
+          [
+            "2026-08-24 01:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            1.0684931506849316,
+            0.1780821917808219,
+            5.0
+          ],
+          [
+            "2026-08-24 02:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            1.0684931506849316,
+            0.3561643835616438,
+            2.0
+          ],
+          [
+            "2026-08-24 03:00:00",
+            "streaming_watch_minutes.completion_ratio",
+            "pctchange",
+            1.0684931506849316,
+            0.5342465753424657,
+            1.0
+          ]
+        ],
+        "narrative": "The anomaly began at 2026-08-24 01:00:00 UTC, with two subsequent detections on the same metric (`streaming_watch_minutes.completion_ratio`) for the same film and region at 02:00:00 and 03:00:00. No other metrics showed related anomalies in the preceding 72 hours. There were no competitor film releases in Germany within \u00b114 days of the detection, ruling out a competitive impact.",
+        "latency_ms": 11213
+      }
+    ],
+    "hypothesis": {
+      "primary_cause": "The detected anomaly in completion ratio is a false positive likely caused by a miscalculation within the detector, as the underlying metric for the film in Germany remained stable.",
+      "contributing_factors": [
+        "The underlying completion ratio data shows a sustained plateau at 0.178, directly contradicting the detector's reported values.",
+        "The detector reported the same actual value across multiple consecutive hourly detections, while its baseline value changed, suggesting an internal calculation inconsistency."
+      ],
+      "confidence": "low",
+      "citations": [
+        "numeric_context",
+        "categorical_isolation",
+        "temporal_context"
+      ]
+    },
+    "started_at": "2026-08-23T22:47:54.131515Z",
+    "finished_at": "2026-08-23T22:49:14.841744Z"
+  },
+  "decision": {
+    "decision_id": "fd13bd13fe8a433e805d748c6c60daa4",
+    "investigation_id": "7f87d10fba9d4e9885813b0b5e8a29be",
+    "actions": [
+      {
+        "action_type": "escalate_to_human",
+        "rationale": "The steep drop in streaming completion rate for film 101 in Germany-DE, coupled with specific user feedback about 'confusing plot points' and 'disjointed editing', points to a fundamental content or editing flaw requiring immediate product team review.",
+        "params": {
+          "reason": "Film content quality or editing issues causing low completion rate.",
+          "severity": "critical"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "SELECT toFloat64(0.0) AS impact_usd",
+        "impact_error": "",
+        "priority": 1
+      },
+      {
+        "action_type": "issue_pr_statement",
+        "rationale": "Issue a public statement for film 101 in Germany-DE to acknowledge and address the negative audience sentiment stemming from the perceived quality issues, reinforcing our commitment to viewer satisfaction while the product team investigates.",
+        "params": {
+          "film_id": 27,
+          "region": "Germany",
+          "message_theme": "apology_quality_assurance"
+        },
+        "impact_usd": 0.0,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 27 AND region = 'Germany'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 27\n    AND region = 'Germany'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 27\n    AND region = 'Germany'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 27 AND region = 'Germany'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_error": "",
+        "priority": 2
+      }
+    ],
+    "status": "pending_approval",
+    "threshold_usd": 0.0,
+    "created_at": "2026-08-23T22:49:25.068208Z",
+    "latency_ms": 10225
+  },
+  "report": {
+    "report_id": "c57670842c60478187e2a1d11332d176",
+    "decision_id": "fd13bd13fe8a433e805d748c6c60daa4",
+    "headline": "A false positive detection for 'Shake, Rattle & Roll: Evil Origins' in Germany contradicts stable streaming completion data.",
+    "tldr": "A system anomaly reported a 100% increase in the completion ratio for 'Shake, Rattle & Roll: Evil Origins' in Germany, but our analysis shows the underlying metric has remained flat at 0.178. This indicates a false positive and potential miscalculation within the detector. Despite this, actions are being recommended for film 101 due to a steep drop in streaming completion and negative audience feedback, escalating the issue for human review and considering a public statement for film 27.",
+    "key_figures": [
+      {
+        "label": "Actual Detected Ratio",
+        "value": "1.07",
+        "source_query": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 27 AND region = 'Germany' AND metric_ts >= '2026-08-21 03:00:00' AND metric_ts <= '2026-08-24 03:00:00' ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, release_date, competitor_film_id FROM competitor_releases WHERE region = 'Germany' AND release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Baseline Detected Ratio",
+        "value": "0.53",
+        "source_query": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 27 AND region = 'Germany' AND metric_ts >= '2026-08-21 03:00:00' AND metric_ts <= '2026-08-24 03:00:00' ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, release_date, competitor_film_id FROM competitor_releases WHERE region = 'Germany' AND release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Detected Ratio Increase",
+        "value": "100%",
+        "source_query": "SELECT metric_ts, metric, detector, actual_value, baseline_value, magnitude FROM detections WHERE film_id = 27 AND region = 'Germany' AND metric_ts >= '2026-08-21 03:00:00' AND metric_ts <= '2026-08-24 03:00:00' ORDER BY metric_ts; -- QUERY 2 -- SELECT film_id, release_date, competitor_film_id FROM competitor_releases WHERE region = 'Germany' AND release_date >= toDate('2026-08-24') - INTERVAL 14 DAY AND release_date <= toDate('2026-08-24') + INTERVAL 14 DAY",
+        "source": {
+          "signal": "temporal_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Underlying Stable Ratio",
+        "value": "0.178",
+        "source_query": "SELECT ts, toFloat64(sum_completions) / nullIf(toFloat64(sum_completions) + toFloat64(sum_drops), 0) AS completion_ratio FROM roll_streaming_hourly WHERE film_id = 27 AND region = 'Germany' AND ts >= '2026-08-23 03:00:00' AND ts <= '2026-08-25 03:00:00' ORDER BY ts LIMIT 100",
+        "source": {
+          "signal": "numeric_context",
+          "query_index": 0
+        }
+      },
+      {
+        "label": "Potential PR Impact",
+        "value": "$0",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 27 AND region = 'Germany'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 27\n    AND region = 'Germany'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 27\n    AND region = 'Germany'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 27 AND region = 'Germany'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "source": {
+          "signal": "decision_impact",
+          "query_index": 1
+        }
+      }
+    ],
+    "recommended_actions_prose": "We are escalating to human review due to a steep drop in streaming completion rates for film 101 in Germany, alongside user feedback about 'confusing plot points' and 'disjointed editing'. This points to a potential content or editing flaw requiring immediate product team review, with an estimated impact of $0. Separately, we are recommending a public statement for 'Shake, Rattle & Roll: Evil Origins' (film 27) in Germany to address negative audience sentiment from perceived quality issues, reinforcing our commitment to viewer satisfaction while the product team investigates. This action also has an estimated impact of $0.",
+    "risks_and_caveats": "Our confidence in the primary cause being a false positive is low, mainly due to the significant discrepancy between the detected values and the underlying metric. Furthermore, the recommended actions appear to address a problem (a steep drop in completion rates and negative sentiment) that directly contradicts our finding of a stable, albeit low, completion ratio and a false positive increase. This suggests a potential disconnect between the observed anomaly and the proposed remedies.",
+    "created_at": "2026-08-23T22:50:29.693738Z",
+    "latency_ms": 37305
+  }
+}
