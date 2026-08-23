@@ -23,10 +23,10 @@ export function LiveCounter() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE, delay: i * 0.06 }}
-          className="flex flex-col items-start gap-2 overflow-hidden"
+          className="flex min-w-0 flex-col items-start gap-2 overflow-visible"
         >
           <span
-            className="font-display font-bold text-3xl leading-none tracking-tight md:text-4xl text-ink"
+            className="max-w-full overflow-visible whitespace-nowrap font-display font-bold leading-[0.9] tracking-[-0.04em] text-ink text-[clamp(2rem,5vw,4.5rem)]"
             style={{ fontVariantNumeric: 'tabular-nums' }}
             title={fmt.format(s.value)}
           >

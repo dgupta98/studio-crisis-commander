@@ -26,5 +26,10 @@ describe('LiveCounter', () => {
     await waitFor(() => expect(screen.getByText(/250/)).toBeInTheDocument())
     expect(screen.getByText(/15/)).toBeInTheDocument()
     expect(screen.getByText(/120/)).toBeInTheDocument()
+
+    const compactValue = screen.getByText('1.2M')
+    expect(compactValue).toHaveClass('whitespace-nowrap')
+    expect(compactValue).toHaveClass('overflow-visible')
+    expect(compactValue).toHaveClass('text-[clamp(2rem,5vw,4.5rem)]')
   })
 })
