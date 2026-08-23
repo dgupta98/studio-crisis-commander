@@ -6,10 +6,13 @@ import { SignalChip, type SignalFamily } from '../components/SignalChip'
 const FAMILIES: SignalFamily[] = ['box_office', 'social', 'reviews', 'streaming']
 
 // Compact big totals so a 28,340,912 row count doesn't overflow the tile.
+// Always keep one decimal at K/M/B so ~10.8M-social vs ~10.8M-streaming
+// render distinctly (previously both rounded to "11M" via toFixed(0) and
+// looked like the same number).
 function formatRows(n: number): string {
   if (!Number.isFinite(n) || n < 1000) return `${n}`
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}K`
-  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(n < 10_000_000 ? 1 : 0)}M`
+  if (n < 1_000_000)     return `${(n / 1_000).toFixed(1)}K`
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   return `${(n / 1_000_000_000).toFixed(1)}B`
 }
 

@@ -199,7 +199,11 @@ export const useRunStore = create<RunStore>()(
     useRunStore.getState()._recomputePanels()
   },
 
-  loadMetrics: async (filmId, region, hours = 48) => {
+  // 168h (7d) not 48h — many (film, region) pairs have only 2-3 rollup
+  // points inside 48h and the sparklines rendered as invisible flat lines.
+  // The backend anchors each window at max(ts) of the underlying table so
+  // widening doesn't move us off the data — it just captures more of it.
+  loadMetrics: async (filmId, region, hours = 168) => {
     try {
       const res = await apiGet<MetricsResponse>(
         `/metrics/${filmId}/${encodeURIComponent(region)}?hours=${hours}`,
