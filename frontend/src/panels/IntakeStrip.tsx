@@ -31,7 +31,7 @@ export function IntakeStrip() {
               {rates[family]}
             </motion.span>
             <span className="mt-1 text-[10px] uppercase tracking-wider text-ink-soft sm:text-xs">
-              rows / hr
+              rows / day
             </span>
           </div>
           <div className="ml-auto hidden sm:block">

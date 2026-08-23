@@ -42,24 +42,21 @@ _FAMILIES: dict[str, tuple[str, str]] = {
 
 
 def _rates_sync() -> dict[str, int]:
-    # Emit rows-per-hour averaged over the last 24h of available data,
+    # Emit rows-per-day averaged over the last 7 days of available data,
     # anchored on each table's max(ts|date) so the strip stays meaningful
     # when the synthetic feed isn't being continuously topped up.
     #
-    # Prior attempts used per-minute rates over a 1-day or 7-day window.
-    # Both integer-truncated to zero for box_office (~3.7K rows/day
-    # against a 1440- or 10080-minute divisor) and for review_scores
-    # under typical volumes. Rows-per-hour keeps the number large enough
-    # that integer casting doesn't collapse it to zero, matches the
-    # "signals arriving live" intuition, and is honest — the label ships
-    # as "rows/hr" on the frontend.
+    # Prior attempts (per-minute over 7d, per-hour over 24h) collapsed to
+    # 0-2 for the sparser tables because the divisor was much larger than
+    # the row count. Per-day over 7d keeps the divisor small enough that
+    # even the leanest signal family shows a real, non-trivial number.
     out: dict[str, int] = {}
     with client() as c:
         for family, (table, col) in _FAMILIES.items():
             try:
                 sql = (
-                    f"SELECT toUInt64(round(count() / 24)) FROM {table} "
-                    f"WHERE {col} >= (SELECT max({col}) - INTERVAL 1 DAY FROM {table})"
+                    f"SELECT toUInt64(round(count() / 7)) FROM {table} "
+                    f"WHERE {col} >= (SELECT max({col}) - INTERVAL 7 DAY FROM {table})"
                 )
                 rows = c.query(sql).result_rows
                 out[family] = int(rows[0][0]) if rows and rows[0][0] is not None else 0
