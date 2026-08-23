@@ -149,13 +149,13 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-line bg-card p-6 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-card p-5 shadow-2xl sm:p-6"
       >
         <h2 className="mb-4 font-display text-lg font-bold tracking-tight text-ink">Inject Crisis</h2>
         <label className="block">

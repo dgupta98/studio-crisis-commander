@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /movies/
+
+Sitemap: https://scc-frontend-845114229642.us-east1.run.app/sitemap.xml

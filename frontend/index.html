@@ -2,14 +2,74 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0b0f" />
+    <meta name="color-scheme" content="dark light" />
+
+    <title>Studio Crisis Commander — Autonomous studio-analytics agents on ClickHouse</title>
+    <meta
+      name="description"
+      content="Studio Crisis Commander is a four-agent pipeline that watches box office, social, reviews and streaming across 15 regions, cites every recommendation to the exact SQL that produced it, and turns anomalies into ranked actions in under 90 seconds — built on ClickHouse, Google Cloud, Gemini and the ADK."
+    />
+    <meta name="keywords" content="Studio Crisis Commander, ClickHouse agents, Google ADK, Gemini, agentic analytics, film analytics, box office anomalies, mcp-clickhouse, Cloud Run, hackathon" />
+    <meta name="author" content="Dipesh Gupta" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://scc-frontend-845114229642.us-east1.run.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Studio Crisis Commander" />
+    <meta property="og:title" content="Studio Crisis Commander — Autonomous studio-analytics agents on ClickHouse" />
+    <meta property="og:description" content="Four autonomous agents watch every signal, cite every claim to the exact SQL that produced it, and ship ranked recommendations in under 90 seconds." />
+    <meta property="og:url" content="https://scc-frontend-845114229642.us-east1.run.app/" />
+    <meta property="og:image" content="https://scc-frontend-845114229642.us-east1.run.app/og-image.png" />
+    <meta property="og:image:alt" content="Studio Crisis Commander dashboard — live agent trace with dollar-figure impact per recommendation." />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Studio Crisis Commander — Autonomous agents on ClickHouse" />
+    <meta name="twitter:description" content="Four agents watch every signal. Every dollar figure carries the exact SQL that produced it. Anomaly to recommendation in under 90 seconds." />
+    <meta name="twitter:image" content="https://scc-frontend-845114229642.us-east1.run.app/og-image.png" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/og-image.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <title>Studio Crisis Commander</title>
+
+    <!-- Structured data — helps search engines display this as an app/tool result. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Studio Crisis Commander",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "Autonomous four-agent pipeline that watches box office, social, reviews and streaming across 15 regions and cites every recommendation to the exact SQL that produced it.",
+        "url": "https://scc-frontend-845114229642.us-east1.run.app/",
+        "author": {
+          "@type": "Person",
+          "name": "Dipesh Gupta"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      Studio Crisis Commander is an interactive analytics dashboard powered by
+      ClickHouse, Google Cloud Vertex AI (Gemini), and the Google Agent
+      Development Kit. Please enable JavaScript to explore the live pipeline,
+      inject synthetic crises, and view cited agent recommendations.
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -11,30 +11,32 @@ export function IntakeStrip() {
   const history = useSignalStore((s) => s.history)
   return (
     <div
-      className="flex items-stretch gap-4 border-b border-line bg-card px-6 py-4"
+      className="grid grid-cols-2 gap-3 border-b border-line bg-card px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 md:grid-cols-4"
       data-testid="intake-strip"
     >
       {FAMILIES.map((family) => (
         <div
           key={family}
-          className="flex flex-1 items-center gap-4 rounded-md border border-line bg-paper px-4 py-3"
+          className="flex items-center gap-3 rounded-md border border-line bg-paper px-3 py-3 sm:gap-4 sm:px-4"
         >
           <SignalChip family={family} compact />
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <motion.span
               key={rates[family]}
               initial={{ opacity: 0.5, y: -2 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="font-mono text-2xl leading-none"
+              className="font-mono text-xl leading-none sm:text-2xl"
             >
               {rates[family]}
             </motion.span>
-            <span className="mt-1 text-xs uppercase tracking-wider text-ink-soft">
+            <span className="mt-1 text-[10px] uppercase tracking-wider text-ink-soft sm:text-xs">
               rows / hr
             </span>
           </div>
-          <MiniSparkline points={history[family]} />
+          <div className="ml-auto hidden sm:block">
+            <MiniSparkline points={history[family]} />
+          </div>
         </div>
       ))}
     </div>
@@ -51,7 +53,7 @@ function MiniSparkline({ points }: { points: number[] }) {
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * step} ${h - (p / max) * h}`)
     .join(' ')
   return (
-    <svg width={w} height={h} className="ml-auto opacity-70">
+    <svg width={w} height={h} className="opacity-70">
       <path d={d} stroke="currentColor" strokeWidth="1" fill="none" />
     </svg>
   )

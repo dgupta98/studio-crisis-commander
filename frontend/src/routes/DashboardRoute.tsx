@@ -21,15 +21,18 @@ export default function DashboardRoute() {
   return (
     <div data-testid="route-dashboard" className="flex h-full flex-col">
       <IntakeStrip />
-      <div className="grid flex-1 grid-cols-[320px_1fr_360px] gap-3 overflow-hidden p-3">
-        <div className="flex flex-col gap-3 overflow-auto">
+      {/* 3-column desktop layout collapses to a single scrolling stack on
+          mobile / small tablets — the workspace stays center-of-attention
+          and the side rails move above / below it in reading order. */}
+      <div className="grid flex-1 gap-3 overflow-hidden p-3 grid-cols-1 lg:grid-cols-[300px_1fr_340px] xl:grid-cols-[320px_1fr_360px]">
+        <div className="flex flex-col gap-3 overflow-auto order-2 lg:order-1">
           <AnomalyFeed />
           <RecentRuns />
         </div>
-        <div className="overflow-hidden">
+        <div className="overflow-hidden order-1 lg:order-2">
           <DashboardWorkspace />
         </div>
-        <div className="overflow-auto">
+        <div className="overflow-auto order-3">
           <AgentTrace />
         </div>
       </div>
