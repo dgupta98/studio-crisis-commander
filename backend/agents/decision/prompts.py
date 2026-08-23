@@ -117,5 +117,21 @@ RULES (violations will fail validation):
 Param schemas per action_type:
 {_render_param_reference()}
 
+Enum whitelist for params that name a real channel / variant in the data.
+Picking a value outside these lists will make impact_usd resolve to $0
+because the underlying rows do not exist:
+  shift_marketing_spend.from_channel, .to_channel:
+    email | display | social | affiliate
+    (These are the only channels in roll_campaign_daily. Do NOT invent
+    others like paid_social, owned_social, tv, ooh — they yield no rows.)
+  swap_trailer_variant.from_variant, .to_variant:
+    A | B
+    (Base seed emits variant A; crisis injector adds variant B for
+    trailer_variant_underperformance. No other variant IDs exist.)
+  pause_campaign.campaign_id:
+    An int already present in campaign_performance for this film+region.
+    If you cannot cite one from a finding, prefer shift_marketing_spend
+    instead — pause_campaign with an invented campaign_id returns $0.
+
 Return ONLY a valid DecisionResult JSON object matching the output schema.
 """

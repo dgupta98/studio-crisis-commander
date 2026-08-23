@@ -72,30 +72,50 @@ DEFAULT_THRESHOLDS_USD: dict[str, float] = {
 # Formatted with str.format(**params). Free-text params in PR/escalate
 # actions are omitted from the template (they don't appear in SQL).
 
+# DATA-ANCHOR: synthetic seed data is anchored ~60d in the past; using
+# now() / today() as the window end returns 0 rows and impact_usd = 0.
+# Every non-trivial template below anchors to coalesce(max(day|ts|date), ...)
+# of the underlying table so the window follows the data. Same fix pattern
+# as api/catalog/shelves.py:247 (trending shelf).
+#
+# NULL-DEFENSE: sums are wrapped in coalesce(..., 0) so an LLM-invented
+# channel/variant that yields 0 rows produces $0 delta instead of NULL
+# arithmetic (NULL * price = NULL → impact_usd = NULL → auto/pending logic
+# treats it as "SQL failed" and forces pending_approval for no real reason).
+
 TEMPLATES: dict[str, str] = {
     "shift_marketing_spend": """
-WITH old_perf AS (
-  SELECT sum(sum_conversions) AS conv
+WITH anchor AS (
+  SELECT coalesce(max(day), today()) AS d
+  FROM roll_campaign_daily
+  WHERE film_id = {film_id} AND region = '{region}'
+),
+old_perf AS (
+  SELECT coalesce(sum(sum_conversions), 0) AS conv
   FROM roll_campaign_daily
   WHERE film_id = {film_id}
     AND region = '{region}'
     AND channel = '{from_channel}'
-    AND day >= today() - INTERVAL {window_days} DAY
+    AND day >= (SELECT d FROM anchor) - INTERVAL {window_days} DAY
+    AND day <= (SELECT d FROM anchor)
 ),
 new_perf AS (
-  SELECT sum(sum_conversions) AS conv
+  SELECT coalesce(sum(sum_conversions), 0) AS conv
   FROM roll_campaign_daily
   WHERE film_id = {film_id}
     AND region = '{region}'
     AND channel = '{to_channel}'
-    AND day >= today() - INTERVAL {window_days} DAY
+    AND day >= (SELECT d FROM anchor) - INTERVAL {window_days} DAY
+    AND day <= (SELECT d FROM anchor)
 ),
 ticket AS (
   SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price
   FROM box_office_revenue
   WHERE film_id = {film_id}
     AND region = '{region}'
-    AND date >= today() - INTERVAL 30 DAY
+    AND date >= coalesce(
+      (SELECT max(date) FROM box_office_revenue
+        WHERE film_id = {film_id} AND region = '{region}'), today()) - INTERVAL 30 DAY
 )
 SELECT toFloat64(
   ((new_perf.conv - old_perf.conv) * ({shift_pct} / 100.0)) * coalesce(ticket.price, 0)
@@ -104,55 +124,72 @@ FROM old_perf, new_perf, ticket
 """.strip(),
 
     "pause_campaign": """
-WITH daily AS (
+WITH anchor AS (
+  SELECT coalesce(max(day), today()) AS d
+  FROM roll_campaign_daily
+  WHERE campaign_id = {campaign_id} AND region = '{region}'
+),
+daily AS (
   SELECT
     avg(sum_spend)       AS spend_per_day,
     avg(sum_conversions) AS conv_per_day
   FROM roll_campaign_daily
   WHERE campaign_id = {campaign_id}
     AND region = '{region}'
-    AND day >= today() - INTERVAL 14 DAY
+    AND day >= (SELECT d FROM anchor) - INTERVAL 14 DAY
+    AND day <= (SELECT d FROM anchor)
 ),
 ticket AS (
   SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price
   FROM box_office_revenue
   WHERE region = '{region}'
-    AND date >= today() - INTERVAL 30 DAY
+    AND date >= coalesce(
+      (SELECT max(date) FROM box_office_revenue WHERE region = '{region}'),
+      today()) - INTERVAL 30 DAY
 )
 SELECT toFloat64(
-  (daily.spend_per_day * {pause_days})
-  - (daily.conv_per_day * {pause_days} * coalesce(ticket.price, 0))
+  (coalesce(daily.spend_per_day, 0) * {pause_days})
+  - (coalesce(daily.conv_per_day, 0) * {pause_days} * coalesce(ticket.price, 0))
 ) AS impact_usd
 FROM daily, ticket
 """.strip(),
 
     "swap_trailer_variant": """
-WITH from_perf AS (
+WITH anchor AS (
+  SELECT coalesce(max(ts), now()) AS t
+  FROM roll_trailer_hourly
+  WHERE film_id = {film_id} AND region = '{region}'
+),
+from_perf AS (
   SELECT
-    avg(sum_views) AS views,
-    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate
+    coalesce(avg(sum_views), 0) AS views,
+    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate
   FROM roll_trailer_hourly
   WHERE film_id = {film_id}
     AND region = '{region}'
     AND variant = '{from_variant}'
-    AND ts >= now() - INTERVAL 7 DAY
+    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY
+    AND ts <= (SELECT t FROM anchor)
 ),
 to_perf AS (
   SELECT
-    avg(sum_views) AS views,
-    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate
+    coalesce(avg(sum_views), 0) AS views,
+    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate
   FROM roll_trailer_hourly
   WHERE film_id = {film_id}
     AND region = '{region}'
     AND variant = '{to_variant}'
-    AND ts >= now() - INTERVAL 7 DAY
+    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY
+    AND ts <= (SELECT t FROM anchor)
 ),
 ticket AS (
   SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price
   FROM box_office_revenue
   WHERE film_id = {film_id}
     AND region = '{region}'
-    AND date >= today() - INTERVAL 30 DAY
+    AND date >= coalesce(
+      (SELECT max(date) FROM box_office_revenue
+        WHERE film_id = {film_id} AND region = '{region}'), today()) - INTERVAL 30 DAY
 )
 SELECT toFloat64(
   (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)
@@ -164,25 +201,33 @@ FROM from_perf, to_perf, ticket
 """.strip(),
 
     "issue_pr_statement": """
-WITH sent AS (
+WITH anchor AS (
+  SELECT coalesce(max(ts), now()) AS t
+  FROM roll_sentiment_hourly
+  WHERE film_id = {film_id} AND region = '{region}'
+),
+sent AS (
   SELECT
     avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,
-    sum(sum_volume) AS total_volume
+    coalesce(sum(sum_volume), 0) AS total_volume
   FROM roll_sentiment_hourly
   WHERE film_id = {film_id}
     AND region = '{region}'
-    AND ts >= now() - INTERVAL 24 HOUR
+    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR
+    AND ts <= (SELECT t FROM anchor)
 ),
 ticket AS (
   SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price
   FROM box_office_revenue
   WHERE film_id = {film_id}
     AND region = '{region}'
-    AND date >= today() - INTERVAL 30 DAY
+    AND date >= coalesce(
+      (SELECT max(date) FROM box_office_revenue
+        WHERE film_id = {film_id} AND region = '{region}'), today()) - INTERVAL 30 DAY
 )
 SELECT toFloat64(
   -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate
-  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)
+  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)
 ) AS impact_usd
 FROM sent, ticket
 """.strip(),
