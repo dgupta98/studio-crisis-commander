@@ -42,23 +42,16 @@ _FAMILIES: dict[str, tuple[str, str]] = {
 
 
 def _rates_sync() -> dict[str, int]:
-    # Emit rows-per-day averaged over the last 7 days of available data,
-    # anchored on each table's max(ts|date) so the strip stays meaningful
-    # when the synthetic feed isn't being continuously topped up.
-    #
-    # Prior attempts (per-minute over 7d, per-hour over 24h) collapsed to
-    # 0-2 for the sparser tables because the divisor was much larger than
-    # the row count. Per-day over 7d keeps the divisor small enough that
-    # even the leanest signal family shows a real, non-trivial number.
+    # Emit total row count per signal family. Every windowed variant (per-hour
+    # over 24h, per-day over 7d) collapsed to 0-14 whenever the synthetic feed
+    # wasn't actively topping up, because max(ts|date) landed on a partition
+    # tail with almost no rows. Totals are honest — the strip shows the actual
+    # 50M+ footprint sitting in ClickHouse — and can't degenerate to zero.
     out: dict[str, int] = {}
     with client() as c:
-        for family, (table, col) in _FAMILIES.items():
+        for family, (table, _col) in _FAMILIES.items():
             try:
-                sql = (
-                    f"SELECT toUInt64(round(count() / 7)) FROM {table} "
-                    f"WHERE {col} >= (SELECT max({col}) - INTERVAL 7 DAY FROM {table})"
-                )
-                rows = c.query(sql).result_rows
+                rows = c.query(f"SELECT count() FROM {table}").result_rows
                 out[family] = int(rows[0][0]) if rows and rows[0][0] is not None else 0
             except Exception:  # noqa: BLE001 — schema drift / partition eviction / etc.
                 log.warning("intake rates query failed for %s", family, exc_info=True)
