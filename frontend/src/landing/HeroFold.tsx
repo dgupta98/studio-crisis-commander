@@ -107,14 +107,14 @@ export function HeroFold() {
         aria-hidden
         initial={{ y: '-100%' }}
         animate={{ y: 0 }}
-        transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}
+        transition={{ duration: 0.55, ease: EASE, delay: 0.05 }}
         className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[4vh] bg-black md:h-[5vh]"
       />
       <motion.div
         aria-hidden
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
-        transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}
+        transition={{ duration: 0.55, ease: EASE, delay: 0.05 }}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[4vh] bg-black md:h-[5vh]"
       />
 
@@ -136,7 +136,7 @@ export function HeroFold() {
           <motion.span
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
+            transition={{ duration: 0.5, ease: EASE, delay: 0.15 }}
             className="rounded-full border border-line bg-card/60 px-5 py-2 text-xs font-mono uppercase tracking-[0.24em] text-ink-soft backdrop-blur-md"
           >
             <span className="mr-2 inline-block h-2 w-2 -translate-y-0.5 animate-pulse rounded-full bg-accent align-middle" />
@@ -144,15 +144,15 @@ export function HeroFold() {
           </motion.span>
 
           <h1 className="font-display font-bold text-5xl leading-[1.08] tracking-tight md:text-6xl xl:text-7xl">
-            <RevealLine words={HEADLINE_LINE_1} delay={0.12} reduced={reduced} />
+            <RevealLine words={HEADLINE_LINE_1} delay={0.08} reduced={reduced} />
             <br />
-            <RevealLine words={HEADLINE_LINE_2} delay={0.2} reduced={reduced} accentLast />
+            <RevealLine words={HEADLINE_LINE_2} delay={0.14} reduced={reduced} accentLast />
           </h1>
 
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: EASE, delay: 1.6 }}
+            transition={{ duration: 0.55, ease: EASE, delay: 0.35 }}
             className="max-w-2xl font-body text-lg leading-relaxed text-ink-soft md:text-xl"
           >
             Four agents watch every signal. Every dollar figure carries the exact SQL that produced it. Anomaly to
@@ -162,7 +162,7 @@ export function HeroFold() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: EASE, delay: 1.8 }}
+            transition={{ duration: 0.5, ease: EASE, delay: 0.5 }}
             className="mt-2 flex flex-wrap items-center gap-4"
           >
             <Link
@@ -182,9 +182,9 @@ export function HeroFold() {
 
         {/* RIGHT — telemetry + agents */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 1.4 }}
+          transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
           className="flex flex-col gap-8 lg:col-span-5"
         >
           {/* Telemetry card */}

@@ -17,32 +17,48 @@ export function LiveCounter() {
   ]
   return (
     <div className="grid grid-cols-3 gap-x-6 gap-y-8">
-      {stats.map((s, i) => (
-        <motion.div
-          key={s.label}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: EASE, delay: i * 0.06 }}
-          className="flex min-w-0 flex-col items-start gap-2 overflow-visible"
-        >
-          <span
-            className="max-w-full overflow-visible whitespace-nowrap font-display font-bold leading-[0.9] tracking-[-0.04em] text-ink text-[clamp(2rem,5vw,4.5rem)]"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-            title={fmt.format(s.value)}
+      {stats.map((s, i) => {
+        const { value, suffix } = splitCompact(s.value)
+        return (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: EASE, delay: i * 0.04 }}
+            className="flex min-w-0 flex-col items-start gap-2 overflow-visible"
           >
-            {compact(s.value)}
-          </span>
-          <span className="text-[11px] font-mono uppercase tracking-[0.22em] text-ink-soft">
-            {s.label}
-          </span>
-        </motion.div>
-      ))}
+            <span
+              className="inline-flex max-w-full items-end overflow-visible whitespace-nowrap font-display font-bold leading-[0.9] tracking-[-0.05em] text-ink"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+              title={fmt.format(s.value)}
+            >
+              <span className="overflow-visible whitespace-nowrap text-[clamp(1.9rem,3vw,4rem)] md:text-[clamp(2.4rem,2.5vw,4.8rem)]">
+                {value}
+              </span>
+              {suffix ? (
+                <span
+                  className="ml-[0.04em] inline-block translate-y-[-0.12em] text-[0.38em] leading-none tracking-[0.08em]"
+                  aria-label={suffix}
+                >
+                  {suffix}
+                </span>
+              ) : null}
+            </span>
+            <span className="text-[11px] font-mono uppercase tracking-[0.22em] text-ink-soft">
+              {s.label}
+            </span>
+          </motion.div>
+        )
+      })}
     </div>
   )
 }
 
 const compactFmt = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-function compact(v: number): string {
-  if (v < 10_000) return fmt.format(v)
-  return compactFmt.format(v)
+function splitCompact(v: number): { value: string; suffix: string } {
+  if (v < 10_000) return { value: fmt.format(v), suffix: '' }
+  const compact = compactFmt.format(v)
+  const match = compact.match(/^([0-9]+(?:\.[0-9]+)?)([KMB]?)$/)
+  if (!match) return { value: compact, suffix: '' }
+  return { value: match[1], suffix: match[2] }
 }
