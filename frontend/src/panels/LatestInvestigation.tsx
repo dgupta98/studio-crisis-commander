@@ -1,6 +1,30 @@
 import { LatencyBadge } from '../components/LatencyBadge'
 import { SignalChip, type SignalFamily } from '../components/SignalChip'
 
+// Detection metrics arrive as dotted paths ("social_trends.avg_sentiment").
+// SignalChip needs the coarser family key. Anything unrecognised returns
+// null so the chip is skipped instead of crashing on tokens.signal[undef].
+function familyFromMetric(metric: unknown): SignalFamily | null {
+  if (typeof metric !== 'string') return null
+  const head = metric.split('.', 1)[0]
+  switch (head) {
+    case 'box_office_revenue':
+    case 'ticket_refunds':
+    case 'campaign_performance':
+      return 'box_office'
+    case 'social_trends':
+      return 'social'
+    case 'review_scores':
+    case 'audience_sentiment':
+      return 'reviews'
+    case 'streaming_watch_minutes':
+    case 'trailer_analytics':
+      return 'streaming'
+    default:
+      return null
+  }
+}
+
 interface Triple {
   scenario_id: string
   detection: any
@@ -28,7 +52,7 @@ export function LatestInvestigation({ triple, sample = false }: Props) {
   const det = triple.detection ?? {}
   const dec = triple.decision ?? {}
   const rep = triple.report ?? {}
-  const metric = det.metric as SignalFamily | undefined
+  const metric = familyFromMetric(det.metric)
   return (
     <section className="flex flex-col gap-4 rounded-md border border-line bg-card p-6">
       <div className="flex items-center gap-3">

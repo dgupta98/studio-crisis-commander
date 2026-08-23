@@ -17,6 +17,10 @@ interface Props extends HTMLAttributes<HTMLSpanElement> {
 
 export function SignalChip({ family, compact, style, className, ...rest }: Props) {
   const s = tokens.signal[family]
+  // Defensive: unknown families (e.g. someone passes a raw metric path like
+  // "social_trends.avg_sentiment") would crash on s.fg. Render nothing
+  // rather than take the whole route down.
+  if (!s) return null
   return (
     <span
       {...rest}
