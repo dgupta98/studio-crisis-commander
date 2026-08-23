@@ -102,7 +102,15 @@ const CRISIS_TYPES: { value: CrisisType; label: string }[] = [
   { value: 'negative_social_virality',       label: 'Negative social virality' },
   { value: 'review_score_divergence',        label: 'Review score divergence' },
 ]
-const REGIONS = ['US', 'GB', 'DE', 'FR', 'JP', 'KR', 'CN', 'IN', 'BR', 'MX', 'AU', 'CA', 'IT', 'ES', 'RU']
+// MUST match backend/data/generate_numeric.py::REGIONS. Anything else has
+// zero rows in the seeded ClickHouse tables, so detection barely fires and
+// every impact SQL / telemetry query returns 0. The crisis injector writes
+// its burst under whatever region string it's given, but the rolling
+// baselines (60d of history) only exist under these 15 labels.
+const REGIONS = [
+  'NA', 'LATAM', 'UK', 'EU-West', 'EU-East', 'Nordics', 'India', 'SEA',
+  'Korea', 'Japan', 'China', 'MENA', 'Africa', 'ANZ', 'Brazil',
+]
 const REGION_OPTIONS = REGIONS.map((r) => ({ value: r, label: r }))
 const MAX_LIST = 40
 

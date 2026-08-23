@@ -125,19 +125,19 @@ FROM old_perf, new_perf, ticket
 
     "pause_campaign": """
 WITH anchor AS (
-  SELECT coalesce(max(day), today()) AS d
-  FROM roll_campaign_daily
+  SELECT coalesce(max(date), today()) AS d
+  FROM campaign_performance
   WHERE campaign_id = {campaign_id} AND region = '{region}'
 ),
 daily AS (
   SELECT
-    avg(sum_spend)       AS spend_per_day,
-    avg(sum_conversions) AS conv_per_day
-  FROM roll_campaign_daily
+    avg(spend_usd)   AS spend_per_day,
+    avg(conversions) AS conv_per_day
+  FROM campaign_performance
   WHERE campaign_id = {campaign_id}
     AND region = '{region}'
-    AND day >= (SELECT d FROM anchor) - INTERVAL 14 DAY
-    AND day <= (SELECT d FROM anchor)
+    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY
+    AND date <= (SELECT d FROM anchor)
 ),
 ticket AS (
   SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price

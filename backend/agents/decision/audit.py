@@ -85,9 +85,16 @@ def run_impact_sql(sql: str) -> float | None:
 
     Returns:
       - float (possibly 0.0) on success, including when ClickHouse returns NULL
-        (NULL = empty rollup tables = 0 impact, not a failure).
+        or NaN (both mean "empty rollup / arithmetic on missing data" = 0 impact,
+        not a failure).
       - None only when the query returns 0 rows (structural failure).
+
+    NaN handling matters: json.dumps(float('nan')) is allowed by Python but
+    not valid JSON, and FastAPI's default encoder ends up producing invalid
+    payloads that kill the SSE stream mid-decision. Same reasoning for +/-inf.
     """
+    from math import isfinite
+
     from data.ch_client import client
     with client() as c:
         rows = c.query(sql).result_rows
@@ -99,9 +106,15 @@ def run_impact_sql(sql: str) -> float | None:
     if val is None:
         return 0.0
     try:
-        return float(val)
+        f = float(val)
     except (TypeError, ValueError):
         return None
+    # NaN / +inf / -inf come from division-by-zero on empty rollups (avg over
+    # all-NULL, or 0/0 masked to NULL then combined with 0 counts). Coerce to
+    # 0.0 so downstream JSON encoding and threshold comparisons behave.
+    if not isfinite(f):
+        return 0.0
+    return f
 
 
 async def _run_read(sql: str) -> list[list[Any]]:
