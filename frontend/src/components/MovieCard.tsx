@@ -33,12 +33,14 @@ export function MovieCard({ film, variant = 'data' }: Props) {
       </div>
       <div className="flex flex-col gap-1 p-2">
         <div className="truncate text-xs font-medium">{film.title}</div>
-        {isData && (
+        {isData && (film.signal_delta || film.region_hint) ? (
           <div className="flex items-center justify-between text-[10px] text-ink-soft">
-            <span className="font-mono">Δ {film.signal_delta?.toFixed(1) ?? '—'}</span>
+            {film.signal_delta ? (
+              <span className="font-mono">Δ {film.signal_delta.toFixed(2)}</span>
+            ) : <span />}
             {film.region_hint && <RegionFlag region={film.region_hint} />}
           </div>
-        )}
+        ) : null}
       </div>
     </Link>
   )

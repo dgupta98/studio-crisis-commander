@@ -113,6 +113,26 @@ def _cached_scenario_ids() -> list[str]:
     return sorted(p.stem for p in _CACHE_DIR.glob("*.json"))
 
 
+def _cached_magnitudes() -> dict[int, float]:
+    """film_id → magnitude from the film's cached scenario. Used by the
+    Featured shelf so each card shows a real crisis intensity instead of
+    the hardcoded 0.0 placeholder."""
+    if not _CACHE_DIR.is_dir():
+        return {}
+    out: dict[int, float] = {}
+    for p in sorted(_CACHE_DIR.glob("*.json")):
+        try:
+            payload = json.loads(p.read_text())
+            det = payload.get("detection", {})
+            fid = int(det.get("film_id", -1))
+            mag = float(det.get("magnitude", 0.0))
+            if fid > 0 and fid not in out:
+                out[fid] = mag
+        except Exception:  # noqa: BLE001
+            log.warning("bad cache file %s", p.stem, exc_info=True)
+    return out
+
+
 def _query_rows(c: Any, sql: str) -> list[tuple]:
     try:
         return list(c.query(sql).result_rows)
@@ -200,8 +220,13 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
             ]
         else:
             featured_films = _popular_films(c, exclude=set(), want=8)
+        mags = _cached_magnitudes()
         for f in featured_films:
             f["featured"] = True
+            # Surface the cached-scenario magnitude so the card shows a real
+            # crisis intensity instead of the SELECT placeholder.
+            if int(f["id"]) in mags:
+                f["signal_delta"] = mags[int(f["id"])]
         shelves.append({
             "id": "featured",
             "title": "Featured — pre-run investigations",
