@@ -33,11 +33,15 @@ _DATA_ROOT = Path(_data_pkg.__file__).resolve().parent
 _POSTER_JSON = _DATA_ROOT / "seed" / "poster_paths.json"
 _TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w342"
 
-# eval_cache lives at repo root (not under backend/), so it isn't shipped by
-# the current Dockerfile. Featured shelf silently degrades to empty in prod
-# until we start bundling eval_cache into the image.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_CACHE_DIR = _REPO_ROOT / "data" / "eval_cache"
+# Cached demo triples: prefer the container path (/app/data/eval_cache,
+# staged by deploy_backend.sh) and fall back to the repo-root copy for
+# local dev. Match the resolver in api/main.py so both mount and shelf
+# picks stay in sync.
+_CACHE_CANDIDATES = [
+    Path(__file__).resolve().parents[2] / "data" / "eval_cache",  # /app/data/eval_cache
+    Path(__file__).resolve().parents[3] / "data" / "eval_cache",  # <repo>/data/eval_cache
+]
+_CACHE_DIR = next((p for p in _CACHE_CANDIDATES if p.is_dir()), _CACHE_CANDIDATES[0])
 
 
 def _load_poster_map() -> dict[int, str]:
@@ -98,6 +102,15 @@ def _cached_film_map() -> dict[int, str]:
         except Exception:  # noqa: BLE001
             log.warning("bad cache file %s", sid, exc_info=True)
     return out
+
+
+def _cached_scenario_ids() -> list[str]:
+    """Sorted list of every cached scenario_id — used as a round-robin
+    fallback so films without their own triple still surface an example
+    investigation on the Movie Detail page."""
+    if not _CACHE_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in _CACHE_DIR.glob("*.json"))
 
 
 def _query_rows(c: Any, sql: str) -> list[tuple]:
@@ -254,6 +267,7 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
 
 def get_film(film_id: int) -> dict[str, Any] | None:
     cached_map = _cached_film_map()
+    all_scenarios = _cached_scenario_ids()
     with client() as c:
         rows = _query_rows(
             c,
@@ -276,6 +290,16 @@ def get_film(film_id: int) -> dict[str, Any] | None:
 
     tmdb_id = int(row[5]) if len(row) > 5 and row[5] is not None else 0
     poster_url = _POSTER_BY_TMDB.get(tmdb_id, "")
+    # cached_scenario_id: prefer the film's own triple if one exists; otherwise
+    # round-robin from the cached pool so every Movie Detail page has an
+    # example investigation to render. `featured` stays true only for films
+    # that own their triple, so the shelf and badge remain honest.
+    own_scenario = cached_map.get(film_id)
+    fallback_scenario = (
+        all_scenarios[film_id % len(all_scenarios)]
+        if not own_scenario and all_scenarios
+        else None
+    )
     return {
         "id": int(row[0]),
         "title": row[1] or "",
@@ -285,7 +309,8 @@ def get_film(film_id: int) -> dict[str, Any] | None:
         "language": row[4] if len(row) > 4 and row[4] is not None else "",
         "signals": signals,
         "featured": film_id in cached_map,
-        "cached_scenario_id": cached_map.get(film_id),
+        "cached_scenario_id": own_scenario or fallback_scenario,
+        "cached_scenario_is_own": bool(own_scenario),
     }
 
 

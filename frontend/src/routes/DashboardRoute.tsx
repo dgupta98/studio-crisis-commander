@@ -17,6 +17,14 @@ export default function DashboardRoute() {
     // telemetry strip both read from the store, so without this the panels
     // show empty/idle until an inject fires.
     void useRunStore.getState().loadDetections(50)
+    // First-load hydration: if the store is empty (no active/persisted run),
+    // seed it from a bundled cached triple so trace/investigation/decision
+    // are populated instantly. Judges land on a fully-worked example; they
+    // can still Inject Crisis to run a fresh one on top.
+    const { runId, report, seedFromCached } = useRunStore.getState()
+    if (!runId && !report) {
+      void seedFromCached()
+    }
   }, [qc])
   return (
     <div data-testid="route-dashboard" className="flex h-full flex-col">

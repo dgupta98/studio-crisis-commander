@@ -28,13 +28,17 @@ export default function MovieDetailRoute() {
 
   const investigation = (triple ?? latest ?? null) as any
   const runList = (Array.isArray(runs) ? runs : []) as any[]
+  // Round-robin fallback triples come from other films' pre-run scenarios;
+  // flag that clearly so the panel doesn't imply the shown investigation
+  // ran against this movie.
+  const isSample = triple != null && film.cached_scenario_is_own === false
 
   return (
     <div data-testid="route-movie-detail" className="flex flex-col gap-6 pb-8">
       <MovieHero film={film} onInject={() => setInjectOpen(true)} />
       <div className="grid gap-6 px-6 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-6">
-          <LatestInvestigation triple={investigation} />
+          <LatestInvestigation triple={investigation} sample={isSample} />
           <PersistentAgentTrace filmId={id} />
           <RunTimeline runs={runList} />
         </div>

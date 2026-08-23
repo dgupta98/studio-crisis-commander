@@ -24,6 +24,18 @@ REGION="${GCP_REGION:-us-east1}"
 SERVICE="scc-api"
 IMAGE="gcr.io/${GCP_PROJECT}/${SERVICE}:latest"
 
+# Stage eval_cache/ into the backend build context so the image ships the
+# cached demo triples. Docker build context is `backend/` so it can't reach
+# ../data/eval_cache without this. Cleaned up in the trap below regardless
+# of build outcome.
+STAGED_CACHE="backend/data/eval_cache"
+if [ -d "data/eval_cache" ]; then
+  echo "=== Staging data/eval_cache into ${STAGED_CACHE}" >&2
+  mkdir -p "${STAGED_CACHE}"
+  cp data/eval_cache/*.json "${STAGED_CACHE}/" 2>/dev/null || true
+  trap 'rm -rf "'"${STAGED_CACHE}"'"' EXIT
+fi
+
 echo "=== Building ${IMAGE} via Cloud Build" >&2
 gcloud builds submit \
   --project="${GCP_PROJECT}" \

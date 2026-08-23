@@ -11,9 +11,13 @@ interface Triple {
 
 interface Props {
   triple: Triple | null
+  // When true, the triple is a round-robin sample from another film's
+  // pre-run scenario; render a chip so it's clear this isn't a real run
+  // against the movie being viewed.
+  sample?: boolean
 }
 
-export function LatestInvestigation({ triple }: Props) {
+export function LatestInvestigation({ triple, sample = false }: Props) {
   if (!triple) {
     return (
       <div className="rounded-md border border-line bg-card p-6 text-sm text-ink-soft">
@@ -32,6 +36,14 @@ export function LatestInvestigation({ triple }: Props) {
         <span className="font-mono text-xs uppercase tracking-wider text-ink-soft">
           {det.region ?? '—'} · severity {det.severity ?? '—'} · magnitude {Number(det.magnitude ?? 0).toFixed(1)}
         </span>
+        {sample && (
+          <span
+            title="Round-robin sample from another film's pre-run scenario. Inject a crisis to run this movie live."
+            className="rounded border border-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-soft"
+          >
+            sample
+          </span>
+        )}
         <span className="ml-auto flex items-center gap-1">
           <span className="text-[10px] uppercase text-ink-soft">latency</span>
           <LatencyBadge ms={det.latency_ms ?? null} />

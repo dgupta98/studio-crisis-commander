@@ -59,9 +59,19 @@ app.add_middleware(
 )
 
 
-_cache_dir = Path(__file__).resolve().parents[2] / "data" / "eval_cache"
-if _cache_dir.is_dir():
-    app.mount("/eval_cache", StaticFiles(directory=_cache_dir), name="eval_cache")
+# Cached demo triples ship in two possible locations depending on how the
+# process was started: `/app/data/eval_cache/` inside the container (the
+# Dockerfile stages them via deploy_backend.sh) or `<repo>/data/eval_cache/`
+# in local development. Prefer the container path so a stray dev copy at the
+# repo root can't accidentally shadow a fresh production bundle.
+_cache_candidates = [
+    Path(__file__).resolve().parents[1] / "data" / "eval_cache",  # /app/data/eval_cache
+    Path(__file__).resolve().parents[2] / "data" / "eval_cache",  # <repo>/data/eval_cache
+]
+for _cache_dir in _cache_candidates:
+    if _cache_dir.is_dir():
+        app.mount("/eval_cache", StaticFiles(directory=_cache_dir), name="eval_cache")
+        break
 
 
 app.include_router(inject_router.router)

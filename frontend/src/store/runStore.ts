@@ -6,6 +6,7 @@ import type {
 } from '@/api/contracts'
 import { apiGet, apiPost } from '@/api/client'
 import { openStream } from '@/api/sse'
+import { seedFromCachedTriple, type CachedTriple } from '@/lib/demoSeed'
 
 export type PanelState =
   | { kind: 'idle' }
@@ -60,6 +61,7 @@ interface RunStore {
   loadDetections: (limit?: number) => Promise<void>
   loadAudit: (limit?: number) => Promise<void>
   loadMetrics: (filmId: number, region: string, hours?: number) => Promise<void>
+  seedFromCached: (scenarioId?: string) => Promise<boolean>
   reset: () => void
   _dispatch: (ev: SseEvent) => void
   _recomputePanels: () => void
@@ -77,7 +79,8 @@ const INITIAL_PANELS: Record<PanelKey, PanelState> = {
 
 const INITIAL: Omit<RunStore, keyof {
   inject: never; connectStream: never; approve: never; deny: never;
-  loadDetections: never; loadAudit: never; loadMetrics: never; reset: never;
+  loadDetections: never; loadAudit: never; loadMetrics: never;
+  seedFromCached: never; reset: never;
   _dispatch: never; _recomputePanels: never;
 }> = {
   runId: null,
@@ -212,6 +215,33 @@ export const useRunStore = create<RunStore>()(
       set({ apiReachable: false })
     }
     useRunStore.getState()._recomputePanels()
+  },
+
+  seedFromCached: async (scenarioId = 'sc_001') => {
+    // Hydrate the store from a bundled cached triple so the dashboard shows
+    // a fully-worked example on first load — a judge landing cold sees the
+    // trace / investigation / recommendation immediately, and can inject a
+    // fresh crisis on top when they want to watch the live pipeline.
+    try {
+      const triple = await apiGet<CachedTriple>(`/eval_cache/${scenarioId}.json`)
+      const seed = seedFromCachedTriple(triple)
+      set({
+        runId: seed.runId,
+        currentRunFilmId: seed.currentRunFilmId,
+        events: seed.events,
+        detection: seed.detection,
+        findings: seed.findings,
+        decision: seed.decision,
+        report: seed.report,
+        approvalStatus: seed.decision.status,
+        mode: 'fallback',
+        streamState: 'closed',
+      })
+      useRunStore.getState()._recomputePanels()
+      return true
+    } catch {
+      return false
+    }
   },
 
   reset: () => {
