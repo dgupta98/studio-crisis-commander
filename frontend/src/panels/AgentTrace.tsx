@@ -32,6 +32,52 @@ function formatImpact(usd: number | null | undefined): string {
   return `$${Math.round(usd).toLocaleString()}`
 }
 
+// One-liner "why" for each investigation sub-agent. Rendered under the
+// signal label so a viewer knows the intent, not just the SQL.
+const SIGNAL_PURPOSE: Record<string, string> = {
+  numeric_context:
+    'Pulls the metric across a ±24h window to characterise the anomaly’s shape and how long it has persisted.',
+  text_reason:
+    'Fetches the lowest-sentiment reviews around the anomaly to find WHY sentiment moved.',
+  categorical_isolation:
+    'Slices by region / variant / channel to isolate which segment is driving the drop.',
+  temporal_context:
+    'Looks for sibling detections in the last 72h and competitor releases within ±14 days.',
+}
+
+// Plain-English "what the detector is watching for" per crisis type,
+// rendered in the detection.started card so the trace tells a story
+// rather than dropping the viewer into raw metric names.
+const CRISIS_INTENT: Record<string, string> = {
+  regional_sentiment_collapse:
+    'Detector is watching audience_sentiment.avg_score for a sharp drop concentrated in one region.',
+  trailer_variant_underperformance:
+    'Detector is watching trailer_analytics.completion_rate for a specific variant tanking vs. its peers.',
+  competitor_release_impact:
+    'Detector is watching box_office_revenue.revenue_usd for softness that lines up with a competitor’s release.',
+  marketing_overspend_low_roi:
+    'Detector is watching campaign_performance.roi for spend that isn’t converting.',
+  streaming_completion_drop:
+    'Detector is watching streaming_watch_minutes.completion_rate for viewers bailing early.',
+  refund_spike:
+    'Detector is watching ticket_refunds.refund_rate for an abnormal share of tickets being returned.',
+  negative_social_virality:
+    'Detector is watching social_trends.avg_virality for a viral negative post gaining momentum.',
+  review_score_divergence:
+    'Detector is watching review_scores.avg_score for critic-vs-audience score gaps that suggest a mismatch.',
+}
+
+function subjectFrom(c: {
+  film_id?: number
+  film_title?: string
+  region?: string
+}): string {
+  const name = c.film_title && c.film_title.trim()
+    ? c.film_title
+    : c.film_id !== undefined ? `Film ${c.film_id}` : ''
+  return name + (c.region ? ` · ${regionLabel(c.region)}` : '')
+}
+
 function eventLabel(ev: SseEvent): string {
   if (ev.type === 'signal.completed') {
     const sig = (ev.data as { finding?: { signal?: string } }).finding?.signal
@@ -85,6 +131,7 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
       crisis?: {
         type?: string
         film_id?: number
+        film_title?: string
         region?: string
         magnitude?: number
         true_root_cause?: string
@@ -93,15 +140,17 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
       }
     }).crisis
     if (!c) return null
-    const subject = c.film_id !== undefined
-      ? `Film ${c.film_id}${c.region ? ` · ${regionLabel(c.region)}` : ''}`
-      : ''
+    const subject = subjectFrom(c)
+    const intent = c.type ? CRISIS_INTENT[c.type] : undefined
     return (
       <div className="mt-1 space-y-1">
+        {intent && (
+          <div className="text-sm text-ink italic">{intent}</div>
+        )}
         {c.type && (
           <div className="text-sm text-ink">
             <span className="text-ink-soft">Scenario · </span>
-            <span className="font-mono">{c.type}</span>
+            <span className="font-mono">{c.type.replace(/_/g, ' ')}</span>
           </div>
         )}
         {subject && (
@@ -140,7 +189,7 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
     // we guard each numeric field before .toFixed rather than crash.
     const num = (v: number | undefined, digits: number) =>
       typeof v === 'number' ? v.toFixed(digits) : '—'
-    const subject = d.film_title
+    const subject = (d.film_title && d.film_title.trim())
       ? d.film_title
       : d.film_id !== undefined ? `Film ${d.film_id}` : 'Unknown film'
     return (
@@ -168,15 +217,21 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
   if (ev.type === 'signal.completed') {
     const finding = (ev.data as { finding?: Finding }).finding
     if (!finding) return null
+    const purpose = SIGNAL_PURPOSE[finding.signal]
     return (
       <>
+        {purpose && (
+          <div className="mt-1 text-xs text-ink-soft italic">
+            Why: {purpose}
+          </div>
+        )}
         {finding.sql && (
           <div className="mt-1 min-w-0 max-w-full overflow-hidden">
             <SqlBlock sql={finding.sql} />
           </div>
         )}
         {finding.narrative && (
-          <div className="mt-1 text-sm text-ink-soft italic">
+          <div className="mt-1 text-sm text-ink">
             {finding.narrative}
           </div>
         )}

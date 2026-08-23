@@ -21,7 +21,7 @@ from typing import Any
 from agents.decision.agent import invoke_decision
 from agents.investigation.agent import invoke_investigation
 from agents.report.agent import invoke_report
-from api.detection_source import produce_detection
+from api.detection_source import _lookup_film_title, produce_detection
 from api.events import SseEvent
 from api.fallback import CachedTriple, replay_cached_triple
 from api.runtime import PipelineRuntime
@@ -86,10 +86,15 @@ async def run_pipeline(
             region=request.get("region"),
             magnitude=request.get("magnitude"),
         )
+        # Title lookup so the trace card can show "Aurora" instead of
+        # "Film 7". Non-fatal — empty string on miss, and the frontend
+        # already falls back to `Film {id}` in that case.
+        film_title = await asyncio.to_thread(_lookup_film_title, crisis.affected_film_id)
         await emit("detection.started", {
             "crisis": {
                 "type": crisis.type.value,
                 "film_id": crisis.affected_film_id,
+                "film_title": film_title,
                 "region": crisis.affected_region,
                 "magnitude": crisis.magnitude,
                 "true_root_cause": crisis.true_root_cause,

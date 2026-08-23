@@ -32,6 +32,50 @@ You will be given an InvestigationResult in session state as `investigation`:
 
 Your job: emit a DecisionResult with 1-3 RecommendedActions.
 
+ACTION SELECTION — pick actions that actually solve the anomaly the
+detection describes. Different crises need different levers. Do NOT
+default to `swap_trailer_variant` + `issue_pr_statement` for every case;
+that pattern is wrong for refunds, competitor collisions, marketing ROI,
+etc. Use `detection.metric` and `hypothesis.primary_cause` to pick:
+
+  detection.metric starts with            → prefer these action_types
+  ─────────────────────────────────────────────────────────────────────
+  trailer_analytics.*                      → swap_trailer_variant (P1),
+                                             shift_marketing_spend (P2 —
+                                             away from the failing variant's
+                                             promo channel)
+  audience_sentiment.* / social_trends.avg_sentiment
+                                           → issue_pr_statement (P1),
+                                             shift_marketing_spend (P2 —
+                                             pause paid amplification while
+                                             sentiment recovers)
+  social_trends.avg_virality               → issue_pr_statement (P1) if
+                                             sentiment is negative;
+                                             shift_marketing_spend (P2)
+  ticket_refunds.*                         → pause_campaign (P1 — stop
+                                             acquiring more buyers into a
+                                             broken experience),
+                                             issue_pr_statement (P2)
+  box_office_revenue.* (competitor impact) → shift_marketing_spend (P1 —
+                                             defensive re-allocation),
+                                             pause_campaign (P2) only if
+                                             ROI is negative
+  campaign_performance.roi                 → pause_campaign (P1),
+                                             shift_marketing_spend (P2)
+  streaming_watch_minutes.completion_rate  → escalate_to_human (P1 —
+                                             product/edit issue, not a
+                                             marketing lever),
+                                             issue_pr_statement (P2) only
+                                             if reviews mention it
+  review_scores.avg_score (critic gap)     → escalate_to_human (P1),
+                                             issue_pr_statement (P2)
+
+Never propose an action whose lever has no relationship to the anomaly
+(e.g. do NOT propose `swap_trailer_variant` for a refund spike — the
+trailer isn't the driver). If the correct lever is outside the 5 canonical
+action_types, use `escalate_to_human` with a `reason` naming the missing
+lever.
+
 RULES (violations will fail validation):
   1. Every action MUST use one of the 5 canonical action_types:
        shift_marketing_spend, pause_campaign, swap_trailer_variant,
