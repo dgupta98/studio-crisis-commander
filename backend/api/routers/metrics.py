@@ -17,6 +17,13 @@ router = APIRouter(tags=["reads"])
 # alias, turning it into `String >= DateTime` and raising NO_COMMON_TYPE.
 # The JSON key stays "ts" because _run_query_sync maps columns positionally
 # via the `cols` tuple, not by SQL alias name.
+#
+# DATA-ANCHOR: synthetic seed data is anchored ~60d in the past, so
+# `now() - INTERVAL H HOUR` / `today() - INTERVAL D DAY` returns zero rows
+# and every Telemetry sparkline shows "no data". Each query anchors its
+# window to coalesce(max(ts|date), now()|today()) of the underlying table
+# for this (film, region), same pattern as api/catalog/shelves.py and the
+# decision-action impact templates.
 
 
 def _q_box_office(film_id: int, region: str, hours: int) -> str:
@@ -25,7 +32,10 @@ def _q_box_office(film_id: int, region: str, hours: int) -> str:
         f"SELECT toString(date) AS ts_str, revenue_usd, tickets_sold "
         f"FROM box_office_revenue "
         f"WHERE film_id = {film_id} AND region = '{region}' "
-        f"AND date >= today() - INTERVAL {days} DAY "
+        f"AND date >= coalesce("
+        f"  (SELECT max(date) FROM box_office_revenue "
+        f"    WHERE film_id = {film_id} AND region = '{region}'),"
+        f"  today()) - INTERVAL {days} DAY "
         f"ORDER BY date"
     )
 
@@ -37,7 +47,10 @@ def _q_social(film_id: int, region: str, hours: int) -> str:
         f"n AS volume "
         f"FROM roll_social_hourly "
         f"WHERE film_id = {film_id} AND region = '{region}' "
-        f"AND ts >= now() - INTERVAL {hours} HOUR "
+        f"AND ts >= coalesce("
+        f"  (SELECT max(ts) FROM roll_social_hourly "
+        f"    WHERE film_id = {film_id} AND region = '{region}'),"
+        f"  now()) - INTERVAL {hours} HOUR "
         f"ORDER BY ts"
     )
 
@@ -49,7 +62,10 @@ def _q_sentiment(film_id: int, region: str, hours: int) -> str:
         f"sum_volume AS volume "
         f"FROM roll_sentiment_hourly "
         f"WHERE film_id = {film_id} AND region = '{region}' "
-        f"AND ts >= now() - INTERVAL {hours} HOUR "
+        f"AND ts >= coalesce("
+        f"  (SELECT max(ts) FROM roll_sentiment_hourly "
+        f"    WHERE film_id = {film_id} AND region = '{region}'),"
+        f"  now()) - INTERVAL {hours} HOUR "
         f"ORDER BY ts"
     )
 
@@ -60,7 +76,10 @@ def _q_trailer(film_id: int, region: str, hours: int) -> str:
         f"sum_completion_x_views / greatest(sum_views, 1) AS completion_rate "
         f"FROM roll_trailer_hourly "
         f"WHERE film_id = {film_id} AND region = '{region}' "
-        f"AND ts >= now() - INTERVAL {hours} HOUR "
+        f"AND ts >= coalesce("
+        f"  (SELECT max(ts) FROM roll_trailer_hourly "
+        f"    WHERE film_id = {film_id} AND region = '{region}'),"
+        f"  now()) - INTERVAL {hours} HOUR "
         f"ORDER BY ts"
     )
 
