@@ -197,20 +197,30 @@ def _generate_refunds(films: list[Film], days: list[date]) -> list[list]:
 
 
 def _generate_review_scores(films: list[Film], days: list[date]) -> list[list]:
+    """Emit daily review rollups per (film, source).
+
+    Post-release the count grows with days-since-release. Pre-release we still
+    emit a small pre-buzz trickle from early screenings so the Movie Detail
+    Signals tile isn't 0 for films whose synthetic release_date lies past the
+    generated window's tail (common for near-future titles in the seed).
+    """
     rows: list[list] = []
     sources = ["imdb", "rotten_tomatoes", "letterboxd"]
     for f in films:
         for src in sources:
             for d in days:
                 dsr = (d - f.release_date).days
-                if dsr < -3:
-                    continue
                 n = _noise((f.film_id, src, d))
                 score = max(1.0, min(10.0, 6.5 + (n - 1) * 3))
-                rc = int(50 + dsr * 3) if dsr > 0 else 0
-                if rc > 0:
-                    ts = datetime.combine(d, datetime.min.time())
-                    rows.append([f.film_id, src, ts, float(score), rc])
+                if dsr > 0:
+                    rc = int(50 + dsr * 3)
+                elif dsr >= -14:
+                    # Pre-release critics + early screenings — small counts.
+                    rc = max(1, int(3 + (n * 8)))
+                else:
+                    continue
+                ts = datetime.combine(d, datetime.min.time())
+                rows.append([f.film_id, src, ts, float(score), rc])
     return rows
 
 

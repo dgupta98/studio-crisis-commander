@@ -66,7 +66,17 @@ export function seedFromCachedTriple(triple: CachedTriple): SeedResult {
 
   const events: SseEvent[] = []
   events.push(push('pipeline.started', {
-    run_id: runId, mode, requested: {},
+    run_id: runId,
+    mode,
+    // Populate `requested` so the Injection card in the trace has something
+    // to render — otherwise seeded triples show an empty "crisis injected"
+    // header with no context.
+    requested: {
+      ctype,
+      film_id: det.film_id,
+      region: det.region,
+      magnitude: det.magnitude,
+    },
   }))
   events.push(push('detection.started', {
     crisis: {

@@ -11,9 +11,14 @@ import type {
   SseEvent, Finding, Hypothesis, DetectionRow, ExecutiveReport,
 } from '@/api/contracts'
 
-type Stage = 'Detection' | 'Investigation' | 'Decision' | 'Report' | 'Pipeline'
+type Stage = 'Injection' | 'Detection' | 'Investigation' | 'Decision' | 'Report' | 'Pipeline'
 
 function stageOf(type: string): Stage | null {
+  // pipeline.started opens the run with the requested inject params — surface
+  // it at the top as a distinct "Injection" stage so a viewer sees the crisis
+  // that kicked things off before the detector fires. pipeline.completed
+  // stays in the tail "Pipeline" section.
+  if (type === 'pipeline.started') return 'Injection'
   if (type.startsWith('detection.')) return 'Detection'
   if (
     type.startsWith('investigation.') ||
@@ -79,6 +84,12 @@ function subjectFrom(c: {
 }
 
 function eventLabel(ev: SseEvent): string {
+  if (ev.type === 'pipeline.started') {
+    const req = (ev.data as { requested?: { ctype?: string } }).requested
+    return req?.ctype
+      ? `crisis injected: ${req.ctype.replace(/_/g, ' ')}`
+      : 'crisis injected'
+  }
   if (ev.type === 'signal.completed') {
     const sig = (ev.data as { finding?: { signal?: string } }).finding?.signal
     return sig ? `signal: ${sig.replace(/_/g, ' ')}` : 'signal completed'
@@ -123,9 +134,57 @@ function eventLabel(ev: SseEvent): string {
   return parts[parts.length - 1].replace(/_/g, ' ')
 }
 
-const STAGE_ORDER: Stage[] = ['Detection', 'Investigation', 'Decision', 'Report', 'Pipeline']
+const STAGE_ORDER: Stage[] = ['Injection', 'Detection', 'Investigation', 'Decision', 'Report', 'Pipeline']
 
 function TraceDetail({ ev }: { ev: SseEvent }) {
+  if (ev.type === 'pipeline.started') {
+    const d = ev.data as {
+      run_id?: string
+      mode?: string
+      requested?: {
+        ctype?: string
+        film_id?: number
+        region?: string
+        magnitude?: number
+      }
+    }
+    const req = d.requested ?? {}
+    const intent = req.ctype ? CRISIS_INTENT[req.ctype] : undefined
+    return (
+      <div className="mt-1 space-y-1">
+        {intent && (
+          <div className="text-sm text-ink italic">{intent}</div>
+        )}
+        {req.ctype && (
+          <div className="text-sm text-ink">
+            <span className="text-ink-soft">Scenario · </span>
+            <span className="font-mono">{req.ctype.replace(/_/g, ' ')}</span>
+          </div>
+        )}
+        {(req.film_id !== undefined || req.region) && (
+          <div className="text-sm text-ink">
+            <span className="text-ink-soft">Target · </span>
+            {req.film_id !== undefined ? `Film ${req.film_id}` : ''}
+            {req.region ? ` · ${regionLabel(req.region)}` : ''}
+          </div>
+        )}
+        {typeof req.magnitude === 'number' && (
+          <div className="text-xs text-ink-soft">
+            magnitude <span className="font-mono tabular-nums text-ink">
+              {req.magnitude.toFixed(2)}
+            </span>
+          </div>
+        )}
+        <div className="text-[10px] font-mono uppercase tracking-wider text-ink-soft">
+          Mode <span className="text-ink">{d.mode ?? 'live'}</span>
+          {d.run_id && (
+            <> · run <span className="text-ink">{d.run_id.slice(0, 8)}</span></>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   if (ev.type === 'detection.started') {
     const c = (ev.data as {
       crisis?: {
@@ -387,7 +446,7 @@ export function AgentTrace({ filmId }: { filmId?: number } = {}) {
 
   const grouped = useMemo(() => {
     const g: Record<Stage, SseEvent[]> = {
-      Detection: [], Investigation: [], Decision: [], Report: [], Pipeline: [],
+      Injection: [], Detection: [], Investigation: [], Decision: [], Report: [], Pipeline: [],
     }
     for (const e of events) {
       const st = stageOf(e.type)
