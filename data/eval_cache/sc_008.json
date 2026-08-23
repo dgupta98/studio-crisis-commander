@@ -120,8 +120,8 @@
           "from_variant": "B",
           "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 12250,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 8 AND region = 'Mexico'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 8 AND region = 'Mexico'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -129,13 +129,13 @@
         "action_type": "pause_campaign",
         "rationale": "The 'WinterChill' campaign, which heavily features problematic trailer variant 'B', is associated with a severe CTR drop to in Mexico-DE; pausing it temporarily will stop further exposure to the negatively perceived content.",
         "params": {
-          "campaign_id": "WinterChill",
+          "campaign_id": 10000,
           "region": "Mexico",
           "pause_days": 7
         },
-        "impact_usd": null,
-        "impact_sql": "",
-        "impact_error": "query returned no rows",
+        "impact_usd": 5550,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(date), today()) AS d\n  FROM campaign_performance\n  WHERE campaign_id = 10000 AND region = 'Mexico'\n),\ndaily AS (\n  SELECT\n    avg(spend_usd)   AS spend_per_day,\n    avg(conversions) AS conv_per_day\n  FROM campaign_performance\n  WHERE campaign_id = 10000\n    AND region = 'Mexico'\n    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY\n    AND date <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'Mexico'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue WHERE region = 'Mexico'),\n      today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (coalesce(daily.spend_per_day, 0) * 7)\n  - (coalesce(daily.conv_per_day, 0) * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "",
         "priority": 2
       }
     ],
@@ -148,7 +148,7 @@
     "report_id": "e93b230ebd894f74bce3db96bb9995b3",
     "decision_id": "bd3a34c3e4384dca922c5e423ec3dae9",
     "headline": "Elevated Social Media Virality and Trailer Performance Actions for 'Toy Story 5' in Mexico",
-    "tldr": "An unexpected spike in average social media virality for 'Toy Story 5' in Mexico reached 0.49, driven entirely by Twitter activity. While this indicates heightened public interest, we are also addressing a concurrent issue by swapping a suboptimal trailer variant (projected impact of $0.00) and temporarily pausing the 'WinterChill' campaign to optimize engagement.",
+    "tldr": "An unexpected spike in average social media virality for 'Toy Story 5' in Mexico reached 0.49, driven entirely by Twitter activity. While this indicates heightened public interest, we are also addressing a concurrent issue by swapping a suboptimal trailer variant (projected impact of $12,250) and temporarily pausing the 'WinterChill' campaign to optimize engagement.",
     "key_figures": [
       {
         "label": "Average Virality Spike",
@@ -161,15 +161,15 @@
       },
       {
         "label": "Trailer Swap Impact USD",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$12,250",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 8 AND region = 'Mexico'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 8\n    AND region = 'Mexico'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 8 AND region = 'Mexico'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
         }
       }
     ],
-    "recommended_actions_prose": "To address these issues, we are initiating two immediate actions. First, we will swap trailer variant 'B' for 'A' for 'Toy Story 5' in Mexico. This action is projected to result in an impact of $0.00. Second, we are pausing the 'WinterChill' campaign for 'Toy Story 5' in Mexico, as it prominently featured the underperforming trailer variant.",
+    "recommended_actions_prose": "To address these issues, we are initiating two immediate actions. First, we will swap trailer variant 'B' for 'A' for 'Toy Story 5' in Mexico. This action is projected to result in an impact of $12,250. Second, we are pausing the 'WinterChill' campaign for 'Toy Story 5' in Mexico, as it prominently featured the underperforming trailer variant.",
     "risks_and_caveats": "Our hypothesis regarding the social media virality spike being Twitter-driven is assessed with high confidence. The virality event appears isolated, with no other correlated detections or competitive releases. There were no significant text insights from reviews to correlate with the virality spike or trailer performance issues.",
     "created_at": "2026-08-17T01:24:28.401802Z",
     "latency_ms": 38738

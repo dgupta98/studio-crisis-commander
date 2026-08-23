@@ -188,11 +188,11 @@
         "params": {
           "film_id": 2,
           "region": "India",
-          "from_variant": "Variant_B",
-          "to_variant": "Variant_A"
+          "from_variant": "B",
+          "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 9550,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 2 AND region = 'India'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 2 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -204,8 +204,8 @@
           "region": "India",
           "message_theme": "addressing audience feedback"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_usd": 1650,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2 AND region = 'India'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 2 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "impact_error": "",
         "priority": 2
       }
@@ -219,7 +219,7 @@
     "report_id": "f46ec93661fe45ed9ef32aff02c9f42e",
     "decision_id": "715418274c7845c291588d050b146cb6",
     "headline": "Elevated social media activity for 'The Odyssey' in India, primarily linked to a single platform, coincided with new competitor releases.",
-    "tldr": "We detected a significant and sustained increase in average virality for 'The Odyssey' in India, which rose to 0.42, far exceeding the baseline of 0.02. This anomaly is entirely driven by activity on the 'twitter' platform. The situation is further complicated by the release of two competitor films around the same time. To address this, we are swapping out a trailer variant with an estimated impact of $0.00 and issuing a public relations statement, also with an estimated impact of $0.00.",
+    "tldr": "We detected a significant and sustained increase in average virality for 'The Odyssey' in India, which rose to 0.42, far exceeding the baseline of 0.02. This anomaly is entirely driven by activity on the 'twitter' platform. The situation is further complicated by the release of two competitor films around the same time. To address this, we are swapping out a trailer variant with an estimated impact of $9,550 and issuing a public relations statement, also with an estimated impact of $1,650.",
     "key_figures": [
       {
         "label": "Current Avg Virality",
@@ -250,8 +250,8 @@
       },
       {
         "label": "Trailer Swap Impact",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'Variant_A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$9,550",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 2 AND region = 'India'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 2 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -259,15 +259,15 @@
       },
       {
         "label": "PR Statement Impact",
-        "value": "$0.00",
-        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "value": "$1,650",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2 AND region = 'India'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 2\n    AND region = 'India'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 2\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 2 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
         }
       }
     ],
-    "recommended_actions_prose": "To mitigate the situation, we have executed two key actions. First, we swapped trailer variant 'Variant_B' for 'Variant_A' for 'The Odyssey' in India, which is estimated to have an impact of $0.00. This change was based on Variant_B generating negative sentiment. Second, we issued a public relations statement addressing audience feedback concerning the trailer's perception, with an estimated impact of $0.00.",
+    "recommended_actions_prose": "To mitigate the situation, we have executed two key actions. First, we swapped trailer variant 'Variant_B' for 'Variant_A' for 'The Odyssey' in India, which is estimated to have an impact of $9,550. This change was based on Variant_B generating negative sentiment. Second, we issued a public relations statement addressing audience feedback concerning the trailer's perception, with an estimated impact of $1,650.",
     "risks_and_caveats": "Our confidence in the primary cause and contributing factors is high, supported by multiple correlated signals. However, the exact impact of competitor activity is harder to quantify precisely, though its temporal correlation is noted. Text-based analysis did not yield significant insights in this specific window.",
     "created_at": "2026-08-17T00:50:11.593498Z",
     "latency_ms": 9526

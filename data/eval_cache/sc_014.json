@@ -137,8 +137,8 @@
           "from_variant": "B",
           "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 8850,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 14 AND region = 'UK'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 14 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -150,9 +150,9 @@
           "region": "UK",
           "pause_days": 7
         },
-        "impact_usd": null,
-        "impact_sql": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 500\n    AND region = 'UK'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
-        "impact_error": "Received ClickHouse exception, code: 47, server response: Code: 47. DB::Exception: Unknown expression or function identifier `campaign_id` in scope  daily. (UNKNOWN_IDENTIFIER) (for url https://svyju1632q.us-east1.gcp.clickhouse.cloud:8443)",
+        "impact_usd": 9400,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(date), today()) AS d\n  FROM campaign_performance\n  WHERE campaign_id = 500 AND region = 'UK'\n),\ndaily AS (\n  SELECT\n    avg(spend_usd)   AS spend_per_day,\n    avg(conversions) AS conv_per_day\n  FROM campaign_performance\n  WHERE campaign_id = 500\n    AND region = 'UK'\n    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY\n    AND date <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue WHERE region = 'UK'),\n      today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (coalesce(daily.spend_per_day, 0) * 7)\n  - (coalesce(daily.conv_per_day, 0) * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "",
         "priority": 2
       },
       {
@@ -163,8 +163,8 @@
           "region": "UK",
           "message_theme": "addressing negative sentiment"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_usd": 3750,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14 AND region = 'UK'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 14 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "impact_error": "",
         "priority": 3
       }
@@ -209,8 +209,8 @@
       },
       {
         "label": "Estimated Impact from Trailer Swap",
-        "value": "0.0 USD",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$8,850",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 14 AND region = 'UK'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 14 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -218,8 +218,8 @@
       },
       {
         "label": "Estimated Impact from Campaign Pause",
-        "value": "Undetermined",
-        "source_query": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 500\n    AND region = 'UK'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "value": "$9,400",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(date), today()) AS d\n  FROM campaign_performance\n  WHERE campaign_id = 500 AND region = 'UK'\n),\ndaily AS (\n  SELECT\n    avg(spend_usd)   AS spend_per_day,\n    avg(conversions) AS conv_per_day\n  FROM campaign_performance\n  WHERE campaign_id = 500\n    AND region = 'UK'\n    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY\n    AND date <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue WHERE region = 'UK'),\n      today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (coalesce(daily.spend_per_day, 0) * 7)\n  - (coalesce(daily.conv_per_day, 0) * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
@@ -227,8 +227,8 @@
       },
       {
         "label": "Estimated Impact from PR Statement",
-        "value": "0.0 USD",
-        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "value": "$3,750",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14 AND region = 'UK'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 14\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 14 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 2

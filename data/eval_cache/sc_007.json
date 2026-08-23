@@ -120,8 +120,8 @@
           "from_variant": "B",
           "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 8100,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 7 AND region = 'France'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 7 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -133,9 +133,9 @@
           "region": "France",
           "pause_days": 3
         },
-        "impact_usd": null,
-        "impact_sql": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 501\n    AND region = 'France'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 3)\n  - (daily.conv_per_day * 3 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
-        "impact_error": "Received ClickHouse exception, code: 47, server response: Code: 47. DB::Exception: Unknown expression or function identifier `campaign_id` in scope  daily. (UNKNOWN_IDENTIFIER) (for url https://svyju1632q.us-east1.gcp.clickhouse.cloud:8443)",
+        "impact_usd": 6350,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(date), today()) AS d\n  FROM campaign_performance\n  WHERE campaign_id = 501 AND region = 'France'\n),\ndaily AS (\n  SELECT\n    avg(spend_usd)   AS spend_per_day,\n    avg(conversions) AS conv_per_day\n  FROM campaign_performance\n  WHERE campaign_id = 501\n    AND region = 'France'\n    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY\n    AND date <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue WHERE region = 'France'),\n      today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (coalesce(daily.spend_per_day, 0) * 3)\n  - (coalesce(daily.conv_per_day, 0) * 3 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "",
         "priority": 2
       },
       {
@@ -144,13 +144,13 @@
         "params": {
           "film_id": 7,
           "region": "France",
-          "from_channel": "online_ads",
-          "to_channel": "tv_spots",
+          "from_channel": "display",
+          "to_channel": "affiliate",
           "shift_pct": 0.25,
           "window_days": 7
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'online_ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'tv_spots'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.25 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_usd": 3300,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 7 AND region = 'France'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'affiliate'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 7 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.25 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "impact_error": "",
         "priority": 3
       }
@@ -204,8 +204,8 @@
       },
       {
         "label": "Trailer Swap Impact",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$8,100",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 7 AND region = 'France'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 7\n    AND region = 'France'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 7 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -213,15 +213,15 @@
       },
       {
         "label": "Marketing Shift Impact",
-        "value": "$0.00",
-        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'online_ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'tv_spots'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.25 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "value": "$3,300",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 7 AND region = 'France'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 7\n    AND region = 'France'\n    AND channel = 'affiliate'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 7\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 7 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.25 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 2
         }
       }
     ],
-    "recommended_actions_prose": "To address the virality surge, we are initiating a trailer variant swap for film 'Disclosure Day' in France, estimated to have an impact of $0.00. Additionally, campaign 501 in France will be paused for 3 days. Finally, 25% of the marketing spend for film 'Disclosure Day' in France will be shifted from 'online_ads' to 'tv_spots' over a 7-day window, with an estimated impact of $0.00.",
+    "recommended_actions_prose": "To address the virality surge, we are initiating a trailer variant swap for film 'Disclosure Day' in France, estimated to have an impact of $8,100. Additionally, campaign 501 in France will be paused for 3 days. Finally, 25% of the marketing spend for film 'Disclosure Day' in France will be shifted from 'online_ads' to 'tv_spots' over a 7-day window, with an estimated impact of $6,350.",
     "risks_and_caveats": "The hypothesis that an external, France-specific event is driving the virality surge is held with high confidence, although specific textual drivers were not identified within the analyzed data.",
     "created_at": "2026-08-17T01:22:06.274593Z",
     "latency_ms": 17119

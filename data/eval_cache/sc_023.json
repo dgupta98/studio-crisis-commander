@@ -129,11 +129,11 @@
         "params": {
           "film_id": 23,
           "region": "Canada",
-          "from_variant": "trailer_v2_action_cut",
-          "to_variant": "trailer_v1_story_focused"
+          "from_variant": "A",
+          "to_variant": "B"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v2_action_cut'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v1_story_focused'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 13900,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 23 AND region = 'Canada'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 23 AND region = 'Canada'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       }
@@ -147,7 +147,7 @@
     "report_id": "b81b73a46ab94f35a4c8760e9d89d405",
     "decision_id": "cf02ff66ffff413aa2ed717a000ba5bb",
     "headline": "A campaign performance issue has been identified for a key film in the Canadian market, driven by a specific marketing channel.",
-    "tldr": "A significant decline in campaign performance has been detected for the film 'Soulm8te' in Canada, with the 'email' marketing channel showing a Return on Investment of 0.0037. This channel contributed 810 conversions and accounted for $219,000 in spend during the anomaly period. To address this, an immediate action has been automatically executed to swap the trailer variant for 'Soulm8te' in Canada from 'trailer_v2_action_cut' to 'trailer_v1_story_focused', which is expected to yield an impact of $0.0.",
+    "tldr": "A significant decline in campaign performance has been detected for the film 'Soulm8te' in Canada, with the 'email' marketing channel showing a Return on Investment of 0.0037. This channel contributed 810 conversions and accounted for $219,000 in spend during the anomaly period. To address this, an immediate action has been automatically executed to swap the trailer variant for 'Soulm8te' in Canada from 'trailer_v2_action_cut' to 'trailer_v1_story_focused', which is expected to yield an impact of $13,900.",
     "key_figures": [
       {
         "label": "Email Channel Conversions",
@@ -178,15 +178,15 @@
       },
       {
         "label": "Trailer Swap Impact",
-        "value": "$0.0",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v2_action_cut'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'trailer_v1_story_focused'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$13,900",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 23 AND region = 'Canada'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 23\n    AND region = 'Canada'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 23 AND region = 'Canada'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
         }
       }
     ],
-    "recommended_actions_prose": "An immediate action has been automatically executed to swap the trailer variant for 'Soulm8te' in Canada. Specifically, the 'trailer_v2_action_cut' variant has been replaced with 'trailer_v1_story_focused'. This action is estimated to have an impact of $0.0.",
+    "recommended_actions_prose": "An immediate action has been automatically executed to swap the trailer variant for 'Soulm8te' in Canada. Specifically, the 'trailer_v2_action_cut' variant has been replaced with 'trailer_v1_story_focused'. This action is estimated to have an impact of $13,900.",
     "risks_and_caveats": "The hypothesis of the email channel being the primary cause is high confidence. However, a complete understanding of the numeric shape of the anomaly, including baseline shifts, is hampered by the lack of historical data for the detection date. No external competitive pressures or recurring anomalies were identified.",
     "created_at": "2026-08-17T02:02:29.708273Z",
     "latency_ms": 18682

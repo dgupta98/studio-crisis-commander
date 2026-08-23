@@ -135,13 +135,13 @@
         "params": {
           "film_id": 20,
           "region": "France",
-          "from_channel": "Social Media",
-          "to_channel": "Display Ads",
+          "from_channel": "social",
+          "to_channel": "display",
           "shift_pct": 0.6,
           "window_days": 7
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Display Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.6 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_usd": 4300,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 20 AND region = 'France'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 20 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.6 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -153,8 +153,8 @@
           "region": "France",
           "message_theme": "clarification_of_film_content"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20\n    AND region = 'France'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_usd": 2500,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20 AND region = 'France'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20\n    AND region = 'France'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 20 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "impact_error": "",
         "priority": 2
       }
@@ -190,8 +190,8 @@
       },
       {
         "label": "Marketing Shift Impact",
-        "value": "$0.00",
-        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'Display Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.6 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "value": "$4,300",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 20 AND region = 'France'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 20\n    AND region = 'France'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 20 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.6 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -199,15 +199,15 @@
       },
       {
         "label": "PR Statement Impact",
-        "value": "$0.00",
-        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20\n    AND region = 'France'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "value": "$2,500",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20 AND region = 'France'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 20\n    AND region = 'France'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 20\n    AND region = 'France'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 20 AND region = 'France'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
         }
       }
     ],
-    "recommended_actions_prose": "To address the anomaly, two immediate actions have been automatically executed. First, a shift in marketing spend is underway for 'Evil Dead Burn' in France. This involves reallocating 60% of spend from 'Social Media' to 'Display Ads' for the next 7 days, with an estimated impact of $0.00. Second, a public relations statement regarding 'clarification_of_film_content' for 'Evil Dead Burn' in France will be issued, aiming to mitigate negative sentiment, with an estimated impact of $0.00.",
+    "recommended_actions_prose": "To address the anomaly, two immediate actions have been automatically executed. First, a shift in marketing spend is underway for 'Evil Dead Burn' in France. This involves reallocating 60% of spend from 'Social Media' to 'Display Ads' for the next 7 days, with an estimated impact of $4,300. Second, a public relations statement regarding 'clarification_of_film_content' for 'Evil Dead Burn' in France will be issued, aiming to mitigate negative sentiment, with an estimated impact of $2,500.",
     "risks_and_caveats": "The hypothesis regarding the cause of the anomaly is held with high confidence. While the text evidence signal did not yield significant findings, it does not contradict the primary cause identified. The issue appears to be an isolated incident without broader regional or competitive influences.",
     "created_at": "2026-08-17T01:54:41.316176Z",
     "latency_ms": 12402

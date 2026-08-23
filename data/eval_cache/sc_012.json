@@ -136,11 +136,11 @@
         "params": {
           "film_id": 12,
           "region": "Brazil",
-          "from_variant": "2",
-          "to_variant": "1"
+          "from_variant": "B",
+          "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = '2'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = '1'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 8250,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 12 AND region = 'Brazil'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 12 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -152,8 +152,8 @@
           "region": "Brazil",
           "message_theme": "clarifying character arcs and plot coherence"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_usd": 3900,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 12 AND region = 'Brazil'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 12 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "impact_error": "",
         "priority": 2
       }
@@ -167,7 +167,7 @@
     "report_id": "a10081932ae3401db712b537cd1d9adf",
     "decision_id": "0812e1be846040df9f5d5bbe8c9080f3",
     "headline": "A significant and widespread increase in ticket refunds for 'Minions & Monsters' has been detected across multiple regions, with Brazil showing a notable anomaly.",
-    "tldr": "We observed a spike in ticket refunds for 'Minions & Monsters' in Brazil, with hourly refund counts reaching 110, and a detected refund rate of 0.22. This issue is widespread, with Southeast Asia experiencing 740 refunds compared to Brazil's 550. To address this, we are swapping a poorly performing trailer variant for an estimated impact of $0.00 and issuing a PR statement to clarify plot elements for an estimated impact of $0.00.",
+    "tldr": "We observed a spike in ticket refunds for 'Minions & Monsters' in Brazil, with hourly refund counts reaching 110, and a detected refund rate of 0.22. This issue is widespread, with Southeast Asia experiencing 740 refunds compared to Brazil's 550. To address this, we are swapping a poorly performing trailer variant for an estimated impact of $8,250 and issuing a PR statement to clarify plot elements for an estimated impact of $3,900.",
     "key_figures": [
       {
         "label": "Hourly Refund Count Spike",
@@ -207,8 +207,8 @@
       },
       {
         "label": "Swap Trailer Variant Impact",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = '2'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = '1'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$8,250",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 12 AND region = 'Brazil'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 12 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -216,15 +216,15 @@
       },
       {
         "label": "Issue PR Statement Impact",
-        "value": "$0.00",
-        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "value": "$3,900",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 12 AND region = 'Brazil'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 12\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 12 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
         }
       }
     ],
-    "recommended_actions_prose": "To mitigate the issue, we are initiating two actions. First, we will swap trailer variant 2 for variant 1 in Brazil due to negative sentiment, with an estimated impact of $0.00. Second, we will issue a PR statement in Brazil to clarify character arcs and plot coherence, with an estimated impact of $0.00.",
+    "recommended_actions_prose": "To mitigate the issue, we are initiating two actions. First, we will swap trailer variant 2 for variant 1 in Brazil due to negative sentiment, with an estimated impact of $8,250. Second, we will issue a PR statement in Brazil to clarify character arcs and plot coherence, with an estimated impact of $3,900.",
     "risks_and_caveats": "Our hypothesis for the cause of the refund spike has high confidence, suggesting a widespread issue possibly exacerbated by competitor activity. However, direct negative public sentiment wasn't detected in the immediate window, and precise refund rates could not be calculated for some regions due to missing sales data.",
     "created_at": "2026-08-17T01:35:48.469682Z",
     "latency_ms": 12909

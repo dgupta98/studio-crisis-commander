@@ -123,11 +123,11 @@
         "params": {
           "film_id": 22,
           "region": "UK",
-          "from_variant": "C",
+          "from_variant": "B",
           "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 13250,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 22 AND region = 'UK'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 22 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -139,8 +139,8 @@
           "region": "UK",
           "message_theme": "addressing negative sentiment around trailer/film messaging"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_usd": 2350,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22 AND region = 'UK'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 22 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "impact_error": "",
         "priority": 2
       }
@@ -154,7 +154,7 @@
     "report_id": "03e0362266324a78a6f0f36491b298aa",
     "decision_id": "da348e98cdf84ee1af4c4b6ff5df4f62",
     "headline": "An unexpected surge in marketing effectiveness for 'Leviticus' in the UK has been identified.",
-    "tldr": "A significant and sustained increase in marketing ROI for the film 'Leviticus' in the UK has been detected, reaching a value of 173.97, and is primarily driven by a highly effective email campaign. Concurrently, issues related to negative trailer feedback and social media sentiment were identified, prompting immediate actions. To address these, we are swapping a poorly performing trailer variant for a proven one, with an estimated impact of $0.00, and preparing a public relations statement to mitigate negative sentiment, also with an estimated impact of $0.00.",
+    "tldr": "A significant and sustained increase in marketing ROI for the film 'Leviticus' in the UK has been detected, reaching a value of 173.97, and is primarily driven by a highly effective email campaign. Concurrently, issues related to negative trailer feedback and social media sentiment were identified, prompting immediate actions. To address these, we are swapping a poorly performing trailer variant for a proven one, with an estimated impact of $13,250, and preparing a public relations statement to mitigate negative sentiment, also with an estimated impact of $2,350.",
     "key_figures": [
       {
         "label": "Sustained Marketing ROI",
@@ -176,8 +176,8 @@
       },
       {
         "label": "Trailer Swap Estimated Impact",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$13,250",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 22 AND region = 'UK'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 22 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -185,15 +185,15 @@
       },
       {
         "label": "PR Statement Estimated Impact",
-        "value": "$0.00",
-        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "value": "$2,350",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22 AND region = 'UK'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 22\n    AND region = 'UK'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 22 AND region = 'UK'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
         }
       }
     ],
-    "recommended_actions_prose": "In response to identified issues, two key actions are being implemented. First, to address poor performance and negative feedback from Trailer 'C' for 'Leviticus' in the UK, it is being swapped with Trailer 'A'. This change is projected to have an impact of $0.00. Second, due to an increase in negative social media sentiment related to the trailer, a public relations statement will be issued. This proactive measure is estimated to have an impact of $0.00.",
+    "recommended_actions_prose": "In response to identified issues, two key actions are being implemented. First, to address poor performance and negative feedback from Trailer 'C' for 'Leviticus' in the UK, it is being swapped with Trailer 'A'. This change is projected to have an impact of $13,250. Second, due to an increase in negative social media sentiment related to the trailer, a public relations statement will be issued. This proactive measure is estimated to have an impact of $2,350.",
     "risks_and_caveats": "The primary hypothesis, attributing the high marketing ROI to an effective email campaign, holds high confidence. It is important to note that the immediate actions taken address separate, newly identified issues related to trailer performance and social media sentiment, rather than directly targeting the high ROI anomaly itself.",
     "created_at": "2026-08-17T01:59:28.615298Z",
     "latency_ms": 24136

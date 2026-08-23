@@ -153,9 +153,9 @@
           "region": "India",
           "pause_days": 7
         },
-        "impact_usd": null,
-        "impact_sql": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 123\n    AND region = 'India'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
-        "impact_error": "Received ClickHouse exception, code: 47, server response: Code: 47. DB::Exception: Unknown expression or function identifier `campaign_id` in scope  daily. (UNKNOWN_IDENTIFIER) (for url https://svyju1632q.us-east1.gcp.clickhouse.cloud:8443)",
+        "impact_usd": 11500,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(date), today()) AS d\n  FROM campaign_performance\n  WHERE campaign_id = 123 AND region = 'India'\n),\ndaily AS (\n  SELECT\n    avg(spend_usd)   AS spend_per_day,\n    avg(conversions) AS conv_per_day\n  FROM campaign_performance\n  WHERE campaign_id = 123\n    AND region = 'India'\n    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY\n    AND date <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue WHERE region = 'India'),\n      today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (coalesce(daily.spend_per_day, 0) * 7)\n  - (coalesce(daily.conv_per_day, 0) * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "impact_error": "",
         "priority": 1
       },
       {
@@ -164,13 +164,13 @@
         "params": {
           "film_id": 18,
           "region": "India",
-          "from_channel": "Social Media",
-          "to_channel": "Search Engine Marketing",
+          "from_channel": "social",
+          "to_channel": "display",
           "shift_pct": 50.0,
           "window_days": 30
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 30 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Search Engine Marketing'\n    AND day >= today() - INTERVAL 30 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (50.0 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_usd": 4750,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 18 AND region = 'India'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 30 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 30 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 18 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (50.0 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "impact_error": "",
         "priority": 2
       },
@@ -182,8 +182,8 @@
           "region": "India",
           "message_theme": "acknowledgement of user feedback and commitment to improving ad experience"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "impact_usd": 2950,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18 AND region = 'India'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18\n    AND region = 'India'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 18 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "impact_error": "",
         "priority": 3
       }
@@ -228,8 +228,8 @@
       },
       {
         "label": "Potential Impact from Pausing Campaign",
-        "value": "Calculation Error",
-        "source_query": "WITH daily AS (\n  SELECT\n    avg(sum_spend)       AS spend_per_day,\n    avg(sum_conversions) AS conv_per_day\n  FROM roll_campaign_daily\n  WHERE campaign_id = 123\n    AND region = 'India'\n    AND day >= today() - INTERVAL 14 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (daily.spend_per_day * 7)\n  - (daily.conv_per_day * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
+        "value": "$11,500",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(date), today()) AS d\n  FROM campaign_performance\n  WHERE campaign_id = 123 AND region = 'India'\n),\ndaily AS (\n  SELECT\n    avg(spend_usd)   AS spend_per_day,\n    avg(conversions) AS conv_per_day\n  FROM campaign_performance\n  WHERE campaign_id = 123\n    AND region = 'India'\n    AND date >= (SELECT d FROM anchor) - INTERVAL 14 DAY\n    AND date <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue WHERE region = 'India'),\n      today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (coalesce(daily.spend_per_day, 0) * 7)\n  - (coalesce(daily.conv_per_day, 0) * 7 * coalesce(ticket.price, 0))\n) AS impact_usd\nFROM daily, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -237,8 +237,8 @@
       },
       {
         "label": "Potential Impact from Shifting Spend",
-        "value": "$0.00",
-        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 30 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'Search Engine Marketing'\n    AND day >= today() - INTERVAL 30 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (50.0 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "value": "$4,750",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 18 AND region = 'India'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 30 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 18\n    AND region = 'India'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 30 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 18 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (50.0 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
@@ -246,15 +246,15 @@
       },
       {
         "label": "Potential Impact from PR Statement",
-        "value": "$0.00",
-        "source_query": "WITH sent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    sum(sum_volume) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18\n    AND region = 'India'\n    AND ts >= now() - INTERVAL 24 HOUR\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * coalesce(sent.total_volume, 0) * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
+        "value": "$2,950",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18 AND region = 'India'\n),\nsent AS (\n  SELECT\n    avg(sum_score_weighted / nullIf(sum_volume, 0)) AS avg_score,\n    coalesce(sum(sum_volume), 0) AS total_volume\n  FROM roll_sentiment_hourly\n  WHERE film_id = 18\n    AND region = 'India'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 24 HOUR\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 18\n    AND region = 'India'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 18 AND region = 'India'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  -- heuristic: 15% sentiment recovery x affected_volume x 1% conversion rate\n  0.15 * sent.total_volume * 0.01 * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM sent, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 2
         }
       }
     ],
-    "recommended_actions_prose": "To address the issue, we recommend three key actions. First, pause the 'Pre-roll Video Ad Campaign #123' on Social Media in India, as its poor performance and negative sentiment links suggest it's a direct cause of the current decline; the estimated financial impact for this action is currently unavailable due to a calculation error. Second, shift 50% of marketing spend from 'Social Media' to 'Search Engine Marketing' for 'Spider-Man' in India over the next 30 days, as Search Engine Marketing channels remain stable; this is estimated to have a financial impact of $0.00. Third, issue a public relations statement for 'Spider-Man' in India acknowledging user feedback and committing to improving the ad experience to mitigate negative brand perception; the estimated financial impact for this action is also $0.00.",
+    "recommended_actions_prose": "To address the issue, we recommend three key actions. First, pause the 'Pre-roll Video Ad Campaign #123' on Social Media in India, as its poor performance and negative sentiment links suggest it's a direct cause of the current decline; the estimated financial impact for this action is currently unavailable due to a calculation error. Second, shift 50% of marketing spend from 'Social Media' to 'Search Engine Marketing' for 'Spider-Man' in India over the next 30 days, as Search Engine Marketing channels remain stable; this is estimated to have a financial impact of $11,500. Third, issue a public relations statement for 'Spider-Man' in India acknowledging user feedback and committing to improving the ad experience to mitigate negative brand perception; the estimated financial impact for this action is also $4,750.",
     "risks_and_caveats": "Our hypothesis, that competitor releases are primarily driving the audience shift, is held with high confidence. While competitor releases align temporally with the drop, the lack of significant textual evidence limits our understanding of direct audience feedback on these new films.",
     "created_at": "2026-08-17T01:49:42.898631Z",
     "latency_ms": 27202

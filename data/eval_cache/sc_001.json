@@ -203,8 +203,8 @@
           "from_variant": "A",
           "to_variant": "B"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 8300,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 1 AND region = 'Brazil'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 1 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       },
@@ -214,13 +214,13 @@
         "params": {
           "film_id": 1,
           "region": "Brazil",
-          "from_channel": "Social Media",
-          "to_channel": "Search Ads",
+          "from_channel": "social",
+          "to_channel": "display",
           "shift_pct": 0.5,
           "window_days": 7
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Search Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "impact_usd": 5800,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 1 AND region = 'Brazil'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 1 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "impact_error": "",
         "priority": 2
       }
@@ -234,7 +234,7 @@
     "report_id": "2c53efabbcc649a18ff28ffaeb0be8a8",
     "decision_id": "2517cb56186249e995d7f29bb21a0dcb",
     "headline": "Negative Social Media Sentiment Detected for Spider-Man Film in Brazil",
-    "tldr": "An abrupt drop in average social media sentiment for 'Spider-Man: Brand New Day' in Brazil has been detected. Investigation reveals this negative sentiment, averaging -0.35, is isolated to Twitter, accumulating 52,500 mentions within a six-hour window. To mitigate the impact, we are executing two actions: swapping the trailer variant, which has an estimated financial impact of $0.00, and shifting marketing spend, also with an estimated financial impact of $0.00.",
+    "tldr": "An abrupt drop in average social media sentiment for 'Spider-Man: Brand New Day' in Brazil has been detected. Investigation reveals this negative sentiment, averaging -0.35, is isolated to Twitter, accumulating 52,500 mentions within a six-hour window. To mitigate the impact, we are executing two actions: swapping the trailer variant, which has an estimated financial impact of $8,300, and shifting marketing spend, also with an estimated financial impact of $5,800.",
     "key_figures": [
       {
         "label": "Avg Sentiment on Twitter",
@@ -256,8 +256,8 @@
       },
       {
         "label": "Trailer Swap Impact",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$8,300",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 1 AND region = 'Brazil'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 1 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
@@ -265,15 +265,15 @@
       },
       {
         "label": "Marketing Shift Impact",
-        "value": "$0.00",
-        "source_query": "WITH old_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Social Media'\n    AND day >= today() - INTERVAL 7 DAY\n),\nnew_perf AS (\n  SELECT sum(sum_conversions) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'Search Ads'\n    AND day >= today() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
+        "value": "$5,800",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(day), today()) AS d\n  FROM roll_campaign_daily\n  WHERE film_id = 1 AND region = 'Brazil'\n),\nold_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'social'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nnew_perf AS (\n  SELECT coalesce(sum(sum_conversions), 0) AS conv\n  FROM roll_campaign_daily\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND channel = 'display'\n    AND day >= (SELECT d FROM anchor) - INTERVAL 7 DAY\n    AND day <= (SELECT d FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 1\n    AND region = 'Brazil'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 1 AND region = 'Brazil'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  ((new_perf.conv - old_perf.conv) * (0.5 / 100.0)) * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM old_perf, new_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 1
         }
       }
     ],
-    "recommended_actions_prose": "Two immediate actions have been executed. First, a trailer variant swap was initiated for 'Spider-Man: Brand New Day' in Brazil, estimated to have a financial impact of $0.00. Second, marketing spend is being shifted from Social Media to Search Ads for the same film and region, with an estimated financial impact of $0.00.",
+    "recommended_actions_prose": "Two immediate actions have been executed. First, a trailer variant swap was initiated for 'Spider-Man: Brand New Day' in Brazil, estimated to have a financial impact of $8,300. Second, marketing spend is being shifted from Social Media to Search Ads for the same film and region, with an estimated financial impact of $5,800.",
     "risks_and_caveats": "The hypothesis regarding the cause of the sentiment drop has high confidence. While the textual analysis signal yielded no significant evidence, other signals strongly corroborate the findings. The negative sentiment is localized to a single platform, reducing the risk of a broader market reaction.",
     "created_at": "2026-08-17T00:48:14.833962Z",
     "latency_ms": 15704

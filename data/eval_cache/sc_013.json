@@ -122,11 +122,11 @@
         "params": {
           "film_id": 13,
           "region": "US",
-          "from_variant": "C",
+          "from_variant": "B",
           "to_variant": "A"
         },
-        "impact_usd": 0.0,
-        "impact_sql": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 13\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "impact_usd": 13400,
+        "impact_sql": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 13 AND region = 'US'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 13\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 13 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "impact_error": "",
         "priority": 1
       }
@@ -140,7 +140,7 @@
     "report_id": "bab5c81574d943f99eb05cfe7b72c124",
     "decision_id": "fa6cb0951e8346978424024e71b04017",
     "headline": "A localized issue is impacting box office revenue for \"The Devil's Mouth\" in the United States.",
-    "tldr": "Box office revenue for 'The Devil's Mouth' in the US has recently plateaued, with daily revenue at $120,000, and all film revenue during the investigation period was concentrated in the US market. This suggests a localized problem rather than a broader market trend. To address this, we have swapped a trailer variant, which is projected to have a $0.00 positive impact on revenue.",
+    "tldr": "Box office revenue for 'The Devil's Mouth' in the US has recently plateaued, with daily revenue at $120,000, and all film revenue during the investigation period was concentrated in the US market. This suggests a localized problem rather than a broader market trend. To address this, we have swapped a trailer variant, which is projected to have a $13,400 positive impact on revenue.",
     "key_figures": [
       {
         "label": "Daily Revenue Plateau",
@@ -162,15 +162,15 @@
       },
       {
         "label": "Projected Revenue Impact from Trailer Swap",
-        "value": "$0.00",
-        "source_query": "WITH from_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'C'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nto_perf AS (\n  SELECT\n    avg(sum_views) AS views,\n    avg(sum_completion_x_views / nullIf(sum_views, 0)) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= now() - INTERVAL 7 DAY\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 13\n    AND region = 'US'\n    AND date >= today() - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view\u2192ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
+        "value": "$13,400",
+        "source_query": "WITH anchor AS (\n  SELECT coalesce(max(ts), now()) AS t\n  FROM roll_trailer_hourly\n  WHERE film_id = 13 AND region = 'US'\n),\nfrom_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'B'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nto_perf AS (\n  SELECT\n    coalesce(avg(sum_views), 0) AS views,\n    coalesce(avg(sum_completion_x_views / nullIf(sum_views, 0)), 0) AS completion_rate\n  FROM roll_trailer_hourly\n  WHERE film_id = 13\n    AND region = 'US'\n    AND variant = 'A'\n    AND ts >= (SELECT t FROM anchor) - INTERVAL 7 DAY\n    AND ts <= (SELECT t FROM anchor)\n),\nticket AS (\n  SELECT avg(revenue_usd / nullIf(tickets_sold, 0)) AS price\n  FROM box_office_revenue\n  WHERE film_id = 13\n    AND region = 'US'\n    AND date >= coalesce(\n      (SELECT max(date) FROM box_office_revenue\n        WHERE film_id = 13 AND region = 'US'), today()) - INTERVAL 30 DAY\n)\nSELECT toFloat64(\n  (to_perf.views * to_perf.completion_rate - from_perf.views * from_perf.completion_rate)\n  * 24.0 * 7.0                                        -- project to a 7-day window\n  * 0.02                                              -- coarse view->ticket rate\n  * coalesce(ticket.price, 0)\n) AS impact_usd\nFROM from_perf, to_perf, ticket",
         "source": {
           "signal": "decision_impact",
           "query_index": 0
         }
       }
     ],
-    "recommended_actions_prose": "To mitigate the issue, a trailer variant swap has been executed for \"The Devil's Mouth\" in the US. Specifically, variant 'C' has been replaced with variant 'A'. This decision was made because sentiment analysis indicated that variant 'C' had a high number of negative mentions and a low completion rate. The projected revenue impact from this action is $0.00.",
+    "recommended_actions_prose": "To mitigate the issue, a trailer variant swap has been executed for \"The Devil's Mouth\" in the US. Specifically, variant 'C' has been replaced with variant 'A'. This decision was made because sentiment analysis indicated that variant 'C' had a high number of negative mentions and a low completion rate. The projected revenue impact from this action is $13,400.",
     "risks_and_caveats": "Our hypothesis regarding the cause of the anomaly is held with medium confidence. While several factors point to a localized US market issue, the text analysis finding provided no significant evidence, leaving some aspects less clear.",
     "created_at": "2026-08-17T01:38:32.864769Z",
     "latency_ms": 12149
