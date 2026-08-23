@@ -3,22 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --sig-box-office: #5ab0ff;
-  --sig-social: #ff7ab0;
-  --sig-reviews: #ffd93d;
-  --sig-streaming: #6bcf7f;
-  --sig-box-office-glow: rgba(90, 176, 255, 0.55);
-  --sig-social-glow: rgba(255, 122, 176, 0.55);
-  --sig-reviews-glow: rgba(255, 217, 61, 0.55);
-  --sig-streaming-glow: rgba(107, 207, 127, 0.55);
+  --sig-box-office: #63b7ff;
+  --sig-social: #ff80bb;
+  --sig-reviews: #ffd952;
+  --sig-streaming: #74db8d;
+  --sig-box-office-glow: rgba(99, 183, 255, 0.62);
+  --sig-social-glow: rgba(255, 128, 187, 0.62);
+  --sig-reviews-glow: rgba(255, 217, 82, 0.62);
+  --sig-streaming-glow: rgba(116, 219, 141, 0.62);
 }
 
 html, body, #root { min-height: 100%; }
 body {
-  background: #08080c;
-  color: #f5f2ea;
+  background:
+    radial-gradient(circle at top, rgba(94, 106, 147, 0.24), transparent 30%),
+    linear-gradient(180deg, #0c0d14 0%, #090b11 100%);
+  color: #f9f6f1;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(241, 74, 103, 0.35);
+  color: #fffaf4;
 }
