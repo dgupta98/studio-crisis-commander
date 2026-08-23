@@ -50,46 +50,38 @@ export function ParticleCascade() {
     window.addEventListener('resize', resize)
 
     const particles: Particle[] = []
+    const startTime = performance.now()
+    const maxRuntime = 2200
 
     const spawn = () => {
       const idx = Math.floor(Math.random() * FAMILY_COLORS.length)
-      const maxLife = 240 + Math.random() * 180
+      const maxLife = 180 + Math.random() * 120
       particles.push({
         x: Math.random() * canvas.width,
         y: -10,
-        vx: (Math.random() - 0.5) * 0.6 * dpr,
-        vy: (0.6 + Math.random() * 1.6) * dpr,
+        vx: (Math.random() - 0.5) * 0.35 * dpr,
+        vy: (0.55 + Math.random() * 1.2) * dpr,
         color: FAMILY_COLORS[idx],
-        size: (1 + Math.random() * 2.5) * dpr,
-        alpha: 0.5 + Math.random() * 0.4,
+        size: (0.9 + Math.random() * 2) * dpr,
+        alpha: 0.35 + Math.random() * 0.3,
         life: 0,
         maxLife,
       })
-      // occasional bright bokeh particle
-      if (Math.random() < 0.08) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: -10,
-          vx: (Math.random() - 0.5) * 0.3 * dpr,
-          vy: (0.2 + Math.random() * 0.6) * dpr,
-          color: FAMILY_COLORS[idx],
-          size: (4 + Math.random() * 6) * dpr,
-          alpha: 0.15 + Math.random() * 0.2,
-          life: 0,
-          maxLife: maxLife * 1.5,
-        })
-      }
     }
 
     let lastSpawn = 0
     const frame = (t: number) => {
       if (!running) return
-      // trail effect: dim previous frame slightly instead of clearing
+      if (t - startTime > maxRuntime) {
+        running = false
+        return
+      }
+
       ctx.fillStyle = 'rgba(8, 8, 12, 0.18)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      if (t - lastSpawn > 22) {
-        for (let i = 0; i < 6; i++) spawn()
+      if (t - lastSpawn > 26) {
+        for (let i = 0; i < 2; i++) spawn()
         lastSpawn = t
       }
 
@@ -98,20 +90,18 @@ export function ParticleCascade() {
         p.x += p.vx
         p.y += p.vy
         p.life += 1
-        const lifeAlpha = p.life < 30 ? p.life / 30 : p.life > p.maxLife - 60 ? Math.max(0, (p.maxLife - p.life) / 60) : 1
+        const lifeAlpha = p.life < 24 ? p.life / 24 : p.life > p.maxLife - 40 ? Math.max(0, (p.maxLife - p.life) / 40) : 1
         const alpha = p.alpha * lifeAlpha
 
-        // outer glow
         const glowIdx = FAMILY_COLORS.indexOf(p.color)
-        if (glowIdx >= 0 && p.size > 3) {
-          ctx.globalAlpha = alpha * 0.35
+        if (glowIdx >= 0 && p.size > 2.5) {
+          ctx.globalAlpha = alpha * 0.2
           ctx.fillStyle = FAMILY_GLOWS[glowIdx]
           ctx.beginPath()
-          ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2)
+          ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2)
           ctx.fill()
         }
 
-        // core dot
         ctx.globalAlpha = alpha
         ctx.fillStyle = p.color
         ctx.beginPath()
@@ -122,8 +112,8 @@ export function ParticleCascade() {
           particles.splice(i, 1)
         }
       }
-      // Cap population; drop the oldest first.
-      if (particles.length > 600) particles.splice(0, particles.length - 600)
+
+      if (particles.length > 260) particles.splice(0, particles.length - 260)
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)

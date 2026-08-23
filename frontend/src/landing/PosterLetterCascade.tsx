@@ -101,13 +101,12 @@ export function PosterLetterCascade() {
             key={item.key}
             className="absolute -top-[35vh] select-none will-change-transform"
             style={{ left: lane.left }}
-            initial={{ y: 0, rotate: 0 }}
-            animate={{ y: '150vh', rotate: lane.rot }}
+            initial={{ y: -8, rotate: 0, opacity: 0.18 }}
+            animate={{ y: '140vh', rotate: lane.rot, opacity: 0.26 }}
             transition={{
               duration: lane.dur,
               delay: lane.delay,
-              repeat: Infinity,
-              ease: 'linear',
+              ease: 'easeInOut',
             }}
           >
             <span
