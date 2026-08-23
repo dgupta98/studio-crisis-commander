@@ -296,7 +296,8 @@ def get_film(film_id: int) -> dict[str, Any] | None:
     with client() as c:
         rows = _query_rows(
             c,
-            f"SELECT film_id, title, toString(release_date), popularity, language, tmdb_id "
+            f"SELECT film_id, title, toString(release_date), popularity, language, tmdb_id, "
+            f"genre, runtime_min, budget_usd, revenue_usd, vote_average "
             f"FROM films WHERE film_id = {int(film_id)} LIMIT 1",
         )
         if not rows:
@@ -336,6 +337,11 @@ def get_film(film_id: int) -> dict[str, Any] | None:
         "release_date": row[2] if row[2] is not None else "",
         "popularity": float(row[3]) if row[3] is not None else 0.0,
         "language": row[4] if len(row) > 4 and row[4] is not None else "",
+        "genre": row[6] if len(row) > 6 and row[6] is not None else "",
+        "runtime_min": int(row[7]) if len(row) > 7 and row[7] is not None else 0,
+        "budget_usd": int(row[8]) if len(row) > 8 and row[8] is not None else 0,
+        "revenue_usd": int(row[9]) if len(row) > 9 and row[9] is not None else 0,
+        "vote_average": float(row[10]) if len(row) > 10 and row[10] is not None else 0.0,
         "signals": signals,
         "featured": film_id in cached_map,
         "cached_scenario_id": own_scenario or fallback_scenario,

@@ -134,7 +134,11 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
   const navigate = useNavigate()
   const injectAction = useRunStore((s) => s.inject)
   const [ctype, setCtype] = useState<CrisisType>('regional_sentiment_collapse')
-  const [region, setRegion] = useState('US')
+  // Must be one of REGIONS below. Any string not in that list is a phantom
+  // region — the seed has no rows under it, so every impact SQL and
+  // box_office ticket-price lookup collapses to $0. Old default 'US' was
+  // outside the enum (canonical is 'NA') and silently zero'd impacts.
+  const [region, setRegion] = useState('NA')
   const [magnitude, setMagnitude] = useState('0.4')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)

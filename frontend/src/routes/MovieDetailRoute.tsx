@@ -8,7 +8,6 @@ import { MovieHero } from '../panels/MovieHero'
 import { LatestInvestigation } from '../panels/LatestInvestigation'
 import { PersistentAgentTrace } from '../panels/PersistentAgentTrace'
 import { RunTimeline } from '../panels/RunTimeline'
-import { AmbientTelemetry } from '../panels/AmbientTelemetry'
 import { DashboardWorkspace } from '../panels/DashboardWorkspace'
 import { GlobalInjectModal } from '../shell/GlobalInjectModal'
 
@@ -24,6 +23,15 @@ export default function MovieDetailRoute() {
   const { data: latest } = useLatestInvestigation(id)
   const { data: runs } = useFilmRuns(id)
   const [injectOpen, setInjectOpen] = useState(false)
+
+  // Live run state — subscribe so the panel re-renders when a fresh crisis
+  // for this film finishes. Without this the Latest Investigation card is
+  // frozen on the cached sample even after Inject completes.
+  const liveDetection  = useRunStore((s) => s.detection)
+  const liveDecision   = useRunStore((s) => s.decision)
+  const liveReport     = useRunStore((s) => s.report)
+  const liveRunFilmId  = useRunStore((s) => s.currentRunFilmId)
+  const liveRunId      = useRunStore((s) => s.runId)
 
   // Hydrate runStore with THIS film's cached scenario so the right-column
   // workspace (Investigation / Recommendation / Approval) shows something
@@ -50,12 +58,44 @@ export default function MovieDetailRoute() {
   if (isLoading) return <div data-testid="route-movie-detail" className="p-6 text-sm text-ink-soft">Loading…</div>
   if (error || !film) return <div data-testid="route-movie-detail" className="p-6 text-sm text-rose-400">Film not found.</div>
 
-  const investigation = (triple ?? latest ?? null) as any
+  // Build a triple-shape object from live runStore state when a fresh run
+  // for THIS film has produced a detection + decision + report. This
+  // "live" triple wins over any cached sample or historical audit row so
+  // the panel updates the instant a crisis finishes.
+  const liveTriple = (
+    liveRunFilmId === id && liveDetection && liveDecision && liveReport
+  )
+    ? {
+        scenario_id: liveRunId ?? 'live',
+        detection: {
+          film_id: liveDetection.film_id,
+          region: liveDetection.region,
+          metric: liveDetection.metric,
+          severity: liveDetection.severity,
+          magnitude: liveDetection.magnitude,
+          latency_ms: (liveDetection as any).latency_ms ?? null,
+        },
+        investigation: null,
+        decision: {
+          decision_id: liveDecision.decision_id,
+          status: liveDecision.status,
+          recommended_actions: liveDecision.actions.map((a) => ({
+            label: a.action_type,
+            impact_est: a.impact_usd ?? 0,
+          })),
+        },
+        report: liveReport,
+      }
+    : null
+
+  // Preference order: live run > server-persisted history > pre-baked sample.
+  // Cached samples are the LAST resort so past runs and fresh injections
+  // both take priority over demo canned content.
+  const investigation = (liveTriple ?? latest ?? triple ?? null) as any
   const runList = (Array.isArray(runs) ? runs : []) as any[]
   // Round-robin fallback triples come from other films' pre-run scenarios;
-  // flag that clearly so the panel doesn't imply the shown investigation
-  // ran against this movie.
-  const isSample = triple != null && film.cached_scenario_is_own === false
+  // flag that clearly ONLY when we actually rendered the cached sample.
+  const isSample = investigation === triple && film.cached_scenario_is_own === false
 
   return (
     <div data-testid="route-movie-detail" className="flex flex-col gap-6 pb-8">
@@ -67,7 +107,6 @@ export default function MovieDetailRoute() {
           <RunTimeline runs={runList} />
         </div>
         <div className="flex flex-col gap-6">
-          <AmbientTelemetry signals={film.signals} />
           {/* Same tabbed workspace as the Dashboard. Reads from runStore,
               which we seeded above with this film's scenario — so the
               investigation + recommendation are visible on mount and update

@@ -20,7 +20,7 @@ and Movie Detail routes.
 | `src/components/AppShell.tsx` | Persistent shell (top bar + left nav + `<GlobalInjectModal>`) |
 | `src/routes/*.tsx` | Route components — LandingRoute, DashboardRoute, MoviesRoute, MovieDetailRoute, AuditRoute, SettingsRoute |
 | `src/landing/*.tsx` | HeroFold, AgentsFold, HowItWorksFold, CtaFold, ParticleCascade, LiveCounter |
-| `src/panels/*.tsx` | Editorial panels — AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, AmbientTelemetry, … |
+| `src/panels/*.tsx` | Editorial panels — AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, … |
 | `src/components/` | Primitives — SignalChip, LatencyBadge, RegionFlag, MovieCard, Shelf, FeaturedHero, PanelStateWrapper |
 | `src/store/` | Zustand stores — runStore (SSE + panel state), catalogStore, signalStore |
 | `src/hooks/` | useIntakeRates, useFilm, useCachedTriple, useRegion, useReducedMotion |
