@@ -144,9 +144,9 @@ export function HeroFold() {
           </motion.span>
 
           <h1 className="font-display font-bold text-5xl leading-[1.08] tracking-tight md:text-6xl xl:text-7xl">
-            <RevealLine words={HEADLINE_LINE_1} delay={0.7} reduced={reduced} />
+            <RevealLine words={HEADLINE_LINE_1} delay={0.12} reduced={reduced} />
             <br />
-            <RevealLine words={HEADLINE_LINE_2} delay={1.15} reduced={reduced} accentLast />
+            <RevealLine words={HEADLINE_LINE_2} delay={0.2} reduced={reduced} accentLast />
           </h1>
 
           <motion.p
@@ -265,9 +265,9 @@ function RevealLine({
       {words.map((w, i) => (
         <motion.span
           key={i}
-          initial={{ opacity: 0, y: 28, filter: 'blur(12px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.9, ease: EASE, delay: delay + i * 0.09 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: 'easeOut', delay: delay + i * 0.02 }}
           className={
             'inline-block will-change-transform ' +
             (accentLast && i === words.length - 1 ? 'italic text-accent' : '')
