@@ -16,7 +16,7 @@ function formatRows(n: number): string {
 export function IntakeStrip() {
   useIntakeRates()
   const rates = useSignalStore((s) => s.rates)
-  const history = useSignalStore((s) => s.history)
+
   return (
     <div
       className="grid grid-cols-2 gap-3 bg-card px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 md:grid-cols-4"
@@ -43,27 +43,8 @@ export function IntakeStrip() {
               rows total
             </span>
           </div>
-          <div className="ml-auto hidden sm:block">
-            <MiniSparkline points={history[family]} />
-          </div>
         </div>
       ))}
     </div>
-  )
-}
-
-function MiniSparkline({ points }: { points: number[] }) {
-  if (!points.length) return <span className="flex-1" />
-  const max = Math.max(1, ...points)
-  const w = 80
-  const h = 28
-  const step = w / Math.max(1, points.length - 1)
-  const d = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * step} ${h - (p / max) * h}`)
-    .join(' ')
-  return (
-    <svg width={w} height={h} className="opacity-70">
-      <path d={d} stroke="currentColor" strokeWidth="1" fill="none" />
-    </svg>
   )
 }
