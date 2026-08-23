@@ -303,14 +303,18 @@ def get_film(film_id: int) -> dict[str, Any] | None:
             return None
         row = rows[0]
 
+        # Total rows per family for this film, not a rolling 7-day window.
+        # Same reasoning as intake.py: max(ts|date) can land on a partition
+        # tail with almost no rows for a specific film, and a 7-day filter
+        # then collapses to 0. The tile is honest as a footprint number.
         signals: dict[str, int] = {}
-        for family, table, where in (
-            ("box_office", "box_office_revenue",      f"film_id = {int(film_id)} AND date >= today() - 7"),
-            ("social",     "social_trends",           f"film_id = {int(film_id)} AND ts   >= now() - INTERVAL 7 DAY"),
-            ("reviews",    "review_scores",           f"film_id = {int(film_id)} AND ts   >= now() - INTERVAL 7 DAY"),
-            ("streaming",  "streaming_watch_minutes", f"film_id = {int(film_id)} AND ts   >= now() - INTERVAL 7 DAY"),
+        for family, table in (
+            ("box_office", "box_office_revenue"),
+            ("social",     "social_trends"),
+            ("reviews",    "review_scores"),
+            ("streaming",  "streaming_watch_minutes"),
         ):
-            r = _query_rows(c, f"SELECT count() FROM {table} WHERE {where}")
+            r = _query_rows(c, f"SELECT count() FROM {table} WHERE film_id = {int(film_id)}")
             signals[family] = int(r[0][0]) if r else 0
 
     tmdb_id = int(row[5]) if len(row) > 5 and row[5] is not None else 0

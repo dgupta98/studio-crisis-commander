@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from agents.decision.audit import list_recent_audit_for_film
+from agents.decision.audit import AuditRow, list_recent_audit_for_film
 from api.catalog import shelves as catalog_shelves
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -39,14 +43,16 @@ async def film_latest_investigation(film_id: int):
         return None
     a = rows[0]
     dec = a.agent_run
+    det_meta = await asyncio.to_thread(_detection_meta_map, [a.detection_dedup_key])
+    meta = det_meta.get(a.detection_dedup_key, {})
     return {
         "scenario_id": a.decision_id,
         "detection": {
             "film_id": a.film_id,
             "region": a.region,
-            "metric": _first_signal(dec),
-            "severity": _severity_of(a),
-            "magnitude": _magnitude_of(a),
+            "metric": meta.get("metric"),
+            "severity": _fmt_severity(meta.get("severity")),
+            "magnitude": _fmt_float(meta.get("magnitude")),
             "latency_ms": None,
         },
         "investigation": None,
@@ -69,58 +75,81 @@ async def film_latest_investigation(film_id: int):
 async def film_runs(film_id: int, limit: int = Query(10, ge=1, le=50)):
     """List of past runs for the RunTimeline on the movie detail page."""
     rows = await asyncio.to_thread(list_recent_audit_for_film, film_id, limit)
-    return [
-        {
+    keys = [r.detection_dedup_key for r in rows if r.detection_dedup_key]
+    det_meta = await asyncio.to_thread(_detection_meta_map, keys)
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        meta = det_meta.get(r.detection_dedup_key, {})
+        out.append({
             "run_id": r.decision_id,
             "at": r.created_at.isoformat() if r.created_at else "",
-            "ctype": _first_signal(r.agent_run) or "detection",
-            "magnitude": _magnitude_of(r) or 0.0,
-            "severity": _severity_of(r) or "—",
+            "ctype": meta.get("metric") or "detection",
+            "magnitude": _fmt_float(meta.get("magnitude")) or 0.0,
+            "severity": _fmt_severity(meta.get("severity")) or "—",
+        })
+    return out
+
+
+# ---------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------
+
+def _detection_meta_map(dedup_keys: list[str]) -> dict[str, dict[str, Any]]:
+    """Batch-lookup dedup_key → {metric, magnitude, severity} from detections.
+
+    The audit row only stores the dedup_key; the real magnitude/severity/metric
+    live on the `detections` table (Layer 2). Without this join the Movie Detail
+    past-runs list falls back to 0.0 for every row because AuditRow.actions[].
+    params never carries magnitude — it's a decision-input, not a decision-output.
+
+    BUILD-RISK-FALLBACK: uses clickhouse-connect directly. Same fallback that
+    audit.py already established for detections' sibling table.
+    """
+    if not dedup_keys:
+        return {}
+    # Deduplicate + escape. dedup_keys are generated server-side so injection
+    # risk is nil, but we still quote defensively.
+    uniq = sorted({k for k in dedup_keys if k})
+    if not uniq:
+        return {}
+    quoted = ",".join("'" + k.replace("\\", "\\\\").replace("'", "\\'") + "'" for k in uniq)
+    sql = (
+        "SELECT dedup_key, metric, magnitude, severity "
+        "FROM detections FINAL "
+        f"WHERE dedup_key IN ({quoted})"
+    )
+    try:
+        from data.ch_client import client
+        with client() as c:
+            rows = list(c.query(sql).result_rows)
+    except Exception:  # noqa: BLE001
+        log.warning("detection meta lookup failed", exc_info=True)
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        out[str(r[0])] = {
+            "metric": r[1],
+            "magnitude": float(r[2]) if r[2] is not None else None,
+            "severity": float(r[3]) if r[3] is not None else None,
         }
-        for r in rows
-    ]
+    return out
 
 
-def _first_signal(dec) -> str | None:
-    # DecisionResult carries the winning action; the underlying metric family
-    # lives on the first action's rationale/params in practice.
-    if dec and dec.actions:
-        params = getattr(dec.actions[0], "params", None) or {}
-        if isinstance(params, dict):
-            for k in ("metric", "signal", "family"):
-                v = params.get(k)
-                if isinstance(v, str):
-                    return v
+def _fmt_float(v: Any) -> float | None:
+    if isinstance(v, (int, float)):
+        return float(v)
     return None
 
 
-def _severity_of(a) -> str | None:
-    dec = a.agent_run
-    if not dec or not dec.actions:
-        return None
-    params = getattr(dec.actions[0], "params", None) or {}
-    if isinstance(params, dict):
-        s = params.get("severity")
-        if isinstance(s, (int, float)):
-            return f"{s:.1f}"
-        if isinstance(s, str):
-            return s
+def _fmt_severity(v: Any) -> str | None:
+    if isinstance(v, (int, float)):
+        return f"{v:.1f}"
+    if isinstance(v, str) and v:
+        return v
     return None
 
 
-def _magnitude_of(a) -> float | None:
-    dec = a.agent_run
-    if not dec or not dec.actions:
-        return None
-    params = getattr(dec.actions[0], "params", None) or {}
-    if isinstance(params, dict):
-        m = params.get("magnitude")
-        if isinstance(m, (int, float)):
-            return float(m)
-    return None
-
-
-def _report_dict(a) -> dict | None:
+def _report_dict(a: AuditRow) -> dict | None:
     r = a.report
     if r is None:
         return None
