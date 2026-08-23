@@ -15,17 +15,25 @@ via api.fallback.replay_cached_triple and emits mode=fallback events.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
+from uuid import uuid4
 
 from agents.decision.agent import invoke_decision
+from agents.decision.audit import async_audit_attach_report, audit_insert
+from agents.decision.contracts import DecisionResult
 from agents.investigation.agent import invoke_investigation
+from agents.investigation.contracts import InvestigationResult
 from agents.report.agent import invoke_report
 from api.detection_source import _lookup_film_title, produce_detection
 from api.events import SseEvent
 from api.fallback import CachedTriple, replay_cached_triple
 from api.runtime import PipelineRuntime
 from data.crisis_injector import inject_now
+
+
+log = logging.getLogger(__name__)
 
 
 # Populated by api.main at startup. Unit tests patch these directly.
@@ -72,7 +80,7 @@ async def run_pipeline(
                {"run_id": run_id, "mode": mode, "requested": request})
 
     if force_fallback:
-        await _run_fallback(runtime, run_id, "forced")
+        await _run_fallback(runtime, run_id, "forced", request)
         return
 
     try:
@@ -144,24 +152,77 @@ async def run_pipeline(
         await emit("pipeline.failed",
                    {"error": f"{type(e).__name__}: {e}",
                     "stage": _infer_stage(seq.current, e)})
-        await _run_fallback(runtime, run_id, f"{type(e).__name__}")
+        await _run_fallback(runtime, run_id, f"{type(e).__name__}", request)
 
 
 async def _run_fallback(
     runtime: PipelineRuntime, run_id: str, reason: str,
+    request: dict[str, Any],
 ) -> None:
-    """Swap to fallback mode and replay the cached triple."""
+    """Swap to fallback mode, replay the cached triple, persist to audit.
+
+    Persistence keeps Movie Detail / /audit honest when the live path
+    can't produce a row: the SSE replay is decoupled from the audit
+    table, so without an insert the featured film's Latest Investigation
+    tile stays empty even though the operator saw a report scroll by.
+    The row is cloned from the cached triple with fresh IDs (so multiple
+    fallbacks don't collide in ReplacingMergeTree) and re-attributed to
+    the requested film_id/region so it lands under the right film.
+    """
     if _cached_triple is None:
         # No cached triple installed — mark failed and give up. Only happens
         # in tests that forgot to patch _cached_triple, or in a broken deploy.
         await runtime.mark_terminal(run_id, "failed")
         return
     await runtime.mark_mode(run_id, "fallback")
-    await runtime.set_decision_id(run_id, _cached_triple.decision.decision_id)
+
+    triple = _cached_triple
+    inv, dec, rep = _clone_triple_for_request(triple, request)
+    await runtime.set_decision_id(run_id, dec.decision_id)
     await replay_cached_triple(
-        runtime, run_id, _cached_triple, pacing_scale=_pacing_scale,
+        runtime, run_id, triple, pacing_scale=_pacing_scale,
     )
+    try:
+        await asyncio.to_thread(audit_insert, dec, inv)
+        await async_audit_attach_report(dec.decision_id, rep)
+    except Exception:  # noqa: BLE001
+        # Persistence is best-effort — SSE has already played, and the
+        # runtime is about to mark_terminal. Never let an audit failure
+        # look like the pipeline itself crashed.
+        log.warning("fallback audit persist failed for run_id=%s", run_id,
+                    exc_info=True)
     await runtime.mark_terminal(run_id, "completed")
+
+
+def _clone_triple_for_request(
+    triple: CachedTriple, request: dict[str, Any],
+) -> tuple[InvestigationResult, DecisionResult, Any]:
+    """Rebuild investigation/decision/report bound to the requested film.
+
+    Report is returned as-is — its provenance only references investigation
+    finding SQL + decision impact SQL, both of which stay identical to the
+    cached triple regardless of film_id.
+    """
+    film_id = request.get("film_id") or triple.detection.film_id
+    region = request.get("region") or triple.detection.region
+
+    inv = triple.investigation.model_copy(deep=True)
+    inv.investigation_id = uuid4().hex
+    inv.detection.film_id = int(film_id)
+    inv.detection.region = str(region)
+    d = inv.detection
+    # dedup_key encodes film/region; keep it consistent with the overrides
+    # so a follow-up detection-lookup for this row still resolves.
+    inv.detection.dedup_key = (
+        f"{d.metric}|{d.film_id}|{d.region}|"
+        f"{d.metric_ts.strftime('%Y-%m-%d %H:%M:%S')}|{d.detector}"
+    )
+
+    dec = triple.decision.model_copy(deep=True)
+    dec.decision_id = uuid4().hex
+    dec.investigation_id = inv.investigation_id
+
+    return inv, dec, triple.report
 
 
 class _SeqGen:

@@ -66,6 +66,11 @@ def build_toolset() -> MCPToolset:
             args=["-m", "mcp_clickhouse.main"],
             env=_env_for_subprocess(),
         ),
-        timeout=15.0,   # subprocess startup + initial handshake budget
+        # Cloud Run subprocess spawn + mcp-clickhouse handshake can spend
+        # 20-40s under load (cold container, ClickHouse Cloud TLS handshake).
+        # 15s was tight and produced "MCP session timeout" bursts that fell
+        # through to the fallback path; 60s gives real headroom without
+        # masking a genuinely wedged subprocess.
+        timeout=60.0,
     )
     return MCPToolset(connection_params=params)

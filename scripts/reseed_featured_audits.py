@@ -54,7 +54,12 @@ DEFAULT_API_URL = "https://scc-api-845114229642.us-east1.run.app"
 CACHE_DIR = REPO_ROOT / "data" / "eval_cache"
 
 POLL_INTERVAL_S = 3.0
-POLL_TIMEOUT_S = 180.0
+# Live pipeline: detection poll (up to ~30s) + investigation (4 sub-agents,
+# each spawns an mcp-clickhouse subprocess — 60s handshake budget) + decision
+# + report. Under Cloud Run load 3-5 min per run is typical. Fallback path
+# now also inserts an audit row, so a timeout here really means the pipeline
+# never even reached decision — usually a wedged MCP subprocess.
+POLL_TIMEOUT_S = 420.0
 
 # The pre-recorded scenarios in data/eval_cache/*.json were captured when the
 # seed used ISO-3166-ish region codes ("US", "Germany", "Canada"). The current

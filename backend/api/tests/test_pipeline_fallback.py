@@ -29,7 +29,9 @@ async def test_pipeline_exception_swaps_to_fallback():
     triple = _mk_triple()
     with patch("api.pipeline.inject_now", side_effect=RuntimeError("boom")), \
          patch("api.pipeline._cached_triple", triple), \
-         patch("api.pipeline._pacing_scale", 0.0):
+         patch("api.pipeline._pacing_scale", 0.0), \
+         patch("api.pipeline.audit_insert"), \
+         patch("api.pipeline.async_audit_attach_report", new=AsyncMock()):
         await run_pipeline(rt, "r1", request={})
     st = await rt.get("r1")
     assert st.mode == "fallback"
@@ -46,7 +48,9 @@ async def test_force_fallback_skips_live_path():
     with patch("api.pipeline.inject_now", side_effect=AssertionError(
             "should not be called")), \
          patch("api.pipeline._cached_triple", triple), \
-         patch("api.pipeline._pacing_scale", 0.0):
+         patch("api.pipeline._pacing_scale", 0.0), \
+         patch("api.pipeline.audit_insert"), \
+         patch("api.pipeline.async_audit_attach_report", new=AsyncMock()):
         await run_pipeline(rt, "r1", request={}, force_fallback=True)
     st = await rt.get("r1")
     assert st.mode == "fallback"
