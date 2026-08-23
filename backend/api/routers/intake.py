@@ -42,26 +42,24 @@ _FAMILIES: dict[str, tuple[str, str]] = {
 
 
 def _rates_sync() -> dict[str, int]:
-    # One ClickHouse client scope for all 4 queries — opening the HTTPS client
-    # per-family would triple the poll cost. If the client itself fails to open
-    # (missing env), let it propagate to a 500 rather than emit `{0,0,0,0}`
-    # forever, which would silently mask configuration drift.
+    # Emit rows-per-hour averaged over the last 24h of available data,
+    # anchored on each table's max(ts|date) so the strip stays meaningful
+    # when the synthetic feed isn't being continuously topped up.
     #
-    # We report a *per-minute* rate averaged over the last DAY_WINDOW days of
-    # available data. A 1-minute window was too narrow for the synthetic feed
-    # (returned 0 or 1); box_office's old `count()/1440` also truncated to 0
-    # for anything under a full day of rows. Averaging over a wider window
-    # gives a stable, meaningful number that matches user intuition ("how
-    # busy is this pipeline").
+    # Prior attempts used per-minute rates over a 1-day or 7-day window.
+    # Both integer-truncated to zero for box_office (~3.7K rows/day
+    # against a 1440- or 10080-minute divisor) and for review_scores
+    # under typical volumes. Rows-per-hour keeps the number large enough
+    # that integer casting doesn't collapse it to zero, matches the
+    # "signals arriving live" intuition, and is honest — the label ships
+    # as "rows/hr" on the frontend.
     out: dict[str, int] = {}
-    day_window = 7
-    minutes = day_window * 24 * 60
     with client() as c:
         for family, (table, col) in _FAMILIES.items():
             try:
                 sql = (
-                    f"SELECT toUInt64(count() / {minutes}) FROM {table} "
-                    f"WHERE {col} >= (SELECT max({col}) - INTERVAL {day_window} DAY FROM {table})"
+                    f"SELECT toUInt64(round(count() / 24)) FROM {table} "
+                    f"WHERE {col} >= (SELECT max({col}) - INTERVAL 1 DAY FROM {table})"
                 )
                 rows = c.query(sql).result_rows
                 out[family] = int(rows[0][0]) if rows and rows[0][0] is not None else 0

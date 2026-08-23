@@ -313,14 +313,18 @@ function TraceDetail({ ev }: { ev: SseEvent }) {
 export function AgentTrace({ filmId }: { filmId?: number } = {}) {
   const state = useRunStore((s) => s.panelStates.trace)
   const allEvents = useRunStore((s) => s.events)
-  const detection = useRunStore((s) => s.detection)
+  const currentRunFilmId = useRunStore((s) => s.currentRunFilmId)
 
-  // When mounted inside Movie Detail, the trace must scope to THIS film.
-  // The store is a global singleton, so an active run for film A would
-  // otherwise bleed into every /movies/B page. We hide events unless the
-  // current run's detection matches, and show a targeted empty state.
+  // When mounted inside Movie Detail, scope the trace to THIS film. The
+  // store is a global singleton, so an active run for film A would
+  // otherwise bleed into every /movies/B page.
+  //
+  // We compare against `currentRunFilmId` (set at inject-time) rather than
+  // `detection.film_id` (which only populates after detection.completed).
+  // Otherwise a run that hangs at detection.started — or one still in
+  // flight — would falsely miss the match on its own film's page.
   const isScoped = typeof filmId === 'number'
-  const scopedMatch = isScoped && detection?.film_id === filmId
+  const scopedMatch = isScoped && currentRunFilmId === filmId
   const events = !isScoped || scopedMatch ? allEvents : []
   const effectiveState: PanelState = isScoped && !scopedMatch
     ? { kind: 'empty', hint: 'No live run for this film yet — press Inject Crisis to start one.' }

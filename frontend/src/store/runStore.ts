@@ -21,6 +21,11 @@ type PanelKey =
 interface RunStore {
   // ─── data ────────────────────────────────────────
   runId: string | null
+  // Film targeted by the current run. Set at inject() time so Movie Detail
+  // can scope its Agent Trace immediately — without waiting for the
+  // detection.completed event to populate `detection`. Persists so a
+  // refresh mid-run keeps the trace on the correct movie's page.
+  currentRunFilmId: number | null
   events: SseEvent[]
   detection: DetectionRow | null
   findings: Finding[]
@@ -76,6 +81,7 @@ const INITIAL: Omit<RunStore, keyof {
   _dispatch: never; _recomputePanels: never;
 }> = {
   runId: null,
+  currentRunFilmId: null,
   events: [],
   detection: null,
   findings: [],
@@ -107,8 +113,12 @@ export const useRunStore = create<RunStore>()(
     if (opts?.fallback) body.fallback = opts.fallback
     // Clear any prior run's residue before starting a new one so the trace/
     // decision/report panels don't briefly show the previous investigation.
+    // Set currentRunFilmId immediately from opts so Movie Detail's scoped
+    // AgentTrace matches BEFORE detection.completed arrives (or if the
+    // pipeline hangs mid-detection).
     set({
       runId: null,
+      currentRunFilmId: opts?.filmId ?? null,
       events: [],
       detection: null,
       findings: [],
@@ -349,6 +359,7 @@ export const useRunStore = create<RunStore>()(
       // history (RecentRuns hydrates instantly), and cached feed data.
       partialize: (state) => ({
         runId: state.runId,
+        currentRunFilmId: state.currentRunFilmId,
         events: state.events,
         detection: state.detection,
         findings: state.findings,

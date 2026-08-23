@@ -31,7 +31,7 @@ export function IntakeStrip() {
               {rates[family]}
             </motion.span>
             <span className="mt-1 text-xs uppercase tracking-wider text-ink-soft">
-              rows / min
+              rows / hr
             </span>
           </div>
           <MiniSparkline points={history[family]} />
