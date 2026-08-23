@@ -5,6 +5,84 @@ import { queries } from '@/api/queries'
 import { useRunStore } from '@/store/runStore'
 import type { CrisisType } from '@/api/contracts'
 
+// Minimal themed select. The native <select>'s popup is rendered by the OS
+// (light Aqua panel on macOS) and cannot be styled to match the dark modal
+// — every option in the list would appear on a pale gray background. This
+// component keeps the same shape as the input to its right (Region) so
+// heights stay aligned in the 2-col grid.
+interface ThemedSelectProps<T extends string> {
+  value: T
+  onChange: (v: T) => void
+  options: readonly { value: T; label: string }[]
+  ariaLabel: string
+  buttonClass?: string
+}
+function ThemedSelect<T extends string>({
+  value, onChange, options, ariaLabel, buttonClass = '',
+}: ThemedSelectProps<T>) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) }
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const current = options.find((o) => o.value === value)
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full rounded border border-line bg-paper px-2 py-1.5 text-left text-sm outline-none focus:border-accent flex items-center justify-between gap-2 ${buttonClass}`}
+      >
+        <span className="truncate">{current?.label ?? value}</span>
+        <span className="text-ink-soft text-[10px] shrink-0">▾</span>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded border border-line bg-card shadow-lg"
+        >
+          {options.map((o) => (
+            <li
+              key={o.value}
+              role="option"
+              aria-selected={o.value === value}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onChange(o.value)
+                setOpen(false)
+              }}
+              className={`cursor-pointer px-3 py-2 text-sm ${
+                o.value === value
+                  ? 'bg-card-alt text-accent'
+                  : 'text-ink hover:bg-card-alt'
+              }`}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -25,6 +103,7 @@ const CRISIS_TYPES: { value: CrisisType; label: string }[] = [
   { value: 'review_score_divergence',        label: 'Review score divergence' },
 ]
 const REGIONS = ['US', 'GB', 'DE', 'FR', 'JP', 'KR', 'CN', 'IN', 'BR', 'MX', 'AU', 'CA', 'IT', 'ES', 'RU']
+const REGION_OPTIONS = REGIONS.map((r) => ({ value: r, label: r }))
 const MAX_LIST = 40
 
 type Shelf = { id: string; title: string; films: { id: number; title: string }[] }
@@ -158,17 +237,15 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-card p-5 shadow-2xl sm:p-6"
       >
         <h2 className="mb-4 font-display text-lg font-bold tracking-tight text-ink">Inject Crisis</h2>
-        <label className="block">
+        <div className="block">
           <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Crisis type</span>
-          <select
-            aria-label="Crisis type"
+          <ThemedSelect<CrisisType>
+            ariaLabel="Crisis type"
             value={ctype}
-            onChange={(e) => setCtype(e.target.value as CrisisType)}
-            className="w-full rounded border border-line bg-paper px-2 py-1.5 text-sm"
-          >
-            {CRISIS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </label>
+            onChange={setCtype}
+            options={CRISIS_TYPES}
+          />
+        </div>
 
         <div className="mt-3">
           <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Movie</span>
@@ -236,17 +313,15 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <label className="block">
+          <div className="block">
             <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Region</span>
-            <select
-              aria-label="Region"
+            <ThemedSelect
+              ariaLabel="Region"
               value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="w-full rounded border border-line bg-paper px-2 py-1.5 text-sm"
-            >
-              {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </label>
+              onChange={setRegion}
+              options={REGION_OPTIONS}
+            />
+          </div>
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Magnitude</span>
             <input
