@@ -16,8 +16,13 @@ describe('IntakeStrip', () => {
     })
   })
 
-  it('renders 4 family counters', () => {
+  it('renders 4 family counters without divider lines', () => {
     render(<IntakeStrip />)
+
+    const strip = screen.getByTestId('intake-strip')
+    expect(strip).not.toHaveClass('border-b')
+    expect(strip).not.toHaveClass('border-line')
+
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('34')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()

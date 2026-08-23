@@ -19,13 +19,13 @@ export function IntakeStrip() {
   const history = useSignalStore((s) => s.history)
   return (
     <div
-      className="grid grid-cols-2 gap-3 border-b border-line bg-card px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 md:grid-cols-4"
+      className="grid grid-cols-2 gap-3 bg-card px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 md:grid-cols-4"
       data-testid="intake-strip"
     >
       {FAMILIES.map((family) => (
         <div
           key={family}
-          className="flex items-center gap-3 rounded-md border border-line bg-paper px-3 py-3 sm:gap-4 sm:px-4"
+          className="flex items-center gap-3 rounded-md bg-paper px-3 py-3 sm:gap-4 sm:px-4"
         >
           <SignalChip family={family} compact />
           <div className="flex min-w-0 flex-col">
