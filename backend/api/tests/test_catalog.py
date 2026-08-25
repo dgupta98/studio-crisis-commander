@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 
 def _fake_ch_factory(rows_by_pattern: dict[str, list]):
@@ -108,3 +110,26 @@ def test_catalog_search():
             body = r.json()
             assert isinstance(body, list)
             assert body[0]["id"] == 1 and body[0]["title"] == "Alpha"
+
+
+@pytest.mark.asyncio
+async def test_shelves_include_top_regions_per_film():
+    from api.main import app
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://t") as ac:
+        async with ac.stream("GET", "/healthz"):
+            pass
+        r = await ac.get("/catalog/shelves")
+        assert r.status_code == 200
+        shelves = r.json()
+        # At least one shelf with at least one film.
+        assert shelves, "no shelves returned"
+        for shelf in shelves:
+            for film in shelf["films"]:
+                assert "top_regions" in film, f"film {film['id']} missing top_regions"
+                assert isinstance(film["top_regions"], list)
+                assert len(film["top_regions"]) <= 6
+                for entry in film["top_regions"]:
+                    assert "code" in entry
+                    assert "delta_pct" in entry
+                    assert isinstance(entry["delta_pct"], (int, float))

@@ -141,6 +141,66 @@ def _query_rows(c: Any, sql: str) -> list[tuple]:
         return []
 
 
+def _top_regions_for(c: Any, film_ids: list[int], k: int = 6) -> dict[int, list[dict[str, Any]]]:
+    """film_id → top-K regions by combined signal volume in the last 7d, with
+    delta_pct vs the prior 7d. One query per film would be O(N) round-trips;
+    this batches with WHERE film_id IN (…) and groups per film in Python.
+
+    We aggregate box_office_revenue only — it's the smallest table and the
+    "which markets matter" signal doesn't need to be precise for the card
+    strip. If it becomes an issue we can widen to a UNION over rollups.
+    """
+    if not film_ids:
+        return {}
+    ids_list = ",".join(str(int(x)) for x in film_ids)
+    cur_sql = (
+        f"SELECT film_id, region, sum(revenue_usd) AS vol "
+        f"FROM box_office_revenue "
+        f"WHERE film_id IN ({ids_list}) "
+        f"AND date >= coalesce("
+        f"  (SELECT max(date) FROM box_office_revenue WHERE film_id IN ({ids_list})),"
+        f"  today()) - INTERVAL 7 DAY "
+        f"GROUP BY film_id, region"
+    )
+    prev_sql = (
+        f"SELECT film_id, region, sum(revenue_usd) AS vol "
+        f"FROM box_office_revenue "
+        f"WHERE film_id IN ({ids_list}) "
+        f"AND date < coalesce("
+        f"  (SELECT max(date) FROM box_office_revenue WHERE film_id IN ({ids_list})),"
+        f"  today()) - INTERVAL 7 DAY "
+        f"AND date >= coalesce("
+        f"  (SELECT max(date) FROM box_office_revenue WHERE film_id IN ({ids_list})),"
+        f"  today()) - INTERVAL 14 DAY "
+        f"GROUP BY film_id, region"
+    )
+    cur_rows = _query_rows(c, cur_sql)
+    prev_rows = _query_rows(c, prev_sql)
+    cur_map: dict[tuple[int, str], float] = {}
+    for r in cur_rows:
+        cur_map[(int(r[0]), str(r[1]))] = float(r[2]) if r[2] is not None else 0.0
+    prev_map: dict[tuple[int, str], float] = {}
+    for r in prev_rows:
+        prev_map[(int(r[0]), str(r[1]))] = float(r[2]) if r[2] is not None else 0.0
+
+    by_film: dict[int, list[tuple[str, float, float]]] = {}
+    for (fid, region), cur in cur_map.items():
+        prev = prev_map.get((fid, region), 0.0)
+        if prev <= 0.0:
+            delta = 0.0 if cur <= 0.0 else 100.0
+        else:
+            delta = round(((cur - prev) / prev) * 100.0, 2)
+        by_film.setdefault(fid, []).append((region, cur, delta))
+    out: dict[int, list[dict[str, Any]]] = {}
+    for fid, entries in by_film.items():
+        entries.sort(key=lambda x: x[1], reverse=True)  # highest volume first
+        out[fid] = [
+            {"code": region, "delta_pct": delta}
+            for region, _vol, delta in entries[:k]
+        ]
+    return out
+
+
 def _to_card(row: tuple) -> dict[str, Any]:
     # Rows are (film_id, title, [signal_delta, region_hint]). Missing tail
     # elements default to 0.0 and "". poster_url is filled in later by
@@ -287,6 +347,13 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
         shelves.append({"id": "all", "title": "All movies", "films": full})
 
     _attach_posters([s["films"] for s in shelves])
+    # Attach top_regions to every card in one batched query
+    all_ids = sorted({int(f["id"]) for s in shelves for f in s["films"]})
+    with client() as c:
+        top_map = _top_regions_for(c, all_ids, k=6)
+    for shelf in shelves:
+        for card in shelf["films"]:
+            card["top_regions"] = top_map.get(int(card["id"]), [])
     return shelves
 
 
