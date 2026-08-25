@@ -346,11 +346,11 @@ def build_shelves(region: str | None = None) -> list[dict[str, Any]]:
         ]
         shelves.append({"id": "all", "title": "All movies", "films": full})
 
-    _attach_posters([s["films"] for s in shelves])
-    # Attach top_regions to every card in one batched query
-    all_ids = sorted({int(f["id"]) for s in shelves for f in s["films"]})
-    with client() as c:
+        # Attach top_regions to every card in one batched query
+        all_ids = sorted({int(f["id"]) for s in shelves for f in s["films"]})
         top_map = _top_regions_for(c, all_ids, k=6)
+
+    _attach_posters([s["films"] for s in shelves])
     for shelf in shelves:
         for card in shelf["films"]:
             card["top_regions"] = top_map.get(int(card["id"]), [])
