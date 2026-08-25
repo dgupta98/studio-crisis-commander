@@ -4,6 +4,8 @@ from __future__ import annotations
 import re
 from unittest.mock import MagicMock, patch
 
+import pytest
+from httpx import ASGITransport, AsyncClient
 from fastapi.testclient import TestClient
 
 from api.routers.metrics import (
@@ -53,3 +55,33 @@ def test_metrics_returns_all_four_series():
                 "sentiment_hourly", "trailer_hourly",
             }
             assert "query_latency_ms" in body
+
+
+@pytest.mark.asyncio
+async def test_metrics_regions_returns_15_canonical():
+    from api.main import app
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://t") as ac:
+        async with ac.stream("GET", "/healthz"):
+            pass
+        r = await ac.get("/metrics/1/regions")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["film_id"] == 1
+        assert isinstance(body["regions"], list)
+        assert len(body["regions"]) == 15
+        codes = {row["code"] for row in body["regions"]}
+        assert codes == {
+            "NA", "LATAM", "UK", "EU-West", "EU-East", "Nordics",
+            "India", "SEA", "Korea", "Japan", "China", "MENA",
+            "Africa", "ANZ", "Brazil",
+        }
+        first = body["regions"][0]
+        assert set(first["signals"].keys()) == {
+            "box_office", "social", "reviews", "streaming"
+        }
+        assert set(first["signals"]["box_office"].keys()) == {
+            "volume", "delta_pct", "anomaly"
+        }
+        assert "open_investigation" in first
+        assert "query_latency_ms" in body
