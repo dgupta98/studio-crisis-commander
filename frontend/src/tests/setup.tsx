@@ -27,6 +27,20 @@ global.ResizeObserver = class ResizeObserver {
 // reports zero dimensions. Mock it to pass children through so chart tests can
 // assert on rendered SVG elements. (harmless in non-chart tests; other recharts
 // exports are passed through unchanged via importOriginal.)
+// AnimatePresence keeps exiting children mounted until the exit animation
+// completes. In JSDOM there is no real animation engine, so elements stay
+// in the DOM indefinitely and "closed" assertions fail.
+// Mock AnimatePresence to render children unconditionally so exit animations
+// resolve synchronously (children unmount on the next render as normal React).
+vi.mock('framer-motion', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('framer-motion')>()
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  }
+})
+
 vi.mock('recharts', async (importOriginal) => {
   const original = await importOriginal<typeof import('recharts')>()
   return {
