@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RegionHeatBar } from '@/components/RegionHeatBar'
+import { RegionHeatBar } from '@/panels/RegionHeatBar'
 import * as regionApi from '@/api/regionMetrics'
 import { useRunStore } from '@/store/runStore'
 

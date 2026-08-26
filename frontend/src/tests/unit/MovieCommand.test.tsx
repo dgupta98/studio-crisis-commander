@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MovieCommand } from '@/panels/MovieCommand'
-import * as client from '@/api/client'
+import { queries } from '@/api/queries'
 import * as regionApi from '@/api/regionMetrics'
 import { useRunStore } from '@/store/runStore'
 
@@ -24,10 +24,16 @@ describe('MovieCommand', () => {
   })
 
   it('renders film title once picked', async () => {
-    vi.spyOn(client, 'apiGet').mockResolvedValue({
-      id: 1, title: 'Foo Movie', poster_url: '',
-      release_date: '2026-01-01', popularity: 42.0,
-    })
+    // Stub the queries.film factory so useQuery gets a static-resolving queryFn
+    // — the factory pattern means we can't spy on a single named export.
+    vi.spyOn(queries, 'film').mockReturnValue({
+      queryKey: ['catalog', 'film', 1] as const,
+      queryFn: async () => ({
+        id: 1, title: 'Foo Movie', poster_url: '',
+        release_date: '2026-01-01', popularity: 42.0,
+      }),
+      staleTime: 30_000,
+    } as any)
     vi.spyOn(regionApi, 'fetchRegionMetrics').mockResolvedValue({
       film_id: 1, hours: 168, query_latency_ms: 10, regions: [],
     })

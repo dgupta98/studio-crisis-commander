@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiGet } from '@/api/client'
+import { queries } from '@/api/queries'
 import { useRunStore } from '@/store/runStore'
-import { RegionHeatBar } from '@/components/RegionHeatBar'
+import { RegionHeatBar } from '@/panels/RegionHeatBar'
 import { FilmPicker } from '@/components/FilmPicker'
 
 interface FilmDetail {
@@ -45,14 +45,10 @@ export function MovieCommand() {
   const selectedFilmId = useRunStore((s) => s.selectedFilmId)
   const pickFilm = useRunStore((s) => s.pickFilm)
 
-  const { data: film } = useQuery<FilmDetail | null>({
-    queryKey: ['film-detail', selectedFilmId],
-    queryFn: async () => {
-      if (selectedFilmId === null) return null
-      return apiGet<FilmDetail>(`/catalog/films/${selectedFilmId}`)
-    },
+  const { data: film } = useQuery({
+    ...queries.film(selectedFilmId ?? 0),
     enabled: selectedFilmId !== null,
-    staleTime: 60_000,
+    select: (raw) => raw as FilmDetail,
   })
 
   if (selectedFilmId === null) {

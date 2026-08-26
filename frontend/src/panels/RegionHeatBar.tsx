@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { fetchRegionMetrics } from '@/api/regionMetrics'
 import { REGIONS } from '@/lib/regions'
 import { tokens } from '@/theme/tokens'
-import { RegionTile } from './RegionTile'
+import { RegionTile } from '@/components/RegionTile'
 import { useRunStore } from '@/store/runStore'
 import type { RegionMetricsResponse, RegionSummary } from '@/api/contracts'
 
