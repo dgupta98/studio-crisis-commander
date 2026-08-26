@@ -204,3 +204,36 @@ export interface AuditRow {
   report_id: string
   report_headline: string
 }
+
+// ─── Region Heat Matrix ─────────────────────────────────────────────
+// Backend: GET /metrics/{film_id}/regions
+
+export interface RegionSignalSummary {
+  volume: number
+  delta_pct: number
+  anomaly: boolean
+}
+
+export interface RegionSummary {
+  code: string
+  signals: {
+    box_office: RegionSignalSummary
+    social:     RegionSignalSummary
+    reviews:    RegionSignalSummary
+    streaming:  RegionSignalSummary
+  }
+  open_investigation: boolean
+}
+
+export interface RegionMetricsResponse {
+  film_id: number
+  hours: number
+  regions: RegionSummary[]
+  query_latency_ms: number
+}
+
+// ─── Top-regions strip on catalog card ──────────────────────────────
+export interface RegionDelta {
+  code: string
+  delta_pct: number
+}
