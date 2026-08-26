@@ -1,4 +1,4 @@
-import { SignalChip, type SignalFamily } from '../components/SignalChip'
+import { RegionHeatBar } from '@/panels/RegionHeatBar'
 
 interface Film {
   id: number
@@ -6,7 +6,6 @@ interface Film {
   poster_url: string
   release_date: string
   popularity: number
-  signals: Record<SignalFamily, number>
   featured: boolean
   cached_scenario_id: string | null
   language?: string
@@ -20,15 +19,6 @@ interface Film {
 interface Props {
   film: Film
   onInject: () => void
-}
-
-const FAMILIES: SignalFamily[] = ['box_office', 'social', 'reviews', 'streaming']
-
-function formatRows(n: number): string {
-  if (!Number.isFinite(n) || n < 1000) return `${n}`
-  if (n < 1_000_000)     return `${(n / 1_000).toFixed(1)}K`
-  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  return `${(n / 1_000_000_000).toFixed(1)}B`
 }
 
 function formatMoney(n: number): string {
@@ -107,19 +97,8 @@ export function MovieHero({ film, onInject }: Props) {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        {FAMILIES.map((family) => {
-          const n = film.signals[family] ?? 0
-          return (
-            <div key={family} className="flex flex-col gap-1 rounded-md border border-line bg-card-alt p-3">
-              <SignalChip family={family} compact />
-              <span className="font-mono text-lg text-ink" title={`${n.toLocaleString()} rows`}>
-                {formatRows(n)}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-ink-soft">rows total</span>
-            </div>
-          )
-        })}
+      <div className="border-t border-line pt-4">
+        <RegionHeatBar filmId={film.id} />
       </div>
     </header>
   )
