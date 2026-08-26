@@ -41,6 +41,10 @@ interface RunStore {
   metrics: Record<string, MetricsResponse>
   latencyMs: number | null
 
+  // ─── selection ────────────────────────────────────────
+  selectedFilmId: number | null
+  selectedRegion: string | null
+
   // ─── stream ──────────────────────────────────────
   streamState: 'idle' | 'connecting' | 'streaming' | 'closed' | 'error'
   apiReachable: boolean
@@ -62,6 +66,8 @@ interface RunStore {
   loadAudit: (limit?: number) => Promise<void>
   loadMetrics: (filmId: number, region: string, hours?: number) => Promise<void>
   seedFromCached: (scenarioId?: string) => Promise<boolean>
+  pickFilm: (id: number | null) => void
+  pickRegion: (code: string | null) => void
   reset: () => void
   _dispatch: (ev: SseEvent) => void
   _recomputePanels: () => void
@@ -81,6 +87,7 @@ const INITIAL: Omit<RunStore, keyof {
   inject: never; connectStream: never; approve: never; deny: never;
   loadDetections: never; loadAudit: never; loadMetrics: never;
   seedFromCached: never; reset: never;
+  pickFilm: never; pickRegion: never;
   _dispatch: never; _recomputePanels: never;
 }> = {
   runId: null,
@@ -96,6 +103,8 @@ const INITIAL: Omit<RunStore, keyof {
   auditRows: [],
   metrics: {},
   latencyMs: null,
+  selectedFilmId: null,
+  selectedRegion: null,
   streamState: 'idle',
   apiReachable: true,
   panelStates: INITIAL_PANELS,
@@ -246,6 +255,17 @@ export const useRunStore = create<RunStore>()(
     } catch {
       return false
     }
+  },
+
+  pickFilm: (id) => {
+    // Clear region when the film changes — the region context resets to
+    // "All markets" until the analyst re-picks. Prefetching /metrics/regions
+    // happens in the component (see MovieCommand.tsx) so this stays pure.
+    set({ selectedFilmId: id, selectedRegion: null })
+  },
+
+  pickRegion: (code) => {
+    set({ selectedRegion: code })
   },
 
   reset: () => {
@@ -405,6 +425,8 @@ export const useRunStore = create<RunStore>()(
         recentDetections: state.recentDetections,
         auditRows: state.auditRows,
         metrics: state.metrics,
+        selectedFilmId: state.selectedFilmId,
+        selectedRegion: state.selectedRegion,
       }),
       onRehydrateStorage: () => {
         return (state) => {
