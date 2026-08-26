@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AgentTrace } from '@/panels/AgentTrace'
+import { usePrefersReducedMotion } from '@/lib/useReducedMotion'
 import { useRunStore } from '@/store/runStore'
 import { tokens } from '@/theme/tokens'
 
@@ -9,6 +10,7 @@ export function TraceDrawer() {
   const anyActive = useRunStore((s) =>
     Object.values(s.activeRuns).some((r) => r.streamState === 'streaming' || r.streamState === 'connecting'),
   )
+  const reduced = usePrefersReducedMotion()
 
   useEffect(() => {
     if (!open) return
@@ -50,7 +52,7 @@ export function TraceDrawer() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{
-                duration: tokens.motion.duration.transition,
+                duration: reduced ? 0.15 : tokens.motion.duration.transition,
                 ease: tokens.motion.ease.cinematic,
               }}
               className="fixed right-0 top-0 z-50 flex h-full w-[480px] flex-col border-l border-line bg-card shadow-2xl"

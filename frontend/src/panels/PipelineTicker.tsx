@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { usePrefersReducedMotion } from '@/lib/useReducedMotion'
 import { useRunStore } from '@/store/runStore'
 import { tokens } from '@/theme/tokens'
 
@@ -22,6 +23,7 @@ export function PipelineTicker() {
   const focusedRunId = useRunStore((s) => s.focusedRunId)
   const focusRun = useRunStore((s) => s.focusRun)
   const events = useRunStore((s) => s.events)
+  const reduced = usePrefersReducedMotion()
 
   const runIds = Object.keys(activeRuns)
   const anyOpen = runIds.some((rid) =>
@@ -60,7 +62,10 @@ export function PipelineTicker() {
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
-          transition={{ duration: tokens.motion.duration.transition, ease: tokens.motion.ease.cinematic }}
+          transition={{
+            duration: reduced ? 0.15 : tokens.motion.duration.transition,
+            ease: tokens.motion.ease.cinematic,
+          }}
           className="border-t border-line bg-card px-4 py-2"
           data-testid="pipeline-ticker"
         >

@@ -5,6 +5,7 @@ import { fetchRegionMetrics } from '@/api/regionMetrics'
 import { REGIONS } from '@/lib/regions'
 import { tokens } from '@/theme/tokens'
 import { RegionTile } from '@/components/RegionTile'
+import { usePrefersReducedMotion } from '@/lib/useReducedMotion'
 import { useRunStore } from '@/store/runStore'
 import type { RegionMetricsResponse, RegionSummary } from '@/api/contracts'
 
@@ -43,6 +44,7 @@ export function RegionHeatBar({ filmId }: Props) {
   const selectedRegion = useRunStore((s) => s.selectedRegion)
   const activeRuns = useRunStore((s) => s.activeRuns)
   const pickRegion = useRunStore((s) => s.pickRegion)
+  const reduced = usePrefersReducedMotion()
 
   const regions = useMemo(() => mergeToCanonical(data), [data])
   const volumeScale = useMemo(() => {
@@ -83,9 +85,13 @@ export function RegionHeatBar({ filmId }: Props) {
         {regions.map((r, i) => (
           <motion.div
             key={r.code}
-            initial={{ y: 8, opacity: 0 }}
+            initial={{ y: reduced ? 0 : 8, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: i * 0.025, duration: 0.35, ease }}
+            transition={{
+              delay: reduced ? 0 : i * 0.025,
+              duration: reduced ? 0.2 : 0.35,
+              ease,
+            }}
           >
             <RegionTile
               region={r}
