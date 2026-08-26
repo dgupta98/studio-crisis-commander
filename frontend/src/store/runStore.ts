@@ -19,6 +19,13 @@ type PanelKey =
   | 'hero' | 'telemetry' | 'anomaly' | 'trace'
   | 'recommendation' | 'approval' | 'history'
 
+export interface ActiveRunState {
+  filmId: number | null
+  region: string | null
+  streamState: 'connecting' | 'streaming' | 'closed' | 'error'
+  startedAt: number
+}
+
 interface RunStore {
   // ─── data ────────────────────────────────────────
   runId: string | null
@@ -39,6 +46,11 @@ interface RunStore {
   // Keyed by `${filmId}:${region}` (raw, unencoded). URL uses encodeURIComponent
   // on region separately; do not use the encoded form for lookups.
   metrics: Record<string, MetricsResponse>
+  // ─── multi-run tracking ───────────────────────────────
+  // Every triggered inject registers here. `focusedRunId` picks which one
+  // drives the visible Investigation Report and single-run selectors.
+  activeRuns: Record<string, ActiveRunState>
+  focusedRunId: string | null
   latencyMs: number | null
 
   // ─── selection ────────────────────────────────────────
@@ -68,6 +80,9 @@ interface RunStore {
   seedFromCached: (scenarioId?: string) => Promise<boolean>
   pickFilm: (id: number | null) => void
   pickRegion: (code: string | null) => void
+  focusRun: (runId: string) => void
+  _registerRun: (runId: string, opts: { filmId: number | null; region: string | null }) => void
+  _updateRunStream: (runId: string, streamState: ActiveRunState['streamState']) => void
   reset: () => void
   _dispatch: (ev: SseEvent) => void
   _recomputePanels: () => void
@@ -88,6 +103,7 @@ const INITIAL: Omit<RunStore, keyof {
   loadDetections: never; loadAudit: never; loadMetrics: never;
   seedFromCached: never; reset: never;
   pickFilm: never; pickRegion: never;
+  focusRun: never; _registerRun: never; _updateRunStream: never;
   _dispatch: never; _recomputePanels: never;
 }> = {
   runId: null,
@@ -102,6 +118,8 @@ const INITIAL: Omit<RunStore, keyof {
   recentDetections: [],
   auditRows: [],
   metrics: {},
+  activeRuns: {},
+  focusedRunId: null,
   latencyMs: null,
   selectedFilmId: null,
   selectedRegion: null,
@@ -144,6 +162,10 @@ export const useRunStore = create<RunStore>()(
     )
     const runId = res.run_id
     set({ runId, streamState: 'connecting' })
+    useRunStore.getState()._registerRun(runId, {
+      filmId: opts?.filmId ?? null,
+      region: opts?.region ?? null,
+    })
     useRunStore.getState().connectStream(runId)
     useRunStore.getState()._recomputePanels()
     return runId
@@ -266,6 +288,38 @@ export const useRunStore = create<RunStore>()(
 
   pickRegion: (code) => {
     set({ selectedRegion: code })
+  },
+
+  focusRun: (runId) => {
+    const s = useRunStore.getState()
+    if (!s.activeRuns[runId]) return
+    set({ focusedRunId: runId })
+  },
+
+  _registerRun: (runId, opts) => {
+    const s = useRunStore.getState()
+    const entry: ActiveRunState = {
+      filmId: opts.filmId ?? null,
+      region: opts.region ?? null,
+      streamState: 'connecting',
+      startedAt: Date.now(),
+    }
+    const nextFocused = s.focusedRunId ?? runId
+    set({
+      activeRuns: { ...s.activeRuns, [runId]: entry },
+      focusedRunId: nextFocused,
+    })
+  },
+
+  _updateRunStream: (runId, streamState) => {
+    const s = useRunStore.getState()
+    if (!s.activeRuns[runId]) return
+    set({
+      activeRuns: {
+        ...s.activeRuns,
+        [runId]: { ...s.activeRuns[runId], streamState },
+      },
+    })
   },
 
   reset: () => {
@@ -427,6 +481,8 @@ export const useRunStore = create<RunStore>()(
         metrics: state.metrics,
         selectedFilmId: state.selectedFilmId,
         selectedRegion: state.selectedRegion,
+        activeRuns: state.activeRuns,
+        focusedRunId: state.focusedRunId,
       }),
       onRehydrateStorage: () => {
         return (state) => {
