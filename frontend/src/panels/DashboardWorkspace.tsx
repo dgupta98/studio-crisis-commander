@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { RecommendationPanel } from './RecommendationPanel'
 import { ApprovalGate } from './ApprovalGate'
 import { useRunStore } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { SqlBlock } from '@/components/SqlBlock'
 import { regionLabel } from '@/lib/regions'
-import type { Finding, Hypothesis } from '@/api/contracts'
+import { queries } from '@/api/queries'
+import type { Finding, Hypothesis, DetectionRow } from '@/api/contracts'
 
 type Tab = 'investigation' | 'recommendation' | 'approval'
 
@@ -70,9 +72,25 @@ function InvestigationView() {
   const findings = useRunStore((s) => s.findings)
   const events = useRunStore((s) => s.events)
   const runId = useRunStore((s) => s.runId)
+  const selectedFilmId = useRunStore((s) => s.selectedFilmId)
+  const selectedRegion = useRunStore((s) => s.selectedRegion)
+  const currentRunFilmId = useRunStore((s) => s.currentRunFilmId)
 
-  // Hypothesis rides on hypothesis.formed rather than a top-level store
-  // slot, so pull it out of the event stream.
+  // If the analyst has picked a different film×region than the current live
+  // run, fetch that context's most recent investigation and show it instead.
+  const scopedQuery = useQuery({
+    ...queries.filmLatestInvestigation(selectedFilmId ?? 0, selectedRegion),
+    enabled: selectedFilmId !== null
+        && (currentRunFilmId !== selectedFilmId
+            || (selectedRegion != null && detection?.region !== selectedRegion)),
+    select: (raw) => raw as {
+      detection: DetectionRow | null
+      decision: { decision_id: string; status: string; recommended_actions: unknown[] } | null
+    } | null,
+  })
+
+  const displayDetection = detection ?? scopedQuery.data?.detection ?? null
+
   const hypothesis = useMemo<Hypothesis | null>(() => {
     for (let i = events.length - 1; i >= 0; i--) {
       if (events[i].type === 'hypothesis.formed') {
@@ -83,53 +101,55 @@ function InvestigationView() {
     return null
   }, [events])
 
-  if (!runId) {
+  if (!runId && !displayDetection && selectedFilmId === null) {
     return (
       <div className="p-6 text-center text-sm text-ink-soft">
-        Investigation output will appear here once a crisis is injected.
-        <div className="mt-2 text-xs">Press <span className="font-mono">Inject Crisis</span> in the top bar to begin.</div>
+        Pick a movie on the heat bar to see its investigation history.
+        <div className="mt-2 text-xs">Or press <span className="font-mono">Inject Crisis</span> to run a new one.</div>
       </div>
     )
   }
 
-  const subject = detection
-    ? (detection.film_title && detection.film_title.trim())
-      ? detection.film_title
-      : `Film ${detection.film_id}`
+  const subject = displayDetection
+    ? (displayDetection.film_title && displayDetection.film_title.trim())
+      ? displayDetection.film_title
+      : `Film ${displayDetection.film_id}`
     : null
 
   return (
     <div className="flex flex-col gap-4">
-      {/* --- Detection banner --------------------------------- */}
       <Card className="p-4">
-        <div className="text-xs uppercase tracking-wider text-ink-soft mb-2">
-          Detection
-        </div>
-        {detection ? (
+        <div className="text-xs uppercase tracking-wider text-ink-soft mb-2">Detection</div>
+        {displayDetection ? (
           <>
             <div className="font-display text-lg font-semibold tracking-tight text-ink">
-              {subject}{detection.region ? ` · ${regionLabel(detection.region)}` : ''}
+              {subject}{displayDetection.region ? ` · ${regionLabel(displayDetection.region)}` : ''}
             </div>
             <div className="mt-1 text-sm text-ink-soft">
-              Metric <span className="font-mono text-ink">{detection.metric}</span> ·
-              severity <span className="font-mono tabular-nums text-ink">{detection.severity.toFixed(1)}</span> ·
-              magnitude <span className="font-mono tabular-nums text-ink">{detection.magnitude.toFixed(2)}</span>
+              Metric <span className="font-mono text-ink">{displayDetection.metric}</span> ·
+              severity <span className="font-mono tabular-nums text-ink">{displayDetection.severity?.toFixed?.(1) ?? displayDetection.severity}</span> ·
+              magnitude <span className="font-mono tabular-nums text-ink">{displayDetection.magnitude?.toFixed?.(2) ?? displayDetection.magnitude}</span>
             </div>
-            <div className="mt-1 text-xs text-ink-soft">
-              Baseline <span className="font-mono tabular-nums text-ink">{detection.baseline_value.toFixed(2)}</span> →
-              actual <span className="font-mono tabular-nums text-ink">{detection.actual_value.toFixed(2)}</span>
-            </div>
+            {typeof displayDetection.baseline_value === 'number' && (
+              <div className="mt-1 text-xs text-ink-soft">
+                Baseline <span className="font-mono tabular-nums text-ink">{displayDetection.baseline_value.toFixed(2)}</span> →
+                actual <span className="font-mono tabular-nums text-ink">{displayDetection.actual_value.toFixed(2)}</span>
+              </div>
+            )}
           </>
         ) : (
-          <div className="text-sm text-ink-soft italic">Detecting…</div>
+          <div className="text-sm text-ink-soft italic">
+            {scopedQuery.isFetching ? 'Loading investigation…' : 'No investigation for this scope.'}
+          </div>
         )}
       </Card>
 
-      {/* --- Findings ---------------------------------------- */}
       {findings.length === 0 ? (
-        <Card className="p-4 text-sm text-ink-soft italic">
-          Sub-agents are running… findings appear as each completes.
-        </Card>
+        !displayDetection ? null : (
+          <Card className="p-4 text-sm text-ink-soft italic">
+            No sub-agent findings for this scope.
+          </Card>
+        )
       ) : (
         findings.map((f, i) => (
           <Card key={i} className="p-4">
@@ -144,9 +164,7 @@ function InvestigationView() {
             <div className="text-xs italic text-ink-soft mb-2">
               {SIGNAL_PURPOSE[f.signal]}
             </div>
-            {f.narrative && (
-              <p className="text-sm text-ink mb-2">{f.narrative}</p>
-            )}
+            {f.narrative && <p className="text-sm text-ink mb-2">{f.narrative}</p>}
             {f.sql && (
               <details className="group">
                 <summary className="cursor-pointer text-xs text-ink-soft hover:text-ink select-none">
@@ -162,7 +180,6 @@ function InvestigationView() {
         ))
       )}
 
-      {/* --- Hypothesis -------------------------------------- */}
       {hypothesis && (
         <Card className="p-4 border-accent/40">
           <div className="text-xs uppercase tracking-wider text-accent font-mono mb-2">

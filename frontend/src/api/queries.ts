@@ -33,9 +33,13 @@ export const queries = {
     queryFn: () => json<unknown>(`/catalog/films/${filmId}`),
     staleTime: 30_000,
   }),
-  filmLatestInvestigation: (filmId: number) => ({
-    queryKey: ['catalog', 'film', filmId, 'latest'] as const,
-    queryFn: () => json<unknown>(`/catalog/films/${filmId}/latest-investigation`),
+  filmLatestInvestigation: (filmId: number, region?: string | null) => ({
+    queryKey: ['catalog', 'film', filmId, 'latest', region ?? null] as const,
+    queryFn: () => json<unknown>(
+      region
+        ? `/catalog/films/${filmId}/latest-investigation?region=${encodeURIComponent(region)}`
+        : `/catalog/films/${filmId}/latest-investigation`,
+    ),
     staleTime: 30_000,
   }),
   filmRuns: (filmId: number) => ({
