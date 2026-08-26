@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { RegionDelta } from '@/api/contracts'
 
 export interface CatalogFilm {
   id: number
@@ -7,6 +8,8 @@ export interface CatalogFilm {
   signal_delta?: number
   region_hint?: string
   featured?: boolean
+  top_regions?: RegionDelta[]
+  open_investigation?: boolean
 }
 
 export interface CatalogShelf {

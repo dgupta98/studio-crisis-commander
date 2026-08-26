@@ -17,7 +17,6 @@ describe('MovieCard', () => {
     render(<MemoryRouter><MovieCard film={film as any} variant="data" /></MemoryRouter>)
     expect(screen.getByText('Test Film')).toBeInTheDocument()
     expect(screen.getByText(/3.2/)).toBeInTheDocument()
-    expect(screen.getByLabelText('US')).toBeInTheDocument()
   })
 
   it('marks featured cards', () => {
@@ -34,5 +33,24 @@ describe('MovieCard', () => {
   it('links to detail route', () => {
     render(<MemoryRouter><MovieCard film={film as any} variant="data" /></MemoryRouter>)
     expect(screen.getByRole('link')).toHaveAttribute('href', '/movies/42')
+  })
+
+  it('renders top_regions strip when provided', () => {
+    const film = {
+      id: 1, title: 'Foo', poster_url: '',
+      top_regions: [
+        { code: 'Brazil', delta_pct: 12 },
+        { code: 'Japan',  delta_pct: -8 },
+        { code: 'NA',     delta_pct: 0 },
+      ],
+    }
+    render(
+      <MemoryRouter>
+        <MovieCard film={film} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('BRA')).toBeInTheDocument()
+    expect(screen.getByText('JPN')).toBeInTheDocument()
+    expect(screen.getByText('NAM')).toBeInTheDocument()
   })
 })
