@@ -133,3 +133,21 @@ async def test_shelves_include_top_regions_per_film():
                     assert "code" in entry
                     assert "delta_pct" in entry
                     assert isinstance(entry["delta_pct"], (int, float))
+
+
+@pytest.mark.asyncio
+async def test_latest_investigation_accepts_region_filter():
+    from api.main import app
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://t") as ac:
+        async with ac.stream("GET", "/healthz"):
+            pass
+        # Without region: should not error even if no data.
+        r = await ac.get("/catalog/films/1/latest-investigation")
+        assert r.status_code == 200
+        # With region: should not error either; result may be null.
+        r2 = await ac.get("/catalog/films/1/latest-investigation?region=Brazil")
+        assert r2.status_code == 200
+        body = r2.json()
+        if body is not None:
+            assert body["detection"]["region"] == "Brazil"

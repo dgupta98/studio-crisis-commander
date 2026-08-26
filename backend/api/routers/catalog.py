@@ -7,7 +7,9 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from agents.decision.audit import AuditRow, list_recent_audit_for_film
+from agents.decision.audit import (
+    AuditRow, list_recent_audit_for_film, list_recent_audit_for_film_region,
+)
 from api.catalog import shelves as catalog_shelves
 
 log = logging.getLogger(__name__)
@@ -34,11 +36,19 @@ async def search(q: str = Query(default="", max_length=64)):
 
 
 @router.get("/films/{film_id}/latest-investigation")
-async def film_latest_investigation(film_id: int):
-    """Most recent completed audit row for this film, in the cached-triple
-    shape LatestInvestigation expects. Returns null when the film has no
-    prior runs."""
-    rows = await asyncio.to_thread(list_recent_audit_for_film, film_id, 1)
+async def film_latest_investigation(
+    film_id: int,
+    region: str | None = Query(default=None, max_length=64),
+):
+    """Most recent completed audit row for this film (or film×region when
+    region is given), in the cached-triple shape LatestInvestigation expects.
+    Returns null when the film has no prior runs matching the filter."""
+    if region:
+        rows = await asyncio.to_thread(
+            list_recent_audit_for_film_region, film_id, region, 1,
+        )
+    else:
+        rows = await asyncio.to_thread(list_recent_audit_for_film, film_id, 1)
     if not rows:
         return None
     a = rows[0]
