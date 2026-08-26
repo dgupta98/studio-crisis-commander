@@ -33,6 +33,8 @@ class InjectRequest(BaseModel):
     def _cap_regions(cls, v: list[str] | None) -> list[str] | None:
         if v is None:
             return v
+        if len(v) == 0:
+            raise ValueError("regions must be non-empty when provided")
         if len(v) > _MAX_REGIONS:
             raise ValueError(f"at most {_MAX_REGIONS} regions per inject")
         return v
@@ -56,6 +58,9 @@ async def inject_crisis(req: InjectRequest, request: Request):
     # Multi-region path: fan out to N runs, one per region, with the same
     # crisis config. Returns run_ids[] so the frontend can open N SSE streams.
     if req.regions:
+        # Best-effort fan-out: if one _kickoff raises, siblings are cancelled and
+        # any already-registered run_ids are leaked in-runtime. Acceptable for the
+        # manually-triggered inject endpoint.
         run_ids = await asyncio.gather(*[
             _kickoff(runtime,
                      {"ctype": req.ctype, "film_id": req.film_id,
@@ -66,7 +71,7 @@ async def inject_crisis(req: InjectRequest, request: Request):
         return JSONResponse(
             status_code=202,
             content={
-                "run_ids": list(run_ids),
+                "run_ids": run_ids,
                 "stream_urls": [f"/stream/investigation/{rid}" for rid in run_ids],
             },
         )

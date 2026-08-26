@@ -8,11 +8,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from unittest.mock import patch
 
+from api.tests.test_fallback import _mk_triple
+
 
 @pytest.mark.asyncio
 async def test_inject_returns_202_and_run_id():
-    from api.tests.test_fallback import _mk_triple
-
     async def fake_run(rt, run_id, request, *, force_fallback=False):
         from api.events import SseEvent
         await rt.emit(run_id, SseEvent(seq=0, type="pipeline.completed",
@@ -36,8 +36,6 @@ async def test_inject_returns_202_and_run_id():
 
 @pytest.mark.asyncio
 async def test_stream_emits_terminal_and_closes():
-    from api.tests.test_fallback import _mk_triple
-
     async def fake_run(rt, run_id, request, *, force_fallback=False):
         from api.events import SseEvent
         await rt.emit(run_id, SseEvent(seq=0, type="pipeline.started",
@@ -74,7 +72,6 @@ async def test_stream_emits_terminal_and_closes():
 
 @pytest.mark.asyncio
 async def test_stream_404_for_unknown_run():
-    from api.tests.test_fallback import _mk_triple
     with patch("api.main.load_cached_triple", return_value=_mk_triple()):
         from api.main import app
         async with AsyncClient(transport=ASGITransport(app=app),
@@ -87,8 +84,6 @@ async def test_stream_404_for_unknown_run():
 
 @pytest.mark.asyncio
 async def test_inject_multi_region_returns_run_ids():
-    from api.tests.test_fallback import _mk_triple
-
     async def fake_run(rt, run_id, request, *, force_fallback=False):
         from api.events import SseEvent
         await rt.emit(run_id, SseEvent(seq=0, type="pipeline.completed",
@@ -114,12 +109,12 @@ async def test_inject_multi_region_returns_run_ids():
             assert "run_ids" in body
             assert len(body["run_ids"]) == 3
             assert len({rid for rid in body["run_ids"]}) == 3  # all distinct
+            assert len(body["stream_urls"]) == 3
+            assert all("/stream/" in u for u in body["stream_urls"])
 
 
 @pytest.mark.asyncio
 async def test_inject_single_region_still_returns_run_id():
-    from api.tests.test_fallback import _mk_triple
-
     async def fake_run(rt, run_id, request, *, force_fallback=False):
         from api.events import SseEvent
         await rt.emit(run_id, SseEvent(seq=0, type="pipeline.completed",
@@ -150,7 +145,6 @@ async def test_inject_single_region_still_returns_run_id():
 
 @pytest.mark.asyncio
 async def test_inject_multi_region_rejects_too_many():
-    from api.tests.test_fallback import _mk_triple
     with patch("api.main.load_cached_triple", return_value=_mk_triple()):
         from api.main import app
         async with AsyncClient(transport=ASGITransport(app=app),
