@@ -63,3 +63,21 @@ describe('DashboardRoute', () => {
     expect(screen.getByTestId('telemetry-strip')).toBeInTheDocument()
   })
 })
+
+describe('DashboardRoute deep-link hydration', () => {
+  beforeEach(() => useRunStore.getState().reset())
+
+  it('hydrates selectedFilmId + selectedRegion from URL', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/dashboard?film=42&region=Brazil']}>
+          <DashboardRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    const s = useRunStore.getState()
+    expect(s.selectedFilmId).toBe(42)
+    expect(s.selectedRegion).toBe('Brazil')
+  })
+})

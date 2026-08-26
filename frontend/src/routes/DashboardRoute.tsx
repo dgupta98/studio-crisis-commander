@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { prefetchDashboard } from '../api/queries'
 import { useRunStore } from '@/store/runStore'
 import { IntakeStrip } from '../panels/IntakeStrip'
@@ -11,6 +12,21 @@ import { RecentRuns } from '../panels/RecentRuns'
 
 export default function DashboardRoute() {
   const qc = useQueryClient()
+  const [params] = useSearchParams()
+  const pickFilm = useRunStore((s) => s.pickFilm)
+  const pickRegion = useRunStore((s) => s.pickRegion)
+
+  useEffect(() => {
+    const filmParam = params.get('film')
+    const regionParam = params.get('region')
+    if (filmParam) {
+      const fid = Number(filmParam)
+      if (Number.isFinite(fid) && fid > 0) pickFilm(fid)
+    }
+    if (regionParam) pickRegion(regionParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.get('film'), params.get('region')])
+
   useEffect(() => {
     prefetchDashboard(qc)
     // Populate runStore.recentDetections on mount — the anomaly feed and
