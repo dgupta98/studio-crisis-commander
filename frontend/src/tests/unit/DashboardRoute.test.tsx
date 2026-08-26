@@ -22,8 +22,10 @@ describe('DashboardRoute', () => {
   it('mounts MovieCommand empty prompt + TraceDrawer tab on cold load', () => {
     renderRoute()
     expect(screen.getByTestId('route-dashboard')).toBeInTheDocument()
-    // Empty MovieCommand shows the pick-a-movie prompt when no film selected.
-    expect(screen.getByText(/Pick a movie/i)).toBeInTheDocument()
+    // Empty MovieCommand shows a pick-a-movie prompt when no film selected;
+    // pin the assertion to that specific copy so we don't collide with the
+    // InvestigationView empty state ("Pick a movie on the heat bar…").
+    expect(screen.getByText(/Pick a movie to see its regional performance/i)).toBeInTheDocument()
     // Trace drawer's vertical tab is always mounted.
     expect(screen.getByRole('button', { name: /Show agent trace/i })).toBeInTheDocument()
   })
