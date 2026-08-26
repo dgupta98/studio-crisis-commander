@@ -83,3 +83,84 @@ async def test_stream_404_for_unknown_run():
                 pass
             r = await ac.get("/stream/investigation/no-such-run")
             assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_inject_multi_region_returns_run_ids():
+    from api.tests.test_fallback import _mk_triple
+
+    async def fake_run(rt, run_id, request, *, force_fallback=False):
+        from api.events import SseEvent
+        await rt.emit(run_id, SseEvent(seq=0, type="pipeline.completed",
+                                       data={"run_id": run_id, "latency_ms": 0,
+                                             "mode": "live"}))
+        await rt.mark_terminal(run_id, "completed")
+
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
+         patch("api.routers.inject.run_pipeline", new=fake_run):
+        from api.main import app
+        async with AsyncClient(transport=ASGITransport(app=app),
+                               base_url="http://t") as ac:
+            async with ac.stream("GET", "/healthz"):
+                pass
+            r = await ac.post("/inject-crisis", json={
+                "ctype": "regional_sentiment_collapse",
+                "film_id": 1,
+                "regions": ["Brazil", "Japan", "Korea"],
+                "magnitude": 0.4,
+            })
+            assert r.status_code == 202
+            body = r.json()
+            assert "run_ids" in body
+            assert len(body["run_ids"]) == 3
+            assert len({rid for rid in body["run_ids"]}) == 3  # all distinct
+
+
+@pytest.mark.asyncio
+async def test_inject_single_region_still_returns_run_id():
+    from api.tests.test_fallback import _mk_triple
+
+    async def fake_run(rt, run_id, request, *, force_fallback=False):
+        from api.events import SseEvent
+        await rt.emit(run_id, SseEvent(seq=0, type="pipeline.completed",
+                                       data={"run_id": run_id, "latency_ms": 0,
+                                             "mode": "live"}))
+        await rt.mark_terminal(run_id, "completed")
+
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
+         patch("api.routers.inject.run_pipeline", new=fake_run):
+        from api.main import app
+        async with AsyncClient(transport=ASGITransport(app=app),
+                               base_url="http://t") as ac:
+            async with ac.stream("GET", "/healthz"):
+                pass
+            r = await ac.post("/inject-crisis", json={
+                "ctype": "regional_sentiment_collapse",
+                "film_id": 1,
+                "region": "Brazil",
+                "magnitude": 0.4,
+            })
+            assert r.status_code == 202
+            body = r.json()
+            assert "run_id" in body
+            assert body["stream_url"].endswith(body["run_id"])
+            # Multi-region key should be absent for single-region path.
+            assert "run_ids" not in body
+
+
+@pytest.mark.asyncio
+async def test_inject_multi_region_rejects_too_many():
+    from api.tests.test_fallback import _mk_triple
+    with patch("api.main.load_cached_triple", return_value=_mk_triple()):
+        from api.main import app
+        async with AsyncClient(transport=ASGITransport(app=app),
+                               base_url="http://t") as ac:
+            async with ac.stream("GET", "/healthz"):
+                pass
+            r = await ac.post("/inject-crisis", json={
+                "ctype": "regional_sentiment_collapse",
+                "film_id": 1,
+                "regions": ["R"] * 16,
+                "magnitude": 0.4,
+            })
+            assert r.status_code == 422
