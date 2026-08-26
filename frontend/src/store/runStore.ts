@@ -68,9 +68,10 @@ interface RunStore {
     crisisType?: CrisisType
     filmId?: number
     region?: string
+    regions?: string[]
     magnitude?: number
     fallback?: 'force'
-  }) => Promise<string>
+  }) => Promise<string[]>
   connectStream: (runId: string) => void
   approve: (decisionId: string, note?: string) => Promise<void>
   deny: (decisionId: string, reason: string) => Promise<void>
@@ -138,14 +139,14 @@ export const useRunStore = create<RunStore>()(
     const body: Record<string, unknown> = {}
     if (opts?.crisisType) body.ctype = opts.crisisType
     if (opts?.filmId !== undefined) body.film_id = opts.filmId
-    if (opts?.region) body.region = opts.region
+    if (opts?.regions && opts.regions.length > 0) body.regions = opts.regions
+    else if (opts?.region) body.region = opts.region
     if (opts?.magnitude !== undefined) body.magnitude = opts.magnitude
     if (opts?.fallback) body.fallback = opts.fallback
-    // Clear any prior run's residue before starting a new one so the trace/
-    // decision/report panels don't briefly show the previous investigation.
-    // Set currentRunFilmId immediately from opts so Movie Detail's scoped
-    // AgentTrace matches BEFORE detection.completed arrives (or if the
-    // pipeline hangs mid-detection).
+
+    // Clear prior single-run residue so the visible panels reset. The
+    // multi-run activeRuns map is additive — completed runs stay accessible
+    // via the pipeline ticker until reset() or refresh.
     set({
       runId: null,
       currentRunFilmId: opts?.filmId ?? null,
@@ -157,6 +158,29 @@ export const useRunStore = create<RunStore>()(
       approvalStatus: null,
       mode: null,
     })
+
+    // Multi-region path: server returns run_ids[]; we register + connect all.
+    if (opts?.regions && opts.regions.length > 0) {
+      const res = await apiPost<{ run_ids: string[]; stream_urls?: string[] }>(
+        '/inject-crisis', body,
+      )
+      const runIds = res.run_ids ?? []
+      runIds.forEach((rid, i) => {
+        useRunStore.getState()._registerRun(rid, {
+          filmId: opts.filmId ?? null,
+          region: opts.regions?.[i] ?? null,
+        })
+        useRunStore.getState().connectStream(rid)
+      })
+      if (runIds[0]) {
+        // Focus the first run so its detection/report drive the workspace.
+        set({ runId: runIds[0], streamState: 'connecting' })
+      }
+      useRunStore.getState()._recomputePanels()
+      return runIds
+    }
+
+    // Single-region path (backward compat with existing callers).
     const res = await apiPost<{ run_id: string; stream_url?: string }>(
       '/inject-crisis', body,
     )
@@ -168,7 +192,7 @@ export const useRunStore = create<RunStore>()(
     })
     useRunStore.getState().connectStream(runId)
     useRunStore.getState()._recomputePanels()
-    return runId
+    return [runId]
   },
 
   connectStream: (runId: string) => {
