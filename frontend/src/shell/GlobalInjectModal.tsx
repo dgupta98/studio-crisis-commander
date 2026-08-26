@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { queries } from '@/api/queries'
 import { useRunStore } from '@/store/runStore'
 import type { CrisisType } from '@/api/contracts'
+import { MultiRegionPicker } from '@/components/MultiRegionPicker'
 
 // Minimal themed select. The native <select>'s popup is rendered by the OS
 // (light Aqua panel on macOS) and cannot be styled to match the dark modal
@@ -102,16 +103,6 @@ const CRISIS_TYPES: { value: CrisisType; label: string }[] = [
   { value: 'negative_social_virality',       label: 'Negative social virality' },
   { value: 'review_score_divergence',        label: 'Review score divergence' },
 ]
-// MUST match backend/data/generate_numeric.py::REGIONS. Anything else has
-// zero rows in the seeded ClickHouse tables, so detection barely fires and
-// every impact SQL / telemetry query returns 0. The crisis injector writes
-// its burst under whatever region string it's given, but the rolling
-// baselines (60d of history) only exist under these 15 labels.
-const REGIONS = [
-  'NA', 'LATAM', 'UK', 'EU-West', 'EU-East', 'Nordics', 'India', 'SEA',
-  'Korea', 'Japan', 'China', 'MENA', 'Africa', 'ANZ', 'Brazil',
-]
-const REGION_OPTIONS = REGIONS.map((r) => ({ value: r, label: r }))
 const MAX_LIST = 40
 
 type Shelf = { id: string; title: string; films: { id: number; title: string }[] }
@@ -134,11 +125,9 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
   const navigate = useNavigate()
   const injectAction = useRunStore((s) => s.inject)
   const [ctype, setCtype] = useState<CrisisType>('regional_sentiment_collapse')
-  // Must be one of REGIONS below. Any string not in that list is a phantom
-  // region — the seed has no rows under it, so every impact SQL and
-  // box_office ticket-price lookup collapses to $0. Old default 'US' was
-  // outside the enum (canonical is 'NA') and silently zero'd impacts.
-  const [region, setRegion] = useState('NA')
+  // Multi-region: default to a single-region selection (NA) so single-region
+  // demos still work with one click. User can add more via the picker.
+  const [regions, setRegions] = useState<string[]>(['NA'])
   const [magnitude, setMagnitude] = useState('0.4')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -214,22 +203,32 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
       setErr('Pick a movie from the list.')
       return
     }
+    if (regions.length === 0) {
+      setErr('Pick at least one region.')
+      return
+    }
     setBusy(true)
     try {
-      // Go through the store: sets runId, opens SSE stream, wires panels.
-      // Raw fetch here would leave AgentTrace / DashboardWorkspace idle.
-      await injectAction({
-        crisisType: ctype,
-        filmId,
-        region,
-        magnitude: Number(magnitude),
-      })
+      if (regions.length > 1) {
+        await injectAction({
+          crisisType: ctype,
+          filmId,
+          regions,
+          magnitude: Number(magnitude),
+        })
+      } else {
+        await injectAction({
+          crisisType: ctype,
+          filmId,
+          region: regions[0],
+          magnitude: Number(magnitude),
+        })
+      }
       onClose()
-      // Land on the movie the user just injected against — that page has the
-      // AgentTrace + past-runs timeline, so trace/decision/report populate
-      // in-place instead of the user losing context on a global dashboard.
-      // Client-side nav preserves the store and the live SSE connection.
-      navigate(`/movies/${filmId}`)
+      // Land on the dashboard scoped to the injected movie so the analyst
+      // sees the heat bar + investigation with the fresh run pulsing on
+      // any injected regions.
+      navigate(`/dashboard?film=${filmId}${regions.length === 1 ? `&region=${encodeURIComponent(regions[0])}` : ''}`)
     } catch (e: any) {
       setErr(String(e))
       setBusy(false)
@@ -324,15 +323,12 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="block">
-            <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Region</span>
-            <ThemedSelect
-              ariaLabel="Region"
-              value={region}
-              onChange={setRegion}
-              options={REGION_OPTIONS}
-            />
+        <div className="mt-3 flex flex-col gap-3">
+          <div>
+            <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">
+              Regions
+            </span>
+            <MultiRegionPicker value={regions} onChange={setRegions} />
           </div>
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wider text-ink-soft">Magnitude</span>
@@ -344,7 +340,7 @@ export function GlobalInjectModal({ open, onClose, defaultFilm = null }: Props) 
               max="1"
               value={magnitude}
               onChange={(e) => setMagnitude(e.target.value)}
-              className="w-full rounded border border-line bg-paper px-2 py-1.5 text-sm font-mono"
+              className="w-40 rounded border border-line bg-paper px-2 py-1.5 text-sm font-mono"
             />
           </label>
         </div>
