@@ -29,6 +29,12 @@ def _fake_ch_factory(rows_by_pattern: dict[str, list]):
 def test_catalog_shelves_shape(monkeypatch):
     from api.tests.test_fallback import _mk_triple
     fake = _fake_ch_factory({
+        # More specific patterns must come FIRST — the fake iterates in insertion
+        # order and breaks on the first substring hit. `_tmdb_ids_for` batches
+        # `SELECT film_id, tmdb_id FROM films WHERE film_id IN (...)`; without
+        # this entry the broader "FROM films" match returns the shelves row
+        # shape and `int('Alpha')` blows up parsing the "tmdb_id" column.
+        "tmdb_id FROM films WHERE film_id IN": [(1, 100)],
         # `IN (...)` featured lookup + `ORDER BY release_date` full-catalog
         # query both start `... FROM films`. Two-col rows are fine — _to_card
         # handles missing tail elements.
@@ -99,7 +105,11 @@ def test_catalog_film_detail_missing(monkeypatch):
 def test_catalog_search():
     from api.tests.test_fallback import _mk_triple
     fake = _fake_ch_factory({
-        "positionCaseInsensitive": [(1, "Alpha"), (2, "Alphabet")],
+        # search_films now returns `SELECT film_id, title, tmdb_id` — the third
+        # column is fed to _POSTER_BY_TMDB. Return 0 (unknown poster) so the
+        # search result renders with an empty poster_url instead of blowing up
+        # on an index error.
+        "positionCaseInsensitive": [(1, "Alpha", 0), (2, "Alphabet", 0)],
     })
     with patch("api.main.load_cached_triple", return_value=_mk_triple()), \
          patch("api.catalog.shelves.client", new=fake):
