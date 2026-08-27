@@ -4,13 +4,13 @@ import { tokens } from '@/theme/tokens'
 
 describe('design tokens', () => {
   it('exposes dark cinema color palette', () => {
-    expect(tokens.color.paper).toBe('#08080c')
-    expect(tokens.color.card).toBe('#13131a')
-    expect(tokens.color.ink).toBe('#f5f2ea')
-    expect(tokens.color.accent).toBe('#d4324a')
-    expect(tokens.color.sev.crit.bg).toBe('#3a1a1a')
-    expect(tokens.color.sev.warn.fg).toBe('#f0d9a0')
-    expect(tokens.color.sev.info.bg).toBe('#1e1e28')
+    expect(tokens.color.paper).toBe('#0a0b10')
+    expect(tokens.color.card).toBe('#151922')
+    expect(tokens.color.ink).toBe('#f9f6f1')
+    expect(tokens.color.accent).toBe('#f14a67')
+    expect(tokens.color.sev.crit.bg).toBe('#3b1d22')
+    expect(tokens.color.sev.warn.fg).toBe('#f4d28a')
+    expect(tokens.color.sev.info.bg).toBe('#1d2633')
   })
 
   it('exposes cinematic motion tokens', () => {

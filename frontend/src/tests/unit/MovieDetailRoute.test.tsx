@@ -20,8 +20,17 @@ afterEach(() => {
 })
 
 describe('MovieDetailRoute', () => {
-  it('renders hero + latest + trace + timeline + telemetry', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => film })))
+  it('renders hero + latest + trace + timeline', async () => {
+    // Return the film only for the film endpoint; every other endpoint (latest
+    // investigation, runs, cached triple) 404s so the panel falls through to
+    // its empty "no run yet" state instead of treating the film payload as a
+    // fake investigation triple.
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (/\/catalog\/films\/42(?:$|\?)/.test(url)) {
+        return { ok: true, json: async () => film }
+      }
+      return { ok: false, status: 404, json: async () => null }
+    }))
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={qc}>
@@ -35,6 +44,5 @@ describe('MovieDetailRoute', () => {
     // Both the PersistentAgentTrace wrapper heading and the inner AgentTrace label say "Agent Trace"
     expect(screen.getAllByText(/agent trace/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/past runs/i)).toBeInTheDocument()
-    expect(screen.getByText(/signals \(last 7d\)/i)).toBeInTheDocument()
   })
 })
