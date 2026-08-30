@@ -83,7 +83,11 @@ steps:
       - --port=8080
       - --memory=2Gi
       - --cpu=2
-      - --min-instances=0
+      # Keep one instance warm so the landing page LIVE TELEMETRY tile and
+      # poster marquee never flash zeros while a cold start finishes. Also
+      # matches the Cloud Run console's service-level minimum, which would
+      # otherwise be overwritten to 0 on every redeploy.
+      - --min-instances=1
       - --max-instances=5
       - --concurrency=4
       - --timeout=300
