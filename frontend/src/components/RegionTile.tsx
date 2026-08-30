@@ -20,9 +20,11 @@ interface Props {
 }
 
 // Bar height range: min so an "empty" tile still shows something readable,
-// max is the tile's inner body height minus padding.
-const BAR_MIN_PX = 4
-const BAR_MAX_PX = 44
+// max is the tile's inner body height minus padding. Shrunk from 4/44 so
+// the whole heat bar fits under the movie hero without pushing the page
+// past one viewport.
+const BAR_MIN_PX = 3
+const BAR_MAX_PX = 30
 
 function barHeight(vol: number, scale: number): number {
   if (scale <= 0 || vol <= 0) return BAR_MIN_PX
@@ -68,7 +70,7 @@ export function RegionTile({
       onClick={() => onClick(region.code)}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
-      className={`relative flex h-[72px] w-[48px] flex-col items-center justify-between rounded border px-1 pt-1 pb-1.5 transition-colors ${
+      className={`relative flex h-[56px] w-[44px] flex-col items-center justify-between rounded border px-1 pt-0.5 pb-1 transition-colors ${
         selected
           ? 'border-accent bg-card-alt'
           : 'border-line bg-card hover:bg-card-alt'
@@ -77,7 +79,7 @@ export function RegionTile({
       <span className="font-mono text-[9px] uppercase tracking-wider text-ink-soft">
         {abbrev}
       </span>
-      <div className="flex h-[48px] items-end gap-[2px]">
+      <div className="flex h-[34px] items-end gap-[2px]">
         {FAMILIES.map((family) => {
           const s = region.signals[family]
           const hex = tokens.signal[family].hex

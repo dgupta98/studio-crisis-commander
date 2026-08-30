@@ -31,17 +31,17 @@ export function RegionalLeaderboard() {
     return [...list]
       .filter((r) => r.signals.box_office.volume > 0)
       .sort((a, b) => b.signals.box_office.volume - a.signals.box_office.volume)
-      .slice(0, 6)
+      .slice(0, 5)
   }, [data])
 
   const maxVolume = rows.reduce((m, r) => Math.max(m, r.signals.box_office.volume), 1)
 
   return (
     <section
-      className="flex flex-col rounded-md border border-line bg-card p-4"
+      className="flex flex-col rounded-md border border-line bg-card p-3"
       data-testid="regional-leaderboard"
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between">
         <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
           Top regions · revenue 7d
         </span>
@@ -60,7 +60,7 @@ export function RegionalLeaderboard() {
           No regional revenue yet.
         </div>
       ) : (
-        <ul className="flex flex-1 flex-col gap-2">
+        <ul className="flex flex-1 flex-col gap-1.5">
           {rows.map((r, i) => {
             const isSelected = selectedRegion === r.code
             const volume = r.signals.box_office.volume
@@ -74,17 +74,17 @@ export function RegionalLeaderboard() {
                   type="button"
                   onClick={() => pickRegion(isSelected ? null : r.code)}
                   aria-pressed={isSelected}
-                  className={`flex w-full items-center gap-3 rounded border px-2 py-1.5 text-left transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded border px-2 py-1 text-left transition-colors ${
                     isSelected
                       ? 'border-accent bg-card-alt'
                       : 'border-line bg-card hover:bg-card-alt'
                   }`}
                 >
-                  <span className="w-4 font-mono text-[10px] text-ink-soft">{i + 1}</span>
-                  <span className="w-24 truncate text-xs text-ink">{regionLabel(r.code)}</span>
+                  <span className="w-3 font-mono text-[10px] text-ink-soft">{i + 1}</span>
+                  <span className="w-20 truncate text-[11px] text-ink">{regionLabel(r.code)}</span>
                   <div className="relative flex-1">
                     <div
-                      className="h-2 rounded-sm"
+                      className="h-1.5 rounded-sm"
                       style={{
                         width: `${barPct}%`,
                         background: tokens.signal.box_office.hex,
@@ -92,11 +92,11 @@ export function RegionalLeaderboard() {
                       }}
                     />
                   </div>
-                  <span className="w-14 text-right font-mono text-[10px] text-ink">
+                  <span className="w-12 text-right font-mono text-[10px] text-ink">
                     ${fmtCompact.format(volume)}
                   </span>
                   <span
-                    className="w-14 text-right font-mono text-[10px]"
+                    className="w-12 text-right font-mono text-[10px]"
                     style={{ color: a.color }}
                   >
                     {a.char}{sign}{delta}%

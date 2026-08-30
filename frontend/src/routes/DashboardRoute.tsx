@@ -54,8 +54,11 @@ export default function DashboardRoute() {
   return (
     <div data-testid="route-dashboard" className="flex h-full flex-col overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-auto p-4">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4">
+        {/* Compact single-page layout: hero + heat → timeseries strip →
+            revenue + leaderboard. Everything targets ~90vh minus chrome so
+            the primary demo view doesn't require a scroll. */}
+        <div className="flex-1 overflow-auto p-3">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3">
             <div className="flex items-center justify-between px-1">
               <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
                 Dashboard
@@ -70,11 +73,11 @@ export default function DashboardRoute() {
               )}
             </div>
             <MovieCommand />
-            <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
+            <TimeseriesGrid />
+            <div className="grid gap-3 md:grid-cols-[2fr_1fr]">
               <RevenueChart />
               <RegionalLeaderboard />
             </div>
-            <TimeseriesGrid />
           </div>
         </div>
         {/* Trace drawer edge — vertical tab always visible; overlay opens on click */}

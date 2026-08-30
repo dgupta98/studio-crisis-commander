@@ -72,25 +72,25 @@ export function TimeseriesGrid() {
   }
 
   return (
-    <section className="rounded-md border border-line bg-card p-4" data-testid="timeseries-grid">
-      <div className="mb-2 flex items-center justify-between">
+    <section className="rounded-md border border-line bg-card p-3" data-testid="timeseries-grid">
+      <div className="mb-1.5 flex items-center justify-between">
         <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
           Timeseries · {regionLabel(selectedRegion)}
         </span>
         {res && (
           <span className="font-mono text-[10px] text-ink-soft">
-            {res.query_latency_ms}ms · last 168h
+            {res.query_latency_ms}ms · 168h
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         {FAMILIES.map(({ key, label, hex, fmt }) => {
           const points = series ? series[key] : []
           const stat = latestDelta(points)
           const isSentimentFallback = key === 'sentiment_hourly' && sentimentScope === 'film'
-          const displayLabel = isSentimentFallback ? `${label} · all regions` : label
+          const displayLabel = isSentimentFallback ? `${label} · all` : label
           return (
-            <div key={key} className="flex flex-col gap-1">
+            <div key={key} className="flex flex-col gap-0.5">
               <div className="flex items-baseline justify-between">
                 <span
                   className="text-[10px] uppercase tracking-wider text-ink-soft"
@@ -105,11 +105,11 @@ export function TimeseriesGrid() {
                 )}
               </div>
               {stat && (
-                <span className="font-mono text-xs text-ink tabular-nums">
+                <span className="font-mono text-[11px] text-ink tabular-nums">
                   {fmt(stat.latest)}
                 </span>
               )}
-              <Sparkline label="" color={hex} data={points} heightPx={40} />
+              <Sparkline label="" color={hex} data={points} heightPx={28} />
             </div>
           )
         })}

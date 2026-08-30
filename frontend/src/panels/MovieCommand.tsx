@@ -34,9 +34,9 @@ function formatRuntime(min: number | undefined): string {
 
 function MetaChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col rounded border border-line bg-card-alt px-2.5 py-1.5">
+    <div className="flex items-baseline gap-1.5 rounded border border-line bg-card-alt px-2 py-0.5">
       <span className="text-[9px] font-mono uppercase tracking-wider text-ink-soft">{label}</span>
-      <span className="text-[12px] font-medium text-ink">{value}</span>
+      <span className="text-[11px] font-medium text-ink">{value}</span>
     </div>
   )
 }
@@ -79,24 +79,24 @@ export function MovieCommand() {
   return (
     <section
       data-testid="movie-command"
-      className="flex flex-col gap-5 rounded-md border border-line bg-card p-5"
+      className="flex flex-col gap-3 rounded-md border border-line bg-card p-3"
     >
-      <div className="flex flex-col gap-4 md:flex-row">
-        <div className="w-24 flex-shrink-0 overflow-hidden rounded border border-line bg-card-alt md:w-32">
+      <div className="flex flex-col gap-3 md:flex-row">
+        <div className="w-16 flex-shrink-0 overflow-hidden rounded border border-line bg-card-alt md:w-20">
           {film?.poster_url ? (
             <img src={film.poster_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex aspect-[2/3] items-center justify-center text-xs text-ink-soft">no poster</div>
+            <div className="flex aspect-[2/3] items-center justify-center text-[10px] text-ink-soft">no poster</div>
           )}
         </div>
-        <div className="flex flex-1 flex-col gap-3">
+        <div className="flex flex-1 flex-col gap-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+              <h1 className="font-display text-xl font-bold tracking-tight text-ink">
                 {film?.title ?? 'Loading…'}
               </h1>
               {film?.release_date && (
-                <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
+                <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
                   Released {film.release_date} · Popularity {film.popularity.toFixed(1)}
                 </div>
               )}
@@ -108,7 +108,7 @@ export function MovieCommand() {
             />
           </div>
           {metaChips.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {metaChips.map((c) => (
                 <MetaChip key={c.label} label={c.label} value={c.value} />
               ))}
@@ -116,7 +116,7 @@ export function MovieCommand() {
           )}
         </div>
       </div>
-      <div className="border-t border-line pt-4">
+      <div className="border-t border-line pt-3">
         <RegionHeatBar filmId={selectedFilmId} />
       </div>
     </section>
