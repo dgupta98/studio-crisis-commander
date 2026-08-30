@@ -4,6 +4,7 @@ import { useFilm } from '../hooks/useFilm'
 import { useCachedTriple } from '../hooks/useCachedTriple'
 import { useLatestInvestigation, useFilmRuns } from '../hooks/useFilmInvestigation'
 import { useRunStore } from '@/store/runStore'
+import { detectIsoFromLocale, isoToDashboardRegion, regionLabel } from '@/lib/regions'
 import { MovieHero } from '../panels/MovieHero'
 import { LatestInvestigation } from '../panels/LatestInvestigation'
 import { PersistentAgentTrace } from '../panels/PersistentAgentTrace'
@@ -16,12 +17,24 @@ export default function MovieDetailRoute() {
   const id = Number(filmId ?? '0')
   const { data, isLoading, error } = useFilm(id)
   const film = data as any
+
+  // Region drives the LatestInvestigation + RunTimeline scoping so the panel
+  // matches whatever the user picked (or their auto-detected locale). Seed
+  // once on mount if runStore doesn't already have one — mirrors the same
+  // "personalize on landing" flow used by DashboardRoute.
+  const selectedRegion = useRunStore((s) => s.selectedRegion)
+  const pickRegion     = useRunStore((s) => s.pickRegion)
+  useEffect(() => {
+    if (selectedRegion) return
+    pickRegion(isoToDashboardRegion(detectIsoFromLocale()))
+  }, [selectedRegion, pickRegion])
+
   // Prefer the bundled eval_cache triple (instant, richest fields).
   // Fall back to the last completed audit row for this film so the panel
   // never renders the "no run yet" empty state when there is history.
   const { data: triple } = useCachedTriple(film?.cached_scenario_id)
-  const { data: latest } = useLatestInvestigation(id)
-  const { data: runs } = useFilmRuns(id)
+  const { data: latest } = useLatestInvestigation(id, selectedRegion)
+  const { data: runs }   = useFilmRuns(id, selectedRegion)
   const [injectOpen, setInjectOpen] = useState(false)
 
   // Live run state — subscribe so the panel re-renders when a fresh crisis
@@ -102,6 +115,20 @@ export default function MovieDetailRoute() {
       <MovieHero film={film} onInject={() => setInjectOpen(true)} />
       <div className="grid gap-6 px-6 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-6">
+          {selectedRegion && (
+            <div className="flex items-center justify-between rounded-md border border-line bg-card px-3 py-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
+                Investigation scope
+              </span>
+              <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                Region · {regionLabel(selectedRegion)}
+                <span className="text-ink-soft normal-case tracking-normal">
+                  · pick another on the heat bar
+                </span>
+              </span>
+            </div>
+          )}
           <LatestInvestigation triple={investigation} sample={isSample} />
           <PersistentAgentTrace filmId={id} />
           <RunTimeline runs={runList} />

@@ -82,9 +82,20 @@ async def film_latest_investigation(
 
 
 @router.get("/films/{film_id}/runs")
-async def film_runs(film_id: int, limit: int = Query(10, ge=1, le=50)):
-    """List of past runs for the RunTimeline on the movie detail page."""
-    rows = await asyncio.to_thread(list_recent_audit_for_film, film_id, limit)
+async def film_runs(
+    film_id: int,
+    limit: int = Query(10, ge=1, le=50),
+    region: str | None = Query(default=None, max_length=64),
+):
+    """List of past runs for the RunTimeline on the movie detail page.
+    When `region` is supplied the timeline is scoped to that region so
+    the panel matches whatever the user has selected upstream."""
+    if region:
+        rows = await asyncio.to_thread(
+            list_recent_audit_for_film_region, film_id, region, limit,
+        )
+    else:
+        rows = await asyncio.to_thread(list_recent_audit_for_film, film_id, limit)
     keys = [r.detection_dedup_key for r in rows if r.detection_dedup_key]
     det_meta = await asyncio.to_thread(_detection_meta_map, keys)
     out: list[dict[str, Any]] = []
