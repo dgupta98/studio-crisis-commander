@@ -70,6 +70,21 @@ def _q_sentiment(film_id: int, region: str, hours: int) -> str:
     )
 
 
+def _q_sentiment_film(film_id: int, hours: int) -> str:
+    return (
+        f"SELECT toString(ts) AS ts_str, "
+        f"sum(sum_score_weighted) / greatest(sum(sum_volume), 1) AS avg_score, "
+        f"sum(sum_volume) AS volume "
+        f"FROM roll_sentiment_hourly "
+        f"WHERE film_id = {film_id} "
+        f"AND ts >= coalesce("
+        f"  (SELECT max(ts) FROM roll_sentiment_hourly WHERE film_id = {film_id}),"
+        f"  now()) - INTERVAL {hours} HOUR "
+        f"GROUP BY ts "
+        f"ORDER BY ts"
+    )
+
+
 def _q_trailer(film_id: int, region: str, hours: int) -> str:
     return (
         f"SELECT toString(ts) AS ts_str, sum_views AS views, "
@@ -297,9 +312,17 @@ async def metrics(
         _run(_q_trailer(film_id, region, hours),
              ("ts", "views", "completion_rate")),
     )
+    # roll_sentiment_hourly is sparse (~150K rows vs ~50M for numeric signals);
+    # fall back to film-wide aggregation when no region-scoped rows exist.
+    sentiment_scope = "region"
+    if not sent:
+        sent = await _run(_q_sentiment_film(film_id, hours), ("ts", "avg_score", "volume"))
+        sentiment_scope = "film"
+
     dt_ms = int((time.perf_counter() - t0) * 1000)
     return {
         "film_id": film_id, "region": region, "hours": hours,
+        "sentiment_scope": sentiment_scope,
         "timeseries": {
             "box_office_daily": box,
             "social_virality_hourly": soc,

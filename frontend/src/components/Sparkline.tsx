@@ -15,14 +15,16 @@ export function Sparkline({ data, label, color = '#111111', heightPx = 44 }: Pro
   const sparse = data.length > 0 && data.length < 8
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-ink-soft mb-1">
-        {label}
-        {data.length > 0 && data.length < 8 && (
-          <span className="ml-1 normal-case tracking-normal text-ink-soft/70">
-            · {data.length} pt{data.length === 1 ? '' : 's'}
-          </span>
-        )}
-      </div>
+      {label ? (
+        <div className="text-[10px] uppercase tracking-wider text-ink-soft mb-1">
+          {label}
+          {data.length > 0 && data.length < 8 && (
+            <span className="ml-1 normal-case tracking-normal text-ink-soft/70">
+              · {data.length} pt{data.length === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+      ) : null}
       {data.length === 0 ? (
         <div style={{ height: heightPx }}
              className="flex items-center text-xs text-ink-soft italic">

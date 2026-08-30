@@ -6,17 +6,32 @@ import { tokens } from '@/theme/tokens'
 import type { MetricPoint } from '@/api/contracts'
 
 const FAMILIES = [
-  { key: 'box_office_daily',        label: 'Box office',  hex: tokens.signal.box_office.hex },
-  { key: 'social_virality_hourly',  label: 'Social',      hex: tokens.signal.social.hex },
-  { key: 'sentiment_hourly',        label: 'Sentiment',   hex: tokens.signal.reviews.hex },
-  { key: 'trailer_hourly',          label: 'Trailer',     hex: tokens.signal.streaming.hex },
+  { key: 'box_office_daily',        label: 'Box office',  hex: tokens.signal.box_office.hex, fmt: (v: number) => `$${compact.format(v)}` },
+  { key: 'social_virality_hourly',  label: 'Social',      hex: tokens.signal.social.hex,     fmt: (v: number) => compact.format(v) },
+  { key: 'sentiment_hourly',        label: 'Sentiment',   hex: tokens.signal.reviews.hex,    fmt: (v: number) => v.toFixed(2) },
+  { key: 'trailer_hourly',          label: 'Trailer',     hex: tokens.signal.streaming.hex,  fmt: (v: number) => compact.format(v) },
 ] as const
 
-// Reshape raw ClickHouse rows into MetricPoint (ts + value). The value field
-// differs per family — this collapses them all so Sparkline sees a uniform
-// shape.
+const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
+
 function toPoints(rows: any[], valueKey: string): MetricPoint[] {
   return rows.map((r) => ({ ts: r.ts, value: Number(r[valueKey]) || 0 }))
+}
+
+// Latest value plus % delta vs the first point. Returns null-safe strings the
+// caller can render straight into the DOM.
+function latestDelta(points: MetricPoint[]): { latest: number; delta: number } | null {
+  if (points.length === 0) return null
+  const first = points[0].value
+  const last  = points[points.length - 1].value
+  const delta = first === 0 ? (last === 0 ? 0 : 100) : ((last - first) / Math.abs(first)) * 100
+  return { latest: last, delta }
+}
+
+function deltaColor(delta: number): string {
+  if (delta >= 5)  return '#74db8d'
+  if (delta <= -5) return '#ff6b7a'
+  return tokens.color.inkSoft
 }
 
 export function TimeseriesGrid() {
@@ -35,6 +50,7 @@ export function TimeseriesGrid() {
     ? `${selectedFilmId}:${selectedRegion}`
     : null
   const res = key ? metrics[key] : undefined
+  const sentimentScope = res?.sentiment_scope ?? 'region'
 
   const series = useMemo(() => {
     if (!res) return null
@@ -68,15 +84,35 @@ export function TimeseriesGrid() {
         )}
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {FAMILIES.map(({ key, label, hex }) => (
-          <Sparkline
-            key={key}
-            label={label}
-            color={hex}
-            data={series ? series[key] : []}
-            heightPx={56}
-          />
-        ))}
+        {FAMILIES.map(({ key, label, hex, fmt }) => {
+          const points = series ? series[key] : []
+          const stat = latestDelta(points)
+          const isSentimentFallback = key === 'sentiment_hourly' && sentimentScope === 'film'
+          const displayLabel = isSentimentFallback ? `${label} · all regions` : label
+          return (
+            <div key={key} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between">
+                <span
+                  className="text-[10px] uppercase tracking-wider text-ink-soft"
+                  title={isSentimentFallback ? 'Regional review data is sparse — showing film-wide sentiment.' : undefined}
+                >
+                  {displayLabel}
+                </span>
+                {stat && (
+                  <span className="font-mono text-[10px] tabular-nums" style={{ color: deltaColor(stat.delta) }}>
+                    {stat.delta >= 0 ? '+' : ''}{stat.delta.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              {stat && (
+                <span className="font-mono text-xs text-ink tabular-nums">
+                  {fmt(stat.latest)}
+                </span>
+              )}
+              <Sparkline label="" color={hex} data={points} heightPx={40} />
+            </div>
+          )
+        })}
       </div>
     </section>
   )

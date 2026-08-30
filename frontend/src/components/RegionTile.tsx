@@ -31,20 +31,38 @@ function barHeight(vol: number, scale: number): number {
 
 const FAMILIES = ['box_office', 'social', 'reviews', 'streaming'] as const
 
+const FAMILY_TOOLTIP_LABEL: Record<(typeof FAMILIES)[number], string> = {
+  box_office: 'Box office',
+  social:     'Social',
+  reviews:    'Sentiment',
+  streaming:  'Streaming',
+}
+
+function arrow(delta: number): string {
+  if (delta >= 5) return '▲'
+  if (delta <= -5) return '▼'
+  return '•'
+}
+
+function formatFamilyLine(family: (typeof FAMILIES)[number], s: { volume: number; delta_pct: number }): string {
+  const name = FAMILY_TOOLTIP_LABEL[family]
+  if (s.volume <= 0) return `${name} sparse`
+  const sign = s.delta_pct >= 0 ? '+' : ''
+  return `${name} ${s.volume.toLocaleString()} ${arrow(s.delta_pct)}${sign}${s.delta_pct}% vs 7d`
+}
+
 export function RegionTile({
   region, selected, activeRun, onClick, volumeScale,
 }: Props) {
   const label = regionLabel(region.code)
   const abbrev = regionAbbrev(region.code)
-  const tooltip = FAMILIES.map((f) => {
-    const s = region.signals[f]
-    const delta = s.delta_pct >= 0 ? `+${s.delta_pct}` : `${s.delta_pct}`
-    return `${f}: ${s.volume.toLocaleString()} (${delta}%)`
-  }).join(' · ')
+  const tooltipLines = FAMILIES.map((f) => formatFamilyLine(f, region.signals[f]))
+  const investigationLine = region.open_investigation ? ' · 1 open investigation' : ''
+  const tooltip = `${label} — ${tooltipLines.join(' · ')}${investigationLine}`
   return (
     <motion.button
       type="button"
-      title={`${label} — ${tooltip}`}
+      title={tooltip}
       aria-label={label}
       aria-pressed={selected}
       onClick={() => onClick(region.code)}

@@ -166,6 +166,11 @@ export interface MetricPoint {
 export interface MetricsResponse {
   film_id: number
   region: string
+  // Backend falls back to a film-wide sentiment series when the region
+  // query returns 0 rows (roll_sentiment_hourly is sparse). The frontend
+  // uses this to label the Sentiment sparkline honestly. Optional so
+  // older cached responses without the key still typecheck.
+  sentiment_scope?: 'region' | 'film'
   timeseries: {
     box_office_daily: MetricPoint[]
     social_virality_hourly: MetricPoint[]
