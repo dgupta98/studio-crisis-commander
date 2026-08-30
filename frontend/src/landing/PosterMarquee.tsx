@@ -17,13 +17,30 @@ interface Shelf {
 
 export function PosterMarquee() {
   const reduced = useReducedMotion()
-  const { data } = useQuery({
+  const { data, isPending } = useQuery({
     ...queries.shelves(null),
     staleTime: 5 * 60_000,
-  }) as { data?: Shelf[] }
+  }) as { data?: Shelf[]; isPending: boolean }
 
   const posters = collect(data)
-  if (posters.length === 0) return null
+  // While the query is in-flight (Cloud Run cold-start can add ~5s), render a
+  // row of skeleton tiles so the marquee's slot on the page is preserved and
+  // the user sees "content coming" instead of an empty gap.
+  if (posters.length === 0) {
+    if (!isPending) return null
+    return (
+      <div className="relative w-full overflow-hidden py-4">
+        <div className="flex gap-6 px-6" aria-hidden>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-64 w-44 flex-shrink-0 animate-pulse rounded-lg border border-line bg-card-alt md:h-72 md:w-48"
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   // Duplicate for seamless loop.
   const loop = [...posters, ...posters]
