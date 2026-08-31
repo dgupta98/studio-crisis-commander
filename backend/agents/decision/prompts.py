@@ -109,6 +109,14 @@ RULES (violations will fail validation):
      ALWAYS derive `film_id` and `region` from `investigation.detection.film_id`
      and `investigation.detection.region`. Never invent these values.
      Types matter: film_id is int, shift_pct is float, etc.
+     EVERY key listed in the schema for the action_type you picked MUST be
+     present in `params`. Missing keys (e.g. omitting `from_variant`/
+     `to_variant` on swap_trailer_variant, or `from_channel`/`to_channel`/
+     `shift_pct`/`window_days` on shift_marketing_spend) fail validation and
+     the action produces no impact. If you cannot cite a specific value from
+     a finding, use a safe default: shift_pct=25.0, window_days=7,
+     from_variant="A", to_variant="B", from_channel/to_channel picked from
+     the enum below.
   3. Rank actions by `priority` (1=highest impact / most urgent, 3=lowest).
   4. Write `rationale` in 1-2 sentences (>=20 chars) tying the action to
      specific findings. Sound like a strategist arguing for the call in a

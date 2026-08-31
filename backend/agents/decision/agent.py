@@ -192,7 +192,11 @@ async def _run_pipeline(
         if isinstance(impact, Exception):
             action.impact_error = str(impact)[:400]
         elif impact is None:
-            action.impact_error = "query returned no rows"
+            # Preserve any earlier `param validation: ...` message set above —
+            # a None here means we skipped execution because sql=="", not that
+            # ClickHouse returned zero rows.
+            if not action.impact_error:
+                action.impact_error = "query returned no rows"
         else:
             action.impact_usd = impact
         if on_event is not None:
