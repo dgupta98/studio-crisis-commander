@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from api import warmer as ch_warmer
 from api.fallback import load_cached_triple
 from api.pipeline import install_cached_triple
 from api.routers import audit as audit_router
@@ -40,7 +41,14 @@ async def lifespan(app: FastAPI):
     install_cached_triple(triple)
     app.state.runtime = runtime
     app.state.cached_triple = triple
-    yield
+    # Keep ClickHouse Cloud from auto-suspending — otherwise the first
+    # landing-page query after idle waits 5-30s for the pool to wake up
+    # and users see "Loading…" even though Cloud Run itself is warm.
+    ch_warmer.start()
+    try:
+        yield
+    finally:
+        await ch_warmer.stop()
 
 
 app = FastAPI(title="Studio Crisis Commander API", lifespan=lifespan)
