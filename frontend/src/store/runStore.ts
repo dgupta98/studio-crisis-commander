@@ -6,6 +6,7 @@ import type {
 } from '@/api/contracts'
 import { apiGet, apiPost } from '@/api/client'
 import { openStream } from '@/api/sse'
+import { queryClient } from '@/api/queryClient'
 import { seedFromCachedTriple, type CachedTriple } from '@/lib/demoSeed'
 
 export type PanelState =
@@ -19,11 +20,43 @@ type PanelKey =
   | 'hero' | 'telemetry' | 'anomaly' | 'trace'
   | 'recommendation' | 'approval' | 'history'
 
+// Wire shape returned by GET /catalog/films/{film_id}/runs/{decision_id}.
+// Detection is partial (only film_id/region/metric/magnitude/severity are
+// stored on the audit + detections join); findings/hypothesis aren't
+// persisted at all, so the trace will show pipeline/detection/decision/
+// report events only when a past run is replayed.
+export interface PastRunDetail {
+  scenario_id: string
+  detection: {
+    film_id: number
+    region: string
+    metric: string | null
+    severity: string | null
+    magnitude: number | null
+    latency_ms: number | null
+  }
+  agent_run: DecisionResult
+  report: ExecutiveReport | null
+  approval_status: ApprovalStatus
+  created_at: string
+}
+
 export interface ActiveRunState {
   filmId: number | null
   region: string | null
   streamState: 'connecting' | 'streaming' | 'closed' | 'error'
   startedAt: number
+  // Per-run pipeline state. Kept here so multi-region injects don't
+  // clobber each other's events into a single global bucket — clicking a
+  // region pill flips focusedRunId and the trace panel projects the
+  // matching bucket onto the top-level singletons.
+  events: SseEvent[]
+  detection: DetectionRow | null
+  findings: Finding[]
+  decision: DecisionResult | null
+  report: ExecutiveReport | null
+  approvalStatus: ApprovalStatus | null
+  mode: 'live' | 'fallback' | null
 }
 
 interface RunStore {
@@ -82,10 +115,11 @@ interface RunStore {
   pickFilm: (id: number | null) => void
   pickRegion: (code: string | null) => void
   focusRun: (runId: string) => void
+  selectPastRun: (data: PastRunDetail) => void
   _registerRun: (runId: string, opts: { filmId: number | null; region: string | null }) => void
   _updateRunStream: (runId: string, streamState: ActiveRunState['streamState']) => void
   reset: () => void
-  _dispatch: (ev: SseEvent) => void
+  _dispatch: (runId: string, ev: SseEvent) => void
   _recomputePanels: () => void
 }
 
@@ -104,7 +138,8 @@ const INITIAL: Omit<RunStore, keyof {
   loadDetections: never; loadAudit: never; loadMetrics: never;
   seedFromCached: never; reset: never;
   pickFilm: never; pickRegion: never;
-  focusRun: never; _registerRun: never; _updateRunStream: never;
+  focusRun: never; selectPastRun: never;
+  _registerRun: never; _updateRunStream: never;
   _dispatch: never; _recomputePanels: never;
 }> = {
   runId: null,
@@ -174,7 +209,11 @@ export const useRunStore = create<RunStore>()(
       })
       if (runIds[0]) {
         // Focus the first run so its detection/report drive the workspace.
+        // focusRun projects that run's (initially empty) per-run bucket onto
+        // top-level fields; subsequent _dispatch calls for the focused run
+        // mirror through, and pill-clicks re-project the target run.
         set({ runId: runIds[0], streamState: 'connecting' })
+        useRunStore.getState().focusRun(runIds[0])
       }
       useRunStore.getState()._recomputePanels()
       return runIds
@@ -190,6 +229,7 @@ export const useRunStore = create<RunStore>()(
       filmId: opts?.filmId ?? null,
       region: opts?.region ?? null,
     })
+    useRunStore.getState().focusRun(runId)
     useRunStore.getState().connectStream(runId)
     useRunStore.getState()._recomputePanels()
     return [runId]
@@ -201,13 +241,23 @@ export const useRunStore = create<RunStore>()(
     prev?.()
     const close = openStream(
       runId,
-      (payload) => useRunStore.getState()._dispatch(payload as SseEvent),
+      // Tag every SSE with its runId so _dispatch can route into the correct
+      // per-run bucket in activeRuns — without this, multi-region injects
+      // merge all events into one array and the last run wins.
+      (payload) => useRunStore.getState()._dispatch(runId, payload as SseEvent),
       (_err) => {
-        set({ streamState: 'error' })
+        useRunStore.getState()._updateRunStream(runId, 'error')
+        if (useRunStore.getState().focusedRunId === runId) {
+          set({ streamState: 'error' })
+        }
         useRunStore.getState()._recomputePanels()
       },
     )
-    set({ streamState: 'connecting', _closeStream: close })
+    useRunStore.getState()._updateRunStream(runId, 'connecting')
+    if (useRunStore.getState().focusedRunId === runId) {
+      set({ streamState: 'connecting' })
+    }
+    set({ _closeStream: close })
     useRunStore.getState()._recomputePanels()
   },
 
@@ -316,8 +366,108 @@ export const useRunStore = create<RunStore>()(
 
   focusRun: (runId) => {
     const s = useRunStore.getState()
-    if (!s.activeRuns[runId]) return
-    set({ focusedRunId: runId })
+    const run = s.activeRuns[runId]
+    if (!run) return
+    // Project the run's per-run bucket onto the top-level singletons so
+    // every existing selector (AgentTrace, DashboardWorkspace, MovieDetail,
+    // LatestInvestigation, etc.) sees the newly focused run without any
+    // per-consumer rewiring.
+    set({
+      focusedRunId: runId,
+      runId,
+      currentRunFilmId: run.filmId,
+      events: run.events,
+      detection: run.detection,
+      findings: run.findings,
+      decision: run.decision,
+      report: run.report,
+      approvalStatus: run.approvalStatus,
+      mode: run.mode,
+      streamState: run.streamState,
+    })
+    useRunStore.getState()._recomputePanels()
+  },
+
+  selectPastRun: (data) => {
+    // Hydrate the top-level singletons from a persisted audit row so the
+    // Investigation / Recommendation / Approval / Agent Trace panels all
+    // render with THAT run's payload — not the demo cached sample.
+    //
+    // focusedRunId is cleared so any parallel live SSE (from an inject that
+    // fires while a past run is displayed) won't mirror its events onto our
+    // top-level state and clobber the replay. The user must trigger a new
+    // inject (which calls focusRun) to switch back to live view.
+    const det = data.detection
+    const sevNum = det.severity ? Number(det.severity) : 0
+    const detectionRow: DetectionRow = {
+      metric_ts: data.created_at,
+      metric: det.metric ?? '',
+      film_id: det.film_id,
+      region: det.region,
+      detector: '',
+      baseline_value: 0,
+      actual_value: 0,
+      magnitude: det.magnitude ?? 0,
+      business_impact: 0,
+      severity: Number.isFinite(sevNum) ? sevNum : 0,
+      dedup_key: '',
+      latency_ms: det.latency_ms,
+    }
+
+    // Synthesize a minimal SSE trace so AgentTrace has something to render.
+    // Findings/hypothesis aren't persisted — those event types are omitted.
+    const ts = data.created_at || new Date().toISOString()
+    const runId = `past:${data.scenario_id}`
+    let seq = 0
+    const mode = 'fallback' as const
+    const push = (type: string, d: Record<string, unknown>): SseEvent => ({
+      seq: seq++, ts, type, data: { ...d, mode },
+    })
+    const events: SseEvent[] = [
+      push('pipeline.started', { run_id: runId, mode }),
+      push('detection.completed', { detection: detectionRow, source: 'audit' }),
+      push('investigation.started', {}),
+      push('investigation.completed', { investigation: null }),
+      push('decision.started', {}),
+      ...data.agent_run.actions.flatMap((a, i) => [
+        push('action.proposed', {
+          action_index: i,
+          action_type: a.action_type,
+          params: a.params,
+          priority: a.priority,
+          rationale: a.rationale,
+        }),
+        push('action.impact_computed', {
+          action_index: i,
+          action_type: a.action_type,
+          impact_usd: a.impact_usd,
+          impact_error: a.impact_error,
+        }),
+      ]),
+      push('decision.completed', {
+        decision: data.agent_run,
+        status: data.agent_run.status,
+        threshold_usd: data.agent_run.threshold_usd,
+      }),
+      push('report.started', {}),
+      ...(data.report ? [push('report.completed', { report: data.report })] : []),
+      push('pipeline.completed', { run_id: runId, latency_ms: 0, mode }),
+    ]
+
+    set({
+      runId: data.scenario_id,
+      currentRunFilmId: data.detection.film_id,
+      events,
+      detection: detectionRow,
+      findings: [],
+      decision: data.agent_run,
+      report: data.report,
+      approvalStatus: data.approval_status,
+      mode: 'fallback',
+      streamState: 'closed',
+      focusedRunId: null,
+    })
+    useRunStore.getState()._recomputePanels()
   },
 
   _registerRun: (runId, opts) => {
@@ -327,6 +477,13 @@ export const useRunStore = create<RunStore>()(
       region: opts.region ?? null,
       streamState: 'connecting',
       startedAt: Date.now(),
+      events: [],
+      detection: null,
+      findings: [],
+      decision: null,
+      report: null,
+      approvalStatus: null,
+      mode: null,
     }
     const nextFocused = s.focusedRunId ?? runId
     set({
@@ -352,25 +509,29 @@ export const useRunStore = create<RunStore>()(
     _closeStream?.()
   },
 
-  _dispatch: (ev) => {
+  _dispatch: (runId, ev) => {
     const s = useRunStore.getState()
+    const run = s.activeRuns[runId]
+    if (!run) return  // stray SSE for a run we don't track — drop
 
-    // Dedupe by seq — server replays on reconnect (Layer 4 §6).
-    if (s.events.some((e) => e.seq === ev.seq)) return
+    // Dedupe by seq PER RUN — server replays on reconnect (Layer 4 §6).
+    if (run.events.some((e) => e.seq === ev.seq)) return
 
-    const patch: Partial<RunStore> = { events: [...s.events, ev] }
-    if (s.streamState === 'connecting' || s.streamState === 'idle') {
-      patch.streamState = 'streaming'
+    // Build the per-run patch first, then decide what to mirror to
+    // top-level singletons based on focus.
+    const runPatch: Partial<ActiveRunState> = { events: [...run.events, ev] }
+    if (run.streamState === 'connecting') {
+      runPatch.streamState = 'streaming'
     }
-    if (!s.mode && (ev.data as { mode?: 'live' | 'fallback' })?.mode) {
-      patch.mode = (ev.data as { mode?: 'live' | 'fallback' }).mode ?? null
+    if (!run.mode && (ev.data as { mode?: 'live' | 'fallback' })?.mode) {
+      runPatch.mode = (ev.data as { mode?: 'live' | 'fallback' }).mode ?? null
     }
 
     switch (ev.type) {
       case 'detection.completed': {
         const d = (ev.data as { detection?: DetectionRow }).detection
         if (d) {
-          patch.detection = d
+          runPatch.detection = d
           // fire-and-forget metrics fetch for the affected film/region
           void useRunStore.getState().loadMetrics(d.film_id, d.region)
         }
@@ -378,47 +539,77 @@ export const useRunStore = create<RunStore>()(
       }
       case 'signal.completed': {
         const f = (ev.data as { finding?: Finding }).finding
-        if (f) patch.findings = [...s.findings, f]
+        if (f) runPatch.findings = [...run.findings, f]
         break
       }
       case 'action.impact_computed': {
-        // merge impact into the matching action; keeps decision reactive
+        // merge impact into the matching action of THIS run's decision
         const p = ev.data as { action_index?: number; impact_usd?: number }
-        if (s.decision && typeof p.action_index === 'number') {
-          const actions = s.decision.actions.map((a, i) =>
+        if (run.decision && typeof p.action_index === 'number') {
+          const actions = run.decision.actions.map((a, i) =>
             i === p.action_index ? { ...a, impact_usd: p.impact_usd ?? a.impact_usd } : a,
           )
-          patch.decision = { ...s.decision, actions }
+          runPatch.decision = { ...run.decision, actions }
         }
         break
       }
       case 'decision.completed': {
         const d = (ev.data as { decision?: DecisionResult }).decision
         if (d) {
-          patch.decision = d
-          patch.approvalStatus = d.status
+          runPatch.decision = d
+          runPatch.approvalStatus = d.status
         }
         break
       }
       case 'report.completed': {
         const r = (ev.data as { report?: ExecutiveReport }).report
-        if (r) patch.report = r
+        if (r) runPatch.report = r
         break
       }
       case 'approval.granted':
       case 'approval.denied': {
         const st = (ev.data as { approval_status?: ApprovalStatus }).approval_status
-        if (st) patch.approvalStatus = st
+        if (st) runPatch.approvalStatus = st
         break
       }
       case 'pipeline.completed':
-        patch.streamState = 'closed'
+        runPatch.streamState = 'closed'
         // Refresh both history feeds so the anomaly list + audit drawer
         // show the run that just finished without a page reload.
         void useRunStore.getState().loadDetections()
         void useRunStore.getState().loadAudit()
+        // Invalidate Movie Detail react-query caches for this film so the
+        // Past Runs timeline + latest-investigation panel pick up the run
+        // that just finished. filmId lives on the per-run bucket; falls
+        // through to a no-op when the run was global (e.g. dashboard).
+        if (run.filmId != null) {
+          void queryClient.invalidateQueries({
+            queryKey: ['catalog', 'film', run.filmId],
+          })
+        }
         break
-      case 'pipeline.failed':    patch.streamState = 'error';  break
+      case 'pipeline.failed':
+        runPatch.streamState = 'error'
+        break
+    }
+
+    const updatedRun: ActiveRunState = { ...run, ...runPatch }
+    const patch: Partial<RunStore> = {
+      activeRuns: { ...s.activeRuns, [runId]: updatedRun },
+    }
+
+    // Mirror to top-level singletons ONLY when this run has focus. Existing
+    // consumers (AgentTrace, DashboardWorkspace, MovieDetail, panels) read
+    // top-level; they'll switch automatically when focusRun swaps focus.
+    if (s.focusedRunId === runId) {
+      patch.events = updatedRun.events
+      patch.detection = updatedRun.detection
+      patch.findings = updatedRun.findings
+      patch.decision = updatedRun.decision
+      patch.report = updatedRun.report
+      patch.approvalStatus = updatedRun.approvalStatus
+      patch.mode = updatedRun.mode
+      patch.streamState = updatedRun.streamState
     }
 
     set(patch)

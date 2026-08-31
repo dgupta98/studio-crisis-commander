@@ -51,6 +51,13 @@ export const queries = {
     ),
     staleTime: 30_000,
   }),
+  filmRunDetail: (filmId: number, decisionId: string) => ({
+    queryKey: ['catalog', 'film', filmId, 'run', decisionId] as const,
+    queryFn: () => json<unknown>(
+      `/catalog/films/${filmId}/runs/${encodeURIComponent(decisionId)}`,
+    ),
+    staleTime: 300_000,   // past runs are immutable, cache aggressively
+  }),
 }
 
 export function prefetchDashboard(qc: QueryClient): void {

@@ -4,7 +4,7 @@ import { useFilm } from '../hooks/useFilm'
 import { useCachedTriple } from '../hooks/useCachedTriple'
 import { useLatestInvestigation, useFilmRuns } from '../hooks/useFilmInvestigation'
 import { useRunStore } from '@/store/runStore'
-import { detectIsoFromLocale, isoToDashboardRegion, regionLabel } from '@/lib/regions'
+import { detectIsoFromLocale, isoToDashboardRegion, regionLabel, REGIONS } from '@/lib/regions'
 import { MovieHero } from '../panels/MovieHero'
 import { LatestInvestigation } from '../panels/LatestInvestigation'
 import { PersistentAgentTrace } from '../panels/PersistentAgentTrace'
@@ -115,23 +115,32 @@ export default function MovieDetailRoute() {
       <MovieHero film={film} onInject={() => setInjectOpen(true)} />
       <div className="grid gap-6 px-6 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-6">
-          {selectedRegion && (
-            <div className="flex items-center justify-between rounded-md border border-line bg-card px-3 py-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
-                Investigation scope
-              </span>
-              <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                Region · {regionLabel(selectedRegion)}
-                <span className="text-ink-soft normal-case tracking-normal">
-                  · pick another on the heat bar
-                </span>
-              </span>
-            </div>
-          )}
+          <div className="flex items-center justify-between rounded-md border border-line bg-card px-3 py-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
+              Investigation scope
+            </span>
+            <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              Region
+              {/* Inline picker so users can switch region context without
+                  hunting for the Dashboard heat map. Uses the canonical
+                  15-region list from lib/regions.ts. */}
+              <select
+                value={selectedRegion ?? ''}
+                onChange={(e) => pickRegion(e.target.value || null)}
+                className="rounded border border-line bg-card-alt px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-ink hover:border-accent focus:outline-none focus:border-accent"
+                aria-label="Investigation region"
+              >
+                {REGIONS.map((r) => (
+                  <option key={r} value={r}>{regionLabel(r)}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <LatestInvestigation triple={investigation} sample={isSample} />
           <PersistentAgentTrace filmId={id} />
-          <RunTimeline runs={runList} />
+          <RunTimeline filmId={id} runs={runList} />
         </div>
         <div className="flex flex-col gap-6">
           {/* Same tabbed workspace as the Dashboard. Reads from runStore,

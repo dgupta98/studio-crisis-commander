@@ -14,17 +14,30 @@ const DET = {
   business_impact: 100000, severity: 8, dedup_key: 'k',
 }
 
+// After the multi-run refactor, _dispatch requires an existing entry in
+// activeRuns[runId]. The `event routing` block registers + focuses one
+// before each test so dispatched events land in a valid bucket and mirror
+// to top-level singletons for the assertions below. The `derived panelStates`
+// block does its own setState() and needs a truly-empty store, so it uses a
+// plain reset() beforeEach.
+const RID = 'r-test'
+
 beforeEach(() => useRunStore.getState().reset())
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('event routing', () => {
+  beforeEach(() => {
+    useRunStore.getState()._registerRun(RID, { filmId: 1, region: 'Brazil' })
+    useRunStore.getState().focusRun(RID)
+  })
+
   it('detection.completed → sets detection, auto-fires loadMetrics', async () => {
     const spy = vi.spyOn(client, 'apiGet').mockResolvedValue({
       film_id: 1, region: 'Brazil', query_latency_ms: 47,
       timeseries: { box_office_daily: [], social_virality_hourly: [],
                     sentiment_hourly: [], trailer_hourly: [] },
     })
-    useRunStore.getState()._dispatch(mk(0, 'detection.completed', { detection: DET, mode: 'live' }))
+    useRunStore.getState()._dispatch(RID, mk(0, 'detection.completed', { detection: DET, mode: 'live' }))
     expect(useRunStore.getState().detection?.magnitude).toBe(8.4)
     // Wait for the auto-loadMetrics microtask to settle.
     await Promise.resolve()
@@ -36,7 +49,7 @@ describe('event routing', () => {
     const s = useRunStore.getState()
     const signals = ['numeric_context', 'text_reason', 'categorical_isolation', 'temporal_context']
     signals.forEach((sig, i) => {
-      s._dispatch(mk(i, 'signal.completed', { finding: {
+      s._dispatch(RID, mk(i, 'signal.completed', { finding: {
         signal: sig, sql: 'SELECT 1', columns: [], rows: [], narrative: 'x', latency_ms: 10,
       }}))
     })
@@ -49,7 +62,7 @@ describe('event routing', () => {
       params: {}, impact_usd: 100000, impact_sql: 'SELECT 1', impact_error: '', priority: 1,
     }], status: 'pending_approval', threshold_usd: 250000,
     created_at: 't', latency_ms: 100 }
-    useRunStore.getState()._dispatch(mk(0, 'decision.completed', { decision: dec }))
+    useRunStore.getState()._dispatch(RID, mk(0, 'decision.completed', { decision: dec }))
     expect(useRunStore.getState().decision?.decision_id).toBe('d-1')
   })
 
@@ -62,40 +75,40 @@ describe('event routing', () => {
         source: { signal: 'numeric_context', query_index: 0 } }],
       recommended_actions_prose: 'Forty plus chars of prose describing the recommended actions.',
       risks_and_caveats: '', created_at: 't', latency_ms: 10 }
-    useRunStore.getState()._dispatch(mk(0, 'report.completed', { report: rep }))
+    useRunStore.getState()._dispatch(RID, mk(0, 'report.completed', { report: rep }))
     expect(useRunStore.getState().report?.report_id).toBe('r-1')
   })
 
   it('approval.granted / approval.denied → flip approvalStatus', () => {
-    useRunStore.getState()._dispatch(mk(0, 'approval.granted', { approval_status: 'approved' }))
+    useRunStore.getState()._dispatch(RID, mk(0, 'approval.granted', { approval_status: 'approved' }))
     expect(useRunStore.getState().approvalStatus).toBe('approved')
-    useRunStore.getState()._dispatch(mk(1, 'approval.denied', { approval_status: 'denied' }))
+    useRunStore.getState()._dispatch(RID, mk(1, 'approval.denied', { approval_status: 'denied' }))
     expect(useRunStore.getState().approvalStatus).toBe('denied')
   })
 
   it('pipeline.completed → streamState becomes closed', () => {
-    useRunStore.getState()._dispatch(mk(0, 'pipeline.completed', {}))
+    useRunStore.getState()._dispatch(RID, mk(0, 'pipeline.completed', {}))
     expect(useRunStore.getState().streamState).toBe('closed')
   })
 
   it('pipeline.failed → streamState becomes error', () => {
-    useRunStore.getState()._dispatch(mk(0, 'pipeline.failed', { error: 'boom' }))
+    useRunStore.getState()._dispatch(RID, mk(0, 'pipeline.failed', { error: 'boom' }))
     expect(useRunStore.getState().streamState).toBe('error')
   })
 
   it('mode is captured from any event whose data.mode is set (first write wins)', () => {
-    useRunStore.getState()._dispatch(mk(0, 'detection.started', { mode: 'fallback' }))
+    useRunStore.getState()._dispatch(RID, mk(0, 'detection.started', { mode: 'fallback' }))
     expect(useRunStore.getState().mode).toBe('fallback')
-    useRunStore.getState()._dispatch(mk(1, 'signal.completed', { mode: 'live', finding: {
+    useRunStore.getState()._dispatch(RID, mk(1, 'signal.completed', { mode: 'live', finding: {
       signal: 'numeric_context', sql: 'x', columns: [], rows: [], narrative: '', latency_ms: 0,
     }}))
     expect(useRunStore.getState().mode).toBe('fallback')  // first-write-wins
   })
 
   it('dedupe by seq — same seq event ignored on replay', () => {
-    useRunStore.getState()._dispatch(mk(3, 'x', {}))
-    useRunStore.getState()._dispatch(mk(1, 'y', {}))
-    useRunStore.getState()._dispatch(mk(3, 'x-dup', {}))
+    useRunStore.getState()._dispatch(RID, mk(3, 'x', {}))
+    useRunStore.getState()._dispatch(RID, mk(1, 'y', {}))
+    useRunStore.getState()._dispatch(RID, mk(3, 'x-dup', {}))
     expect(useRunStore.getState().events.map(e => e.seq)).toEqual([3, 1])
   })
 })

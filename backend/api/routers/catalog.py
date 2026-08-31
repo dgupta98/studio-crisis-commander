@@ -8,7 +8,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from agents.decision.audit import (
-    AuditRow, list_recent_audit_for_film, list_recent_audit_for_film_region,
+    AuditRow, async_get_audit,
+    list_recent_audit_for_film, list_recent_audit_for_film_region,
 )
 from api.catalog import shelves as catalog_shelves
 
@@ -78,6 +79,54 @@ async def film_latest_investigation(
             ],
         },
         "report": _report_dict(a),
+    }
+
+
+@router.get("/films/{film_id}/runs/{decision_id}")
+async def film_run_detail(film_id: int, decision_id: str):
+    """Full triple for a single past run, in the same shape as
+    /latest-investigation. Used by the RunTimeline panel: clicking a past run
+    hydrates Investigation / Recommendation / Approval / Agent Trace with the
+    persisted audit row rather than the default cached sample.
+
+    404 when the decision doesn't exist OR belongs to a different film — the
+    URL scope must match so a stray decision_id can't leak another film's
+    data into this page's panels."""
+    row = await async_get_audit(decision_id)
+    if row is None or row.film_id != film_id:
+        raise HTTPException(status_code=404, detail="run not found")
+    det_meta = await asyncio.to_thread(_detection_meta_map, [row.detection_dedup_key])
+    meta = det_meta.get(row.detection_dedup_key, {})
+    return {
+        "scenario_id": row.decision_id,
+        "detection": {
+            "film_id": row.film_id,
+            "region": row.region,
+            "metric": meta.get("metric"),
+            "severity": _fmt_severity(meta.get("severity")),
+            "magnitude": _fmt_float(meta.get("magnitude")),
+            "latency_ms": None,
+        },
+        "investigation": None,
+        "decision": {
+            "decision_id": row.decision_id,
+            "status": row.approval_status,
+            "recommended_actions": [
+                {
+                    "label": act.action_type,
+                    "impact_est": (act.impact_usd or 0.0),
+                }
+                for act in row.actions
+            ],
+        },
+        "report": _report_dict(row),
+        # Full agent_run so the frontend can synthesize an SSE replay for the
+        # Agent Trace panel (see runStore.selectPastRun). Investigation
+        # findings aren't persisted — the trace will show pipeline/detection/
+        # decision/report events only.
+        "agent_run": row.agent_run.model_dump(mode="json"),
+        "approval_status": row.approval_status,
+        "created_at": row.created_at.isoformat() if row.created_at else "",
     }
 
 

@@ -22,7 +22,6 @@ export function PipelineTicker() {
   const activeRuns = useRunStore((s) => s.activeRuns)
   const focusedRunId = useRunStore((s) => s.focusedRunId)
   const focusRun = useRunStore((s) => s.focusRun)
-  const events = useRunStore((s) => s.events)
   const reduced = usePrefersReducedMotion()
 
   const runIds = Object.keys(activeRuns)
@@ -32,12 +31,11 @@ export function PipelineTicker() {
   )
   const visible = anyOpen || runIds.length > 0
 
-  // Derive per-run stage completion from the events stream. The event stream
-  // in the store is scoped to the focused run today; multi-run detail can
-  // extend this later. For now every non-focused run shows its streamState.
+  // Derive stage completion from THIS run's own events. Post per-run refactor
+  // each ActiveRunState carries its own events bucket, so pill dots reflect
+  // real progress for every region — not just the focused one.
   function stagesFor(rid: string) {
-    const isFocus = rid === focusedRunId
-    const source = isFocus ? events : []
+    const source = activeRuns[rid]?.events ?? []
     const done = new Set<string>()
     let active: string | null = null
     for (const ev of source) {

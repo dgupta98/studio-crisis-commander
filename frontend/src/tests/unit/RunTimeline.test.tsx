@@ -9,12 +9,12 @@ const runs = [
 
 describe('RunTimeline', () => {
   it('renders each past run', () => {
-    render(<RunTimeline runs={runs as any} />)
+    render(<RunTimeline filmId={1} runs={runs as any} />)
     expect(screen.getByText(/box_office_drop/i)).toBeInTheDocument()
     expect(screen.getByText(/social_meltdown/i)).toBeInTheDocument()
   })
   it('shows empty state', () => {
-    render(<RunTimeline runs={[]} />)
+    render(<RunTimeline filmId={1} runs={[]} />)
     expect(screen.getByText(/no past runs/i)).toBeInTheDocument()
   })
 })

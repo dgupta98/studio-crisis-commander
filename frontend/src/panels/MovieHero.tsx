@@ -1,5 +1,3 @@
-import { RegionHeatBar } from '@/panels/RegionHeatBar'
-
 interface Film {
   id: number
   title: string
@@ -96,9 +94,6 @@ export function MovieHero({ film, onInject }: Props) {
             </button>
           </div>
         </div>
-      </div>
-      <div className="border-t border-line pt-4">
-        <RegionHeatBar filmId={film.id} />
       </div>
     </header>
   )
