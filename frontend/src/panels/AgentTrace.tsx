@@ -439,7 +439,10 @@ export function AgentTrace({ filmId }: { filmId?: number } = {}) {
   // flight — would falsely miss the match on its own film's page.
   const isScoped = typeof filmId === 'number'
   const scopedMatch = isScoped && currentRunFilmId === filmId
-  const events = !isScoped || scopedMatch ? allEvents : []
+  // `Array.isArray` guard defends against a stale persisted state where
+  // `events` was serialized as undefined by an older store shape.
+  const safeAll = Array.isArray(allEvents) ? allEvents : []
+  const events = !isScoped || scopedMatch ? safeAll : []
   const effectiveState: PanelState = isScoped && !scopedMatch
     ? { kind: 'empty', hint: 'No live run for this film yet — press Inject Crisis to start one.' }
     : state

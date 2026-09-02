@@ -372,18 +372,23 @@ export const useRunStore = create<RunStore>()(
     // every existing selector (AgentTrace, DashboardWorkspace, MovieDetail,
     // LatestInvestigation, etc.) sees the newly focused run without any
     // per-consumer rewiring.
+    //
+    // `?? []` / `?? null` guards heal persisted entries from before the
+    // multi-run refactor — those buckets lack the new event/detection
+    // fields, and projecting undefined onto top-level crashes AgentTrace's
+    // `for (const e of events)` on the next render.
     set({
       focusedRunId: runId,
       runId,
-      currentRunFilmId: run.filmId,
-      events: run.events,
-      detection: run.detection,
-      findings: run.findings,
-      decision: run.decision,
-      report: run.report,
-      approvalStatus: run.approvalStatus,
-      mode: run.mode,
-      streamState: run.streamState,
+      currentRunFilmId: run.filmId ?? null,
+      events: run.events ?? [],
+      detection: run.detection ?? null,
+      findings: run.findings ?? [],
+      decision: run.decision ?? null,
+      report: run.report ?? null,
+      approvalStatus: run.approvalStatus ?? null,
+      mode: run.mode ?? null,
+      streamState: run.streamState ?? 'closed',
     })
     useRunStore.getState()._recomputePanels()
   },
@@ -511,8 +516,16 @@ export const useRunStore = create<RunStore>()(
 
   _dispatch: (runId, ev) => {
     const s = useRunStore.getState()
-    const run = s.activeRuns[runId]
-    if (!run) return  // stray SSE for a run we don't track — drop
+    const rawRun = s.activeRuns[runId]
+    if (!rawRun) return  // stray SSE for a run we don't track — drop
+    // Heal persisted entries from before the multi-run refactor so
+    // `.some(...)`, `[...run.events, ...]`, and `[...run.findings, ...]`
+    // can't crash on undefined arrays mid-dispatch.
+    const run: ActiveRunState = {
+      ...rawRun,
+      events: rawRun.events ?? [],
+      findings: rawRun.findings ?? [],
+    }
 
     // Dedupe by seq PER RUN — server replays on reconnect (Layer 4 §6).
     if (run.events.some((e) => e.seq === ev.seq)) return
@@ -702,6 +715,39 @@ export const useRunStore = create<RunStore>()(
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {
+            // Fill in fields that were added to ActiveRunState after the
+            // multi-run refactor. Users with older persisted state have
+            // entries whose events/findings/detection/etc. are undefined —
+            // projecting undefined onto top-level via focusRun crashes
+            // AgentTrace's `for (const e of events)` loop.
+            const normalized: Record<string, ActiveRunState> = {}
+            for (const [rid, r] of Object.entries(state.activeRuns ?? {})) {
+              const raw = r as Partial<ActiveRunState>
+              normalized[rid] = {
+                filmId: raw.filmId ?? null,
+                region: raw.region ?? null,
+                streamState: raw.streamState ?? 'closed',
+                startedAt: raw.startedAt ?? Date.now(),
+                events: raw.events ?? [],
+                detection: raw.detection ?? null,
+                findings: raw.findings ?? [],
+                decision: raw.decision ?? null,
+                report: raw.report ?? null,
+                approvalStatus: raw.approvalStatus ?? null,
+                mode: raw.mode ?? null,
+              }
+            }
+            useRunStore.setState({
+              activeRuns: normalized,
+              // Belt-and-braces: heal top-level fields in case an older
+              // store version serialized any of them as undefined. Every
+              // downstream consumer assumes these are arrays.
+              events: Array.isArray(state.events) ? state.events : [],
+              findings: Array.isArray(state.findings) ? state.findings : [],
+              recentDetections: Array.isArray(state.recentDetections) ? state.recentDetections : [],
+              auditRows: Array.isArray(state.auditRows) ? state.auditRows : [],
+            })
+
             // Restored from a previous session — the SSE stream is long
             // gone, so mark the run as closed and recompute panels so the
             // persisted data renders immediately instead of showing idle.

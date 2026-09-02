@@ -92,9 +92,10 @@ function InvestigationView() {
   const displayDetection = detection ?? scopedQuery.data?.detection ?? null
 
   const hypothesis = useMemo<Hypothesis | null>(() => {
-    for (let i = events.length - 1; i >= 0; i--) {
-      if (events[i].type === 'hypothesis.formed') {
-        const data = events[i].data as { hypothesis?: Hypothesis }
+    const list = Array.isArray(events) ? events : []
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].type === 'hypothesis.formed') {
+        const data = list[i].data as { hypothesis?: Hypothesis }
         return data.hypothesis ?? null
       }
     }
