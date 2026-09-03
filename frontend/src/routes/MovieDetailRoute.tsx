@@ -75,8 +75,16 @@ export default function MovieDetailRoute() {
   // for THIS film has produced a detection + decision + report. This
   // "live" triple wins over any cached sample or historical audit row so
   // the panel updates the instant a crisis finishes.
+  //
+  // Region guard: the live run has a specific region baked in. If the
+  // user has picked a *different* region from the picker, don't shove
+  // the live (mismatched-region) triple into the panel — let the
+  // region-scoped `latest` fetch below drive the display instead.
+  const liveMatchesRegion =
+    selectedRegion == null || liveDetection?.region === selectedRegion
   const liveTriple = (
     liveRunFilmId === id && liveDetection && liveDecision && liveReport
+    && liveMatchesRegion
   )
     ? {
         scenario_id: liveRunId ?? 'live',

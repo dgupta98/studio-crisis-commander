@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useRunStore } from '@/store/runStore'
+import { useRunStore, useScopeMatches } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { Button } from '@/components/Button'
 import { SeverityChip } from '@/components/SeverityChip'
@@ -9,8 +9,13 @@ import { regionLabel } from '@/lib/regions'
 
 export function ApprovalGate() {
   const state = useRunStore((s) => s.panelStates.approval)
-  const decision = useRunStore((s) => s.decision)
-  const status = useRunStore((s) => s.approvalStatus)
+  const rawDecision = useRunStore((s) => s.decision)
+  const rawStatus = useRunStore((s) => s.approvalStatus)
+  const scopeMatches = useScopeMatches()
+  // Only expose the top-level decision when it belongs to the currently
+  // selected film×region. Otherwise show only the pending-queue below.
+  const decision = scopeMatches ? rawDecision : null
+  const status = scopeMatches ? rawStatus : null
   const approve = useRunStore((s) => s.approve)
   const deny = useRunStore((s) => s.deny)
   const auditRows = useRunStore((s) => s.auditRows)

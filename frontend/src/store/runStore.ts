@@ -770,3 +770,23 @@ export const useRunStore = create<RunStore>()(
     },
   ),
 )
+
+/**
+ * True when the currently-loaded top-level singletons (detection/decision/
+ * report/findings/events) actually belong to the film×region the user
+ * has selected. When this is false, panels should NOT render those
+ * singletons — they're stale for the selected scope. Used by
+ * DashboardWorkspace, RecommendationPanel, ApprovalGate to avoid showing
+ * India's decision after the user switches the region picker to Europe.
+ *
+ * Returns true when there IS no explicit scope (dashboard first-mount
+ * with no selection yet) so existing panels keep rendering.
+ */
+export function useScopeMatches(): boolean {
+  return useRunStore((s) => {
+    if (s.selectedFilmId === null) return true
+    if (s.currentRunFilmId !== s.selectedFilmId) return false
+    if (s.selectedRegion != null && s.detection?.region !== s.selectedRegion) return false
+    return true
+  })
+}

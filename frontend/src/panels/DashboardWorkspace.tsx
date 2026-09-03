@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { RecommendationPanel } from './RecommendationPanel'
 import { ApprovalGate } from './ApprovalGate'
-import { useRunStore } from '@/store/runStore'
+import { useRunStore, useScopeMatches } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { SqlBlock } from '@/components/SqlBlock'
 import { regionLabel } from '@/lib/regions'
@@ -74,24 +74,29 @@ function InvestigationView() {
   const runId = useRunStore((s) => s.runId)
   const selectedFilmId = useRunStore((s) => s.selectedFilmId)
   const selectedRegion = useRunStore((s) => s.selectedRegion)
-  const currentRunFilmId = useRunStore((s) => s.currentRunFilmId)
+  const scopeMatches = useScopeMatches()
 
-  // If the analyst has picked a different film×region than the current live
-  // run, fetch that context's most recent investigation and show it instead.
+  // Fetch the selected film×region's latest investigation whenever the
+  // scope doesn't match what's currently loaded top-level.
   const scopedQuery = useQuery({
     ...queries.filmLatestInvestigation(selectedFilmId ?? 0, selectedRegion),
-    enabled: selectedFilmId !== null
-        && (currentRunFilmId !== selectedFilmId
-            || (selectedRegion != null && detection?.region !== selectedRegion)),
+    enabled: selectedFilmId !== null && !scopeMatches,
     select: (raw) => raw as {
       detection: DetectionRow | null
       decision: { decision_id: string; status: string; recommended_actions: unknown[] } | null
     } | null,
   })
 
-  const displayDetection = detection ?? scopedQuery.data?.detection ?? null
+  // Use top-level singletons only when they match the selected scope;
+  // otherwise render the region-scoped fetch. Findings/hypothesis come
+  // from the top-level run so they only make sense when scope matches.
+  const displayDetection = scopeMatches
+    ? detection
+    : (scopedQuery.data?.detection ?? null)
+  const displayFindings = scopeMatches ? findings : []
 
   const hypothesis = useMemo<Hypothesis | null>(() => {
+    if (!scopeMatches) return null
     const list = Array.isArray(events) ? events : []
     for (let i = list.length - 1; i >= 0; i--) {
       if (list[i].type === 'hypothesis.formed') {
@@ -100,7 +105,7 @@ function InvestigationView() {
       }
     }
     return null
-  }, [events])
+  }, [events, scopeMatches])
 
   if (!runId && !displayDetection && selectedFilmId === null) {
     return (
@@ -145,14 +150,14 @@ function InvestigationView() {
         )}
       </Card>
 
-      {findings.length === 0 ? (
+      {displayFindings.length === 0 ? (
         !displayDetection ? null : (
           <Card className="p-4 text-sm text-ink-soft italic">
             No sub-agent findings for this scope.
           </Card>
         )
       ) : (
-        findings.map((f, i) => (
+        displayFindings.map((f, i) => (
           <Card key={i} className="p-4">
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs uppercase tracking-wider text-accent font-mono">

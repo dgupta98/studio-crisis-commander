@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useRunStore } from '@/store/runStore'
+import { useRunStore, useScopeMatches } from '@/store/runStore'
 import { Card } from '@/components/Card'
 import { SqlBlock } from '@/components/SqlBlock'
 import { Popover } from '@/components/Popover'
@@ -11,8 +11,14 @@ import type { KeyFigure, RecommendedAction } from '@/api/contracts'
 
 export function RecommendationPanel() {
   const state = useRunStore((s) => s.panelStates.recommendation)
-  const decision = useRunStore((s) => s.decision)
-  const report = useRunStore((s) => s.report)
+  const rawDecision = useRunStore((s) => s.decision)
+  const rawReport = useRunStore((s) => s.report)
+  const scopeMatches = useScopeMatches()
+  // Blank the panel when the top-level run doesn't belong to the film×
+  // region the user selected — otherwise we'd render India's decision
+  // after they switched the region picker to Western Europe.
+  const decision = scopeMatches ? rawDecision : null
+  const report = scopeMatches ? rawReport : null
   const [openKf, setOpenKf] = useState<number | null>(null)
   const [openImpact, setOpenImpact] = useState<number | null>(null)
 
