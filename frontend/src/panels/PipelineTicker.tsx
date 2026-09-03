@@ -24,12 +24,15 @@ export function PipelineTicker() {
   const focusRun = useRunStore((s) => s.focusRun)
   const reduced = usePrefersReducedMotion()
 
-  const runIds = Object.keys(activeRuns)
-  const anyOpen = runIds.some((rid) =>
-    activeRuns[rid].streamState === 'streaming' ||
-    activeRuns[rid].streamState === 'connecting'
-  )
-  const visible = anyOpen || runIds.length > 0
+  // Only show pipelines that are still doing work. Completed / errored /
+  // rehydrated-from-storage runs drop off so the ticker reflects the
+  // current inject rather than the entire session's run history. Past runs
+  // stay accessible from Movie Detail → Past runs.
+  const runIds = Object.keys(activeRuns).filter((rid) => {
+    const st = activeRuns[rid]?.streamState
+    return st === 'streaming' || st === 'connecting'
+  })
+  const visible = runIds.length > 0
 
   // Derive stage completion from THIS run's own events. Post per-run refactor
   // each ActiveRunState carries its own events bucket, so pill dots reflect
