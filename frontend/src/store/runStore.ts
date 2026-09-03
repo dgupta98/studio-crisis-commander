@@ -702,6 +702,13 @@ export const useRunStore = create<RunStore>()(
     }),
     {
       name: 'scc-run-state',
+      // Bump on any change to persisted shape. v2 drops activeRuns/
+      // focusedRunId from the persisted payload — clients running v1
+      // still had zombie runs from the pre-per-runId-closer bug lingering
+      // in localStorage. Without a migrate() fn, zustand-persist discards
+      // the entire old payload on version mismatch and re-initializes
+      // from the store defaults, which is exactly what we want.
+      version: 2,
       // Persist everything the UI needs to reconstruct panels after a
       // refresh / tab-suspend / Cloud Run instance replacement — including
       // in-flight runs (any triggered inject should survive), the audit

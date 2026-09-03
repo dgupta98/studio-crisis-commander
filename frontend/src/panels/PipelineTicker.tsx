@@ -28,9 +28,20 @@ export function PipelineTicker() {
   // rehydrated-from-storage runs drop off so the ticker reflects the
   // current inject rather than the entire session's run history. Past runs
   // stay accessible from Movie Detail → Past runs.
+  //
+  // Zombie guard: a real pipeline finishes in <60s. If a run has been in
+  // 'streaming'/'connecting' for >3min without a terminal event, its SSE
+  // was killed (backend restart, network drop, prior _closeStream bug)
+  // and streamState will never advance. Hide it so the ticker doesn't
+  // accumulate ghost pills that outlive their streams.
+  const STALE_AFTER_MS = 3 * 60 * 1000
+  const now = Date.now()
   const runIds = Object.keys(activeRuns).filter((rid) => {
-    const st = activeRuns[rid]?.streamState
-    return st === 'streaming' || st === 'connecting'
+    const run = activeRuns[rid]
+    if (!run) return false
+    const st = run.streamState
+    if (st !== 'streaming' && st !== 'connecting') return false
+    return now - (run.startedAt ?? 0) < STALE_AFTER_MS
   })
   const visible = runIds.length > 0
 
