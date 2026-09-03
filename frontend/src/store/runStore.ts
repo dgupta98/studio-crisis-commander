@@ -94,7 +94,10 @@ interface RunStore {
   streamState: 'idle' | 'connecting' | 'streaming' | 'closed' | 'error'
   apiReachable: boolean
   panelStates: Record<PanelKey, PanelState>
-  _closeStream: (() => void) | null
+  // Per-run closer functions keyed by runId. Multi-region injects need
+  // one live EventSource per region — a single shared closer was killing
+  // every prior stream as soon as the next connectStream() fired.
+  _closers: Record<string, () => void>
 
   // ─── actions ─────────────────────────────────────
   inject: (opts?: {
@@ -162,7 +165,7 @@ const INITIAL: Omit<RunStore, keyof {
   streamState: 'idle',
   apiReachable: true,
   panelStates: INITIAL_PANELS,
-  _closeStream: null,
+  _closers: {},
 }
 
 export const useRunStore = create<RunStore>()(
@@ -236,9 +239,17 @@ export const useRunStore = create<RunStore>()(
   },
 
   connectStream: (runId: string) => {
-    const prev = useRunStore.getState()._closeStream
-    set({ _closeStream: null })  // clear before invoking so a sync openStream throw can't leave a stale ref
-    prev?.()
+    // Close ONLY this run's prior EventSource, if we're reconnecting.
+    // Every active inject gets its own key in `_closers` so multi-region
+    // runs don't stomp on each other's streams.
+    const closers = useRunStore.getState()._closers
+    const prev = closers[runId]
+    if (prev) {
+      const rest = { ...closers }
+      delete rest[runId]
+      set({ _closers: rest })
+      prev()
+    }
     const close = openStream(
       runId,
       // Tag every SSE with its runId so _dispatch can route into the correct
@@ -257,7 +268,7 @@ export const useRunStore = create<RunStore>()(
     if (useRunStore.getState().focusedRunId === runId) {
       set({ streamState: 'connecting' })
     }
-    set({ _closeStream: close })
+    set({ _closers: { ...useRunStore.getState()._closers, [runId]: close } })
     useRunStore.getState()._recomputePanels()
   },
 
@@ -509,9 +520,11 @@ export const useRunStore = create<RunStore>()(
   },
 
   reset: () => {
-    const { _closeStream } = useRunStore.getState()
+    const { _closers } = useRunStore.getState()
     set({ ...INITIAL })
-    _closeStream?.()
+    for (const close of Object.values(_closers)) {
+      try { close() } catch { /* stream may already be dead */ }
+    }
   },
 
   _dispatch: (runId, ev) => {
@@ -694,6 +707,10 @@ export const useRunStore = create<RunStore>()(
       // in-flight runs (any triggered inject should survive), the audit
       // history (RecentRuns hydrates instantly), and cached feed data.
       partialize: (state) => ({
+        // Top-level singletons hydrate the last-viewed run's UI. activeRuns
+        // and focusedRunId are intentionally NOT persisted — SSE streams
+        // can't be resumed after a reload, so any persisted entries would
+        // just clutter the pipeline ticker with dead pills.
         runId: state.runId,
         currentRunFilmId: state.currentRunFilmId,
         events: state.events,
@@ -709,48 +726,33 @@ export const useRunStore = create<RunStore>()(
         metrics: state.metrics,
         selectedFilmId: state.selectedFilmId,
         selectedRegion: state.selectedRegion,
-        activeRuns: state.activeRuns,
-        focusedRunId: state.focusedRunId,
       }),
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {
-            // Fill in fields that were added to ActiveRunState after the
-            // multi-run refactor. Users with older persisted state have
-            // entries whose events/findings/detection/etc. are undefined —
-            // projecting undefined onto top-level via focusRun crashes
-            // AgentTrace's `for (const e of events)` loop.
-            const normalized: Record<string, ActiveRunState> = {}
-            for (const [rid, r] of Object.entries(state.activeRuns ?? {})) {
-              const raw = r as Partial<ActiveRunState>
-              normalized[rid] = {
-                filmId: raw.filmId ?? null,
-                region: raw.region ?? null,
-                streamState: raw.streamState ?? 'closed',
-                startedAt: raw.startedAt ?? Date.now(),
-                events: raw.events ?? [],
-                detection: raw.detection ?? null,
-                findings: raw.findings ?? [],
-                decision: raw.decision ?? null,
-                report: raw.report ?? null,
-                approvalStatus: raw.approvalStatus ?? null,
-                mode: raw.mode ?? null,
-              }
-            }
+            // Every persisted activeRuns entry is dead: SSE connections
+            // don't survive a page reload, so we can't resume them. Past
+            // runs are re-fetchable from the server via /catalog/films/
+            // {id}/runs. Purging here keeps the pipeline ticker clean
+            // instead of accumulating an ever-growing pill wall across
+            // sessions. The top-level singletons (runId / events /
+            // detection / decision / report) still persist so the last-
+            // viewed run's UI hydrates instantly.
             useRunStore.setState({
-              activeRuns: normalized,
-              // Belt-and-braces: heal top-level fields in case an older
-              // store version serialized any of them as undefined. Every
-              // downstream consumer assumes these are arrays.
+              activeRuns: {},
+              focusedRunId: null,
+              _closers: {},
+              // Belt-and-braces: heal top-level list fields in case an
+              // older store version ever serialized any as undefined.
               events: Array.isArray(state.events) ? state.events : [],
               findings: Array.isArray(state.findings) ? state.findings : [],
               recentDetections: Array.isArray(state.recentDetections) ? state.recentDetections : [],
               auditRows: Array.isArray(state.auditRows) ? state.auditRows : [],
             })
 
-            // Restored from a previous session — the SSE stream is long
-            // gone, so mark the run as closed and recompute panels so the
-            // persisted data renders immediately instead of showing idle.
+            // The prior session's SSE stream is dead — mark closed so the
+            // resolved singletons render immediately instead of showing
+            // the "connecting" spinner.
             if (state.runId) {
               useRunStore.setState({ streamState: 'closed' })
             }
