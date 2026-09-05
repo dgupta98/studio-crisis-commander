@@ -2,134 +2,186 @@
 
 **Target runtime:** 2:45–3:00. Every second earns its place.
 **Recording target:** 1920×1080, 60fps, screen capture with cursor visible.
-**Voice-over:** conversational, first-person plural ("we"). Cut ambient tool sound.
+**Voice-over:** conversational, first-person plural ("we"). Comedic hook, deadpan delivery on the pain. Cut ambient tool sound.
 
 ---
 
-## Fold 0 · Cold open (0:00 – 0:18)
+## Fold 0 · Cold open (0:00 – 0:20)
 
-**On screen:** a fake studio-side Slack message, static, single frame:
+**On screen:** static "corporate Slack" mock, single frame:
 
 > **VP Marketing → #war-room** · 2:47 AM
-> *"Refunds spiking on Aurora in Germany. Trailer B just went live. Do we pull it or wait for the room to wake up?"*
+> *"Refunds spiking on Aurora in DE. Sentiment tanking in India. Twitter's on fire in Brazil. Trailer B just went live. We pulling this or not?"*
+>
+> **VP Marketing** · 2:47 AM
+> *"@channel"*
+>
+> **VP Marketing** · 2:48 AM
+> *"@here"*
+>
+> **VP Marketing** · 2:49 AM
+> *"hello???"*
 
-Hold on the message for 3 seconds. Fade.
+Hold 4 seconds. Cursor drifts across the messages like it's reading them.
 
-**Cut to** the SCC landing page loading. Particle cascade blooms.
+**VO (deadpan, slightly weary):**
+> *"Somewhere, right now, a VP of Marketing is aggressively at-channeling a Slack room at 2 a.m. because three markets are on fire and the war room is asleep. This is a re-enactment. It's also every Tuesday."*
 
-**VO:**
-> *"Every studio has this DM at 2 a.m. — a signal you can see, a decision you can't make yet. Studio Crisis Commander is the tool that answers it before the meeting starts."*
+**Cut to** black. Beat. Title card fades in:
+
+```
+STUDIO CRISIS COMMANDER
+the tool that answers the DM before the war room wakes up
+```
+
+Hold 2 seconds. Cut to landing page. Particle cascade blooms.
 
 ---
 
-## Fold 1 · The value prop (0:18 – 0:35)
+## Fold 1 · The value prop (0:20 – 0:38)
 
-**On screen:** landing hero, camera slowly pans down through the four-agent card grid. Cursor hovers each `SignalChip` in turn.
+**On screen:** landing hero, camera pans down through the four-agent card grid. Cursor hovers each `SignalChip` in turn (blue, pink, yellow, green).
 
 **VO:**
-> *"Four autonomous agents watch box office, social, reviews, and streaming across 15 regions. Every claim they make cites the exact SQL that produced it. Anomaly to recommendation in under 90 seconds."*
+> *"Four autonomous agents. Fifteen markets. Fifty million rows of telemetry. Every claim they make cites the exact SQL row that produced it — because 'trust me, I'm an LLM' is not a phrase you say to a CFO."*
 
-**Cut** to the `TopBar` eval chip in the dashboard. Zoom-in: `Eval · N/30 verified`.
+**Cut** to the `TopBar` eval chip in the dashboard. Zoom-in: `EVAL · 21/30 VERIFIED`.
 
 **VO (over zoom):**
-> *"Not vibes — verified on 30 scenarios, reproducible with one command."*
+> *"Twenty-one out of thirty. Verified. Reproducible in one command. Vibes are not a metric."*
 
 ---
 
-## Fold 2 · The inject moment (0:35 – 1:10)
+## Fold 2 · The movie-first heat bar (0:38 – 1:05)
 
-**On screen:** Dashboard route. Cursor clicks **Inject Crisis** in TopBar. Modal opens.
+**On screen:** Dashboard route. Cursor clicks the `FilmPicker` — types "Aurora". `MovieCommand` header renders. `RegionHeatBar` blooms across the top — 15 markets, each a tiny stacked bar in signal-family colors.
+
+Zoom-in on the heat bar. Three markets pulse red-hot: **DE**, **IND**, **BRA**.
+
+**VO:**
+> *"This is the money shot. Every movie, every market, every signal family on one line. Aurora is calm in twelve regions and actively on fire in three."*
+
+Cursor hovers **IND** — tooltip fires. Cursor clicks it. `TimeseriesGrid` swaps: 4-up sparklines for box office, social, streaming, and reviews — the social sparkline has a violent upward tick.
+
+**VO:**
+> *"Pick a market, get the four-panel telemetry for that market. This used to be a Jira ticket. Now it's a click."*
+
+---
+
+## Fold 3 · The multi-region inject (1:05 – 1:35)
+
+**On screen:** cursor clicks **Inject Crisis** in the TopBar. Modal opens. `MultiRegionPicker` chip picker is visible.
 
 Fill in:
-- Film: *Aurora* (or whatever featured film shows Trailer B scenario)
-- Region: DE
-- Crisis type: `trailer_variant_regression`
-- Magnitude: `1.5σ`
+- **Film:** Aurora
+- **Regions:** click **DE**, **IND**, **BRA** (three chips light up)
+- **Crisis type:** `trailer_variant_underperformance`
+- **Magnitude:** `1.5σ`
 
-Click **Inject**. Modal closes. SPA nav lands on `/movies/{aurora}`.
+Click **Inject**. Modal closes. Bottom-docked `PipelineTicker` slides up from the bottom edge.
 
-**On screen:** the Movie Detail hero briefly renders, then the persistent Agent Trace begins streaming:
-- `detection.started` → `detection.completed` (severity 8.4, magnitude 1.5)
-- `signal.completed` × 4 (each sub-agent, its SQL, its narrative)
+**On screen:** three pills materialize side-by-side, each labeled with a region. Their stage dots start filling left-to-right at slightly different speeds. Cursor hovers them in sequence.
+
+**VO (over the streaming pills):**
+> *"One inject, three regions, three parallel pipelines. This is the moment we stopped pretending crises happen one at a time. Detection is pure SQL — we just scanned forty-seven million rows in twelve milliseconds. No LLM in the hot path. Now four sub-agents fan out per region — numeric, text, categorical, temporal — every query through the ClickHouse MCP server."*
+
+Cursor clicks the **IND** pill. The Agent Trace drawer on the right slides in, scoped to the India run. Events cascade:
+- `detection.completed` (severity 8.4)
+- `signal.completed × 4`
 - `hypothesis.formed`
-- `action.proposed` × 2, `action.impact_computed` × 2
+- `action.proposed × 2` with `action.impact_computed`
 - `report.completed`
 
-**VO (over the stream):**
-> *"Detection is pure SQL — this box just scanned 47 million rows in 12 milliseconds. No LLM in the hot path. Now four sub-agents fan out: numeric, categorical, temporal, and text — each grounded through the ClickHouse MCP server. Then the decision agent synthesizes them into ranked actions with dollar-figure impact estimates. Then the report writes it up."*
+**VO:**
+> *"Click any pill, watch that run. The trace is scoped per pipeline. No merging. No accidental cross-talk. No 'wait which region are we looking at.'"*
 
-Timing target for this fold: end at ~1:10 with `pipeline.completed` on screen and the Recommendation panel populated.
+Target: end fold with `pipeline.completed` for **IND** and the Recommendation panel populated.
 
 ---
 
-## Fold 3 · The provenance beat (1:10 – 1:35) *[the differentiator]*
+## Fold 4 · The provenance beat (1:35 – 1:55) *[the differentiator]*
 
-**On screen:** cursor hovers the first recommended action. Zoom-in on the "Impact: $X · view SQL" button. Click it. Popover opens with the exact `impact_sql` query.
+**On screen:** cursor drifts to the top recommended action. Zoom-in on `Impact: $18,540 · view SQL`. Click.
 
-Hold. Let the viewer read the first two lines of SQL.
+Popover opens with the actual `impact_sql`. Hold. Let the viewer read the first two lines.
+
+**VO (quiet, almost reverent):**
+> *"Every dollar figure in a recommendation carries the SQL that produced it. This is not a hallucination. This is not a made-up number. The Pydantic contract layer refuses to construct an action without an attached query — the LLM literally can't ship a claim without receipts."*
+
+Close popover. Cursor drifts to a Key Figure in the report card. Opens the source SQL popover. Hold 2 seconds.
 
 **VO:**
-> *"This dollar figure — every recommendation carries one — isn't a hallucination. It's the result of the SQL you're looking at. LLM narrates, SQL computes. If the Pydantic layer can't attach a query to a number, the decision never leaves the agent."*
-
-Close the popover. Cursor drifts to a Key Figure in the report, opens its source SQL popover too. Hold 2 seconds.
-
-**VO:**
-> *"Same rule for every headline number in the report."*
+> *"Same rule for every headline number in the report. LLM narrates. SQL computes. Nobody gets away with a vibe."*
 
 ---
 
-## Fold 4 · The approval + audit (1:35 – 2:05)
+## Fold 5 · The region picker + time-travel (1:55 – 2:20)
 
-**On screen:** back on Dashboard. Show the Approval panel with `pending_approval`. Cursor clicks **Approve**. Panel flips to `approved`. `RecentRuns` in the left column now shows the run in green at the top of the list.
+**On screen:** SPA nav to `/movies/aurora`. Movie Detail loads. The Investigation Scope strip is visible with a `<select>` on the right — currently on **India**.
 
-**VO:**
-> *"Anything above the impact threshold waits for a human. The audit log is append-only — every approval, denial, and executed action gets a row you can grep later."*
-
-Cursor drifts to the RecentRuns panel. Click one of the older runs — SPA nav to `/movies/{that film}`. LatestInvestigation panel renders instantly from `data/eval_cache`.
+Cursor clicks the select, changes to **Germany**. The Detection, Investigation, and Recommendation panels *all* swap in real time — old India content clears, new Germany content loads.
 
 **VO:**
-> *"Featured films replay from a cached bundle so the demo never depends on a cold Cloud Run instance."*
+> *"Region picker. Actually swaps the data. This one took an embarrassing number of commits — turns out if your panels read from a single global store they'll happily lie to you about which market you're looking at. Fixed with a scope-match hook that blanks stale panels before rendering the new region."*
+
+Cursor scrolls down to the **Past Runs** timeline. Clicks a run from last week.
+
+The workspace time-travels: Investigation / Recommendation / Approval all rewind to that historical run's data.
+
+**VO:**
+> *"Every past run is clickable. The whole workspace time-travels into it. Investigations don't just happen — they get archived, indexed, and re-openable."*
 
 ---
 
-## Fold 5 · The stack + the sponsors (2:05 – 2:30)
+## Fold 6 · Approval + audit (2:20 – 2:40)
 
-**On screen:** wide static shot of the architecture diagram (from README or spec doc). Highlight in sequence:
-- ClickHouse Cloud (blue outline)
-- mcp-clickhouse MCP server (blue outline)
-- Google ADK + Gemini via Vertex AI (green outline)
-- Cloud Run + Cloud Scheduler + Secret Manager (green outline)
+**On screen:** back on Dashboard. `ApprovalGate` shows `pending_approval` for the India run. Cursor clicks **Approve**. Panel flips to `approved`. The Recent Runs shelf shows the run in green at the top.
 
 **VO:**
-> *"Under the hood: ClickHouse Cloud runs 50 million rows of synthetic telemetry seeded from the TMDB catalog. Every agent's ClickHouse access flows through the mcp-clickhouse MCP server — zero direct DB calls from agent code. Gemini via Vertex AI does the narration. Everything ships on Cloud Run in the same region as ClickHouse for millisecond round-trips."*
+> *"Anything above the impact threshold waits for a human. The audit log is append-only — every approval, every denial, every auto-executed action gets a row you can grep six months later when Legal asks who signed off on what."*
+
+Beat.
+
+**VO:**
+> *"Which they will."*
 
 ---
 
-## Fold 6 · The close (2:30 – 2:55)
+## Fold 7 · The close (2:40 – 3:00)
 
 **Cut to** a full-screen recap card:
 
 ```
-Studio Crisis Commander
-  4 agents  ·  50M rows  ·  cited to the row
-  N/30 verified  ·  reproducible in one command
+   STUDIO CRISIS COMMANDER
 
-  Live:  scc-frontend.us-east1.run.app
-  Code:  github.com/dgupta98/studio-crisis-commander
+   4 agents · 15 markets · 50M rows · cited to the row
+   21 / 30 verified · reproducible in one command
+   multi-region · time-travelable · human-gated
+
+   Live:  scc-frontend.us-east1.run.app
+   Code:  github.com/dgupta98/studio-crisis-commander
 ```
 
 **VO:**
-> *"Studio Crisis Commander. Watch every signal. Cite every claim. Ship every recommendation — before the meeting starts."*
+> *"Studio Crisis Commander. Watch every signal. Cite every claim. Ship every recommendation. Before the meeting starts. Before the trailer runs another twelve hours. Before somebody @-channels the war room at 2 a.m."*
 
-Fade to black. End card holds for 1.5 seconds.
+Beat.
+
+**VO (softer):**
+> *"Sleep is a competitive advantage. Ship this to your VP."*
+
+Fade to black. End card holds 1.5 seconds.
 
 ---
 
 ## Editing checklist
 
-- [ ] Cursor visible throughout; use a slight highlight ring in the editor
+- [ ] Cursor visible throughout; slight highlight ring in the editor
 - [ ] Zoom-in on latency badge whenever a query completes (< 500 ms)
+- [ ] Multi-region ticker moment — hold on the three pills lighting up in sequence for at least 3 s
+- [ ] Region picker on Movie Detail — cut so viewer can see all three panels swap simultaneously (this is the "wow" moment for the movie-first flow)
+- [ ] Past-run click — hold on the workspace panels visibly changing content
 - [ ] No dead air between beats — cut breaths
-- [ ] Music: soft cinematic underscore, drops to almost silence during the provenance beat
-- [ ] Captions on for accessibility (judges may watch muted)
+- [ ] Music: soft cinematic underscore, drops to almost silence during the provenance beat (Fold 4)
+- [ ] Captions on for accessibility (judges may watch muted — the deadpan lines land in text too)
 - [ ] Export: `.mp4`, H.264, 12–18 Mbps, YouTube upload as unlisted → paste URL in Devpost
