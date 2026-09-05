@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { useFilm } from '../hooks/useFilm'
 import { useCachedTriple } from '../hooks/useCachedTriple'
 import { useLatestInvestigation, useFilmRuns } from '../hooks/useFilmInvestigation'
-import { useRunStore } from '@/store/runStore'
+import { useRunStore, type PastRunDetail } from '@/store/runStore'
+import { queryClient } from '@/api/queryClient'
+import { queries } from '@/api/queries'
 import { detectIsoFromLocale, isoToDashboardRegion, regionLabel, REGIONS } from '@/lib/regions'
 import { MovieHero } from '../panels/MovieHero'
 import { LatestInvestigation } from '../panels/LatestInvestigation'
@@ -67,6 +69,25 @@ export default function MovieDetailRoute() {
       if (ok) useRunStore.setState({ currentRunFilmId: id })
     })()
   }, [id, scenarioId])
+
+  // Region-picker sync: /latest-investigation?region=X returns an audit-derived
+  // triple but only carries `recommended_actions` summaries, not the full
+  // `agent_run`. Fetch the run detail for its decision_id and hydrate runStore
+  // via selectPastRun so Investigation / Recommendation / Approval populate
+  // with THIS region's data instead of the cached seed's pinned region.
+  const selectPastRun = useRunStore((s) => s.selectPastRun)
+  useEffect(() => {
+    if (!id || !latest) return
+    const decisionId = (latest as { scenario_id?: string })?.scenario_id
+    if (!decisionId) return
+    const s = useRunStore.getState()
+    if (s.streamState === 'streaming' || s.streamState === 'connecting') return
+    if (s.runId === decisionId) return
+    void queryClient
+      .fetchQuery(queries.filmRunDetail(id, decisionId))
+      .then((data) => selectPastRun(data as PastRunDetail))
+      .catch((e) => console.error('[MovieDetail] region-sync failed', decisionId, e))
+  }, [id, selectedRegion, latest, selectPastRun])
 
   if (isLoading) return <div data-testid="route-movie-detail" className="p-6 text-sm text-ink-soft">Loading…</div>
   if (error || !film) return <div data-testid="route-movie-detail" className="p-6 text-sm text-rose-400">Film not found.</div>
