@@ -60,7 +60,14 @@ def _featured_film_ids() -> list[int]:
     return sorted(ids)
 
 
+MANDATORY_REGIONS = ("India",)
+
+
 def _top_regions(film_ids: list[int], k: int) -> dict[int, list[str]]:
+    """Top-K by 7d box-office volume per film, but guarantee that every
+    MANDATORY_REGIONS entry is included — user asked for "data till India"
+    on every featured film, and volume-ranking alone drops India for a
+    handful of Asia-Pacific-heavy titles."""
     if not film_ids:
         return {}
     ids_list = ",".join(str(int(x)) for x in film_ids)
@@ -79,7 +86,15 @@ def _top_regions(film_ids: list[int], k: int) -> dict[int, list[str]]:
     per: dict[int, list[str]] = {}
     for r in rows:
         per.setdefault(int(r[0]), []).append(str(r[1]))
-    return {fid: regs[:k] for fid, regs in per.items()}
+    out: dict[int, list[str]] = {}
+    for fid, regs in per.items():
+        # Guarantee mandatory regions are included even if they didn't make
+        # the volume cut. Take top-(K - len(missing_mandatory)) volume regions,
+        # then append the mandatory ones. Preserves K total per film.
+        missing = [r for r in MANDATORY_REGIONS if r not in regs[:k]]
+        keep = [r for r in regs[: max(0, k - len(missing))]]
+        out[fid] = keep + missing
+    return out
 
 
 async def _one_run(film_id: int, region: str, idx: int, total: int) -> tuple[str, str | None]:
