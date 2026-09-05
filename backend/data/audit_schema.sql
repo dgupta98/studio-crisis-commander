@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS decision_audit (
   threshold_usd       Float64,
   agent_run_json      String,
   report_json         String DEFAULT '',
+  investigation_json  String DEFAULT '',
   approval_status     LowCardinality(String) DEFAULT 'pending_approval',
   approver            String DEFAULT '',
   approval_note       String DEFAULT '',
