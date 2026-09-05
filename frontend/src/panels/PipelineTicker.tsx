@@ -29,12 +29,13 @@ export function PipelineTicker() {
   // current inject rather than the entire session's run history. Past runs
   // stay accessible from Movie Detail → Past runs.
   //
-  // Zombie guard: a real pipeline finishes in <60s. If a run has been in
-  // 'streaming'/'connecting' for >3min without a terminal event, its SSE
-  // was killed (backend restart, network drop, prior _closeStream bug)
-  // and streamState will never advance. Hide it so the ticker doesn't
-  // accumulate ghost pills that outlive their streams.
-  const STALE_AFTER_MS = 3 * 60 * 1000
+  // Zombie guard: healthy pipelines finish in <60s but Cloud Run cold-starts
+  // + slow Gemini turns can push a legitimate run past 5min. Only cull pills
+  // whose SSE has genuinely stalled — 15min is long enough that no real
+  // in-flight pipeline gets swept, but short enough that a backend restart
+  // (which orphans the client-side streamState) doesn't leave a permanent
+  // ghost on the ticker.
+  const STALE_AFTER_MS = 15 * 60 * 1000
   const now = Date.now()
   const runIds = Object.keys(activeRuns).filter((rid) => {
     const run = activeRuns[rid]
