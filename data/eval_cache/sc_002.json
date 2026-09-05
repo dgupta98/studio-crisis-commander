@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T02:00:00",
     "metric": "social_trends.avg_virality",
-    "film_id": 2,
+    "film_id": 51,
     "region": "India",
     "detector": "zscore",
     "baseline_value": 0.018587499461318657,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T02:00:00",
       "metric": "social_trends.avg_virality",
-      "film_id": 2,
+      "film_id": 51,
       "region": "India",
       "detector": "zscore",
       "baseline_value": 0.018587499461318657,
@@ -186,7 +186,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Trailer Variant_B is generating negative social media sentiment (-0.8) and its revenue share in India-DE has dropped by 80.0%. Swapping to Variant_A, which has a revenue share change of -10.0%, should help mitigate the overall revenue decline.",
         "params": {
-          "film_id": 2,
+          "film_id": 51,
           "region": "India",
           "from_variant": "B",
           "to_variant": "A"
@@ -200,7 +200,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Negative social media sentiment (-0.8) in India-DE, indicating the trailer is perceived as 'misleading' and 'boring', requires a public response. Issuing a PR statement addressing audience feedback can help manage perception and mitigate the revenue drop.",
         "params": {
-          "film_id": 2,
+          "film_id": 51,
           "region": "India",
           "message_theme": "addressing audience feedback"
         },

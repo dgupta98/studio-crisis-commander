@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-20T00:00:00",
     "metric": "box_office_revenue.revenue_usd",
-    "film_id": 16,
+    "film_id": 12,
     "region": "Japan",
     "detector": "zscore",
     "baseline_value": 12500.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-20T00:00:00",
       "metric": "box_office_revenue.revenue_usd",
-      "film_id": 16,
+      "film_id": 12,
       "region": "Japan",
       "detector": "zscore",
       "baseline_value": 12500.0,
@@ -127,7 +127,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "The underperformance of the affected variant, with a conversion rate of 0.04 in Japan-DE, strongly suggests swapping it for the affected variant, which has a conversion rate of 0.08 in other regions, to improve conversion rates.",
         "params": {
-          "film_id": 16,
+          "film_id": 12,
           "region": "Japan",
           "from_variant": "B",
           "to_variant": "A"
@@ -141,7 +141,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Negative social media sentiment in Japan-DE regarding 'confusing plot' and 'misleading scenes' warrants an immediate public relations statement to clarify the content of Film 505.",
         "params": {
-          "film_id": 16,
+          "film_id": 12,
           "region": "Japan",
           "message_theme": "clarify misleading content"
         },

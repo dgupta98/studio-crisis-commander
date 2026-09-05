@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T01:19:40",
     "metric": "social_trends.avg_virality",
-    "film_id": 7,
+    "film_id": 26,
     "region": "France",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T01:19:40",
       "metric": "social_trends.avg_virality",
-      "film_id": 7,
+      "film_id": 26,
       "region": "France",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -115,7 +115,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Social media sentiment in France-DE dropped from 0.75 to 0.20 specifically due to 'the affected variant', which also has a significantly lower click-through rate of 0.008 compared to 'the affected variant's' 0.035 in France-DE.",
         "params": {
-          "film_id": 7,
+          "film_id": 26,
           "region": "France",
           "from_variant": "B",
           "to_variant": "A"
@@ -142,7 +142,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Given the sales decline by and specific negative reactions to 'the affected variant', shifting 25% of the 50,000 EUR 'online_ads' budget to 'tv_spots' in France-DE could mitigate further exposure to the problematic trailer.",
         "params": {
-          "film_id": 7,
+          "film_id": 26,
           "region": "France",
           "from_channel": "display",
           "to_channel": "affiliate",

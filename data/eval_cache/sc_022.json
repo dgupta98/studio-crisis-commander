@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-19T00:00:00",
     "metric": "marketing_roi",
-    "film_id": 22,
+    "film_id": 109,
     "region": "UK",
     "detector": "pctchange",
     "baseline_value": 33.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-19T00:00:00",
       "metric": "marketing_roi",
-      "film_id": 22,
+      "film_id": 109,
       "region": "UK",
       "detector": "pctchange",
       "baseline_value": 33.0,
@@ -121,7 +121,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Trailer 'C' in UK has a conversion rate of and is driving a 60% increase in negative feedback, while Trailer 'A' had a conversion rate. Swapping back to 'A' should mitigate the immediate problem.",
         "params": {
-          "film_id": 22,
+          "film_id": 109,
           "region": "UK",
           "from_variant": "B",
           "to_variant": "A"
@@ -135,7 +135,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Social media sentiment in UK shows a increase in negative mentions related to the trailer, with keywords such as 'misleading' trending, indicating a need for public messaging.",
         "params": {
-          "film_id": 22,
+          "film_id": 109,
           "region": "UK",
           "message_theme": "addressing negative sentiment around trailer/film messaging"
         },

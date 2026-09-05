@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T03:00:00",
     "metric": "streaming_watch_minutes.completion_ratio",
-    "film_id": 25,
+    "film_id": 24,
     "region": "US",
     "detector": "pctchange",
     "baseline_value": 0.7620967741935484,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T03:00:00",
       "metric": "streaming_watch_minutes.completion_ratio",
-      "film_id": 25,
+      "film_id": 24,
       "region": "US",
       "detector": "pctchange",
       "baseline_value": 0.7620967741935484,
@@ -142,7 +142,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Defensively re-allocate marketing spend in US-NYC to directly counter the competitor's impact, which has caused a -$2,450,000 delta in box office revenue. This will redirect budget from less agile channels to more responsive ones.",
         "params": {
-          "film_id": 25,
+          "film_id": 24,
           "region": "US",
           "from_channel": "display",
           "to_channel": "social",

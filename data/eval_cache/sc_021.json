@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-23T22:37:46",
     "metric": "campaign_performance.roi",
-    "film_id": 21,
+    "film_id": 29,
     "region": "US",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-23T22:37:46",
       "metric": "campaign_performance.roi",
-      "film_id": 21,
+      "film_id": 29,
       "region": "US",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -136,7 +136,7 @@
         "action_type": "pause_campaign",
         "rationale": "Immediately pause Campaign ID 203 in US-DE, which is generating an ROI of -150000, to halt further financial losses directly impacted by the competitor release 'Shadows of Eldoria'.",
         "params": {
-          "film_id": 401,
+          "film_id": 29,
           "region": "US",
           "campaign_id": 203,
           "pause_days": 7
@@ -150,7 +150,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Shift of marketing spend from the severely underperforming 'social' channel to 'display' in US-DE for 7 days, reinforcing the pause by redirecting resources away from the channel most affected by the competitor.",
         "params": {
-          "film_id": 21,
+          "film_id": 29,
           "region": "US",
           "from_channel": "social",
           "to_channel": "display",

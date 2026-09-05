@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T00:50:11",
     "metric": "audience_sentiment.avg_score",
-    "film_id": 3,
+    "film_id": 22,
     "region": "Germany",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T00:50:11",
       "metric": "audience_sentiment.avg_score",
-      "film_id": 3,
+      "film_id": 22,
       "region": "Germany",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -115,7 +115,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Negative social media sentiment in Germany-DE for film 789, specifically referencing 'trailer quality' and 'misleading advertising', necessitates an immediate public statement to manage perception.",
         "params": {
-          "film_id": 3,
+          "film_id": 22,
           "region": "Germany",
           "message_theme": "trailer quality and misleading advertising concerns"
         },

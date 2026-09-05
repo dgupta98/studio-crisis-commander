@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T03:00:00",
     "metric": "ticket_refunds.refund_count",
-    "film_id": 9,
+    "film_id": 27,
     "region": "US",
     "detector": "pctchange",
     "baseline_value": 450.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T03:00:00",
       "metric": "ticket_refunds.refund_count",
-      "film_id": 9,
+      "film_id": 27,
       "region": "US",
       "detector": "pctchange",
       "baseline_value": 450.0,
@@ -217,7 +217,7 @@
         "action_type": "pause_campaign",
         "rationale": "Immediately pause Campaign 113 in US-DE to stop the significant financial loss, as its ROI is a highly negative -15.42, indicating a broken conversion funnel and high spend of 17290.06.",
         "params": {
-          "film_id": 203,
+          "film_id": 27,
           "region": "US",
           "campaign_id": 113,
           "pause_days": 7
@@ -231,7 +231,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Re-allocate marketing spend from 'display' to 'social' in US-DE, reinforcing the pause by directing resources away from potentially underperforming segments while Campaign 113 is inactive and its negative ROI is investigated.",
         "params": {
-          "film_id": 9,
+          "film_id": 27,
           "region": "US",
           "from_channel": "display",
           "to_channel": "social",

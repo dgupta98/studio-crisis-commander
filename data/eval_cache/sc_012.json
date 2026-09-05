@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T01:32:28",
     "metric": "ticket_refunds.refund_rate",
-    "film_id": 12,
+    "film_id": 18,
     "region": "Brazil",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T01:32:28",
       "metric": "ticket_refunds.refund_rate",
-      "film_id": 12,
+      "film_id": 18,
       "region": "Brazil",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -134,7 +134,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Negative sentiment spikes in social media for variant 2 in Brazil, with sentiment score -0.6 for 5500 mentions, indicate it is performing poorly. Swapping to variant 1, which has positive sentiment of 0.1, should mitigate the issue.",
         "params": {
-          "film_id": 12,
+          "film_id": 18,
           "region": "Brazil",
           "from_variant": "B",
           "to_variant": "A"
@@ -148,7 +148,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Users in Brazil are expressing 'confusion' and 'disappointment' specifically concerning 'character arc' and 'plot coherence' related to the film. A PR statement can directly address these specific audience concerns.",
         "params": {
-          "film_id": 12,
+          "film_id": 18,
           "region": "Brazil",
           "message_theme": "clarifying character arcs and plot coherence"
         },

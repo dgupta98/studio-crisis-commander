@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T03:00:00",
     "metric": "streaming_watch_minutes.completion_ratio",
-    "film_id": 26,
+    "film_id": 236,
     "region": "India",
     "detector": "pctchange",
     "baseline_value": 1.163265306122449,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T03:00:00",
       "metric": "streaming_watch_minutes.completion_ratio",
-      "film_id": 26,
+      "film_id": 236,
       "region": "India",
       "detector": "pctchange",
       "baseline_value": 1.163265306122449,
@@ -186,7 +186,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Redirect marketing spend from the underperforming social channel in India-DE, which contributed to a $700,000 box office deficit, to the more efficient email channel to mitigate competitor impact and improve overall revenue.",
         "params": {
-          "film_id": 26,
+          "film_id": 236,
           "region": "India",
           "from_channel": "social",
           "to_channel": "email",

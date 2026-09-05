@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T03:00:00",
     "metric": "streaming_watch_minutes.completion_ratio",
-    "film_id": 27,
+    "film_id": 4,
     "region": "Germany",
     "detector": "pctchange",
     "baseline_value": 0.5342465753424657,
@@ -12,7 +12,7 @@
     "business_impact": 0.0,
     "severity": 0.0,
     "dedup_key": "streaming_watch_minutes.completion_ratio|27|Germany|2026-08-24 03:00:00|pctchange",
-    "film_title": "Shake, Rattle & Roll: Evil Origins",
+    "film_title": "Coyote vs. Acme",
     "latency_ms": 0
   },
   "investigation": {
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T03:00:00",
       "metric": "streaming_watch_minutes.completion_ratio",
-      "film_id": 27,
+      "film_id": 4,
       "region": "Germany",
       "detector": "pctchange",
       "baseline_value": 0.5342465753424657,
@@ -29,7 +29,7 @@
       "business_impact": 0.0,
       "severity": 0.0,
       "dedup_key": "streaming_watch_minutes.completion_ratio|27|Germany|2026-08-24 03:00:00|pctchange",
-      "film_title": "Shake, Rattle & Roll: Evil Origins",
+      "film_title": "Coyote vs. Acme",
       "latency_ms": 0
     },
     "findings": [
@@ -168,7 +168,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Issue a public statement for film 101 in Germany-DE to acknowledge and address the negative audience sentiment stemming from the perceived quality issues, reinforcing our commitment to viewer satisfaction while the product team investigates.",
         "params": {
-          "film_id": 27,
+          "film_id": 4,
           "region": "Germany",
           "message_theme": "apology_quality_assurance"
         },

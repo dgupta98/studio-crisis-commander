@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-23T22:25:02",
     "metric": "social_trends.avg_virality",
-    "film_id": 5,
+    "film_id": 2,
     "region": "US",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-23T22:25:02",
       "metric": "social_trends.avg_virality",
-      "film_id": 5,
+      "film_id": 2,
       "region": "US",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -126,7 +126,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Immediately replace the underperforming Trailer the affected variant, which only achieves a 22% watch time percentage in US-DE, with the affected variant, which has proven to deliver a much higher 58% watch time.",
         "params": {
-          "film_id": 5,
+          "film_id": 2,
           "region": "US",
           "from_variant": "A",
           "to_variant": "B"
@@ -140,7 +140,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Redirect of marketing spend for the next 7 days from the 'social' channel in US-DE, which currently shows a low 20% watch time for Trailer the affected variant, to 'display' to reinforce the visibility and impact of the newly swapped trailer variant.",
         "params": {
-          "film_id": 5,
+          "film_id": 2,
           "region": "US",
           "from_channel": "social",
           "to_channel": "display",

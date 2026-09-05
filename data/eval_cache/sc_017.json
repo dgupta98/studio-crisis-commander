@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T01:44:25",
     "metric": "trailer_analytics.completion_rate",
-    "film_id": 17,
+    "film_id": 79,
     "region": "US",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T01:44:25",
       "metric": "trailer_analytics.completion_rate",
-      "film_id": 17,
+      "film_id": 79,
       "region": "US",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -130,7 +130,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "the affected variant in US-DE has a bounce rate and conversion, significantly underperforming Variant A which has a bounce rate and conversion. Swapping to Variant A should improve engagement and conversion rates.",
         "params": {
-          "film_id": 17,
+          "film_id": 79,
           "region": "US",
           "from_variant": "B",
           "to_variant": "A"
@@ -144,7 +144,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Social media sentiment in US-DE surged by negatively, citing 'misleading trailer' and 'wrong genre'. An immediate PR statement can clarify the film's genre and address audience concerns in US-DE.",
         "params": {
-          "film_id": 17,
+          "film_id": 79,
           "region": "US",
           "message_theme": "genre_clarification"
         },

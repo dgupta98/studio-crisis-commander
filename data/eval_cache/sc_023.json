@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T01:59:28",
     "metric": "campaign_performance.roi",
-    "film_id": 23,
+    "film_id": 107,
     "region": "Canada",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T01:59:28",
       "metric": "campaign_performance.roi",
-      "film_id": 23,
+      "film_id": 107,
       "region": "Canada",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -127,7 +127,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "The 'trailer_v2_action_cut' variant in Canada-DE has a significantly lower conversion rate of 0.01 compared to 'trailer_v1_story_focused' (0.05), and recent reviews indicate it is misleading. Swapping to the better performing variant should improve audience reception and conversions.",
         "params": {
-          "film_id": 23,
+          "film_id": 107,
           "region": "Canada",
           "from_variant": "A",
           "to_variant": "B"

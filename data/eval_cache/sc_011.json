@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T03:00:00",
     "metric": "ticket_refunds.refund_count",
-    "film_id": 11,
+    "film_id": 19,
     "region": "Australia",
     "detector": "pctchange",
     "baseline_value": 675.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T03:00:00",
       "metric": "ticket_refunds.refund_count",
-      "film_id": 11,
+      "film_id": 19,
       "region": "Australia",
       "detector": "pctchange",
       "baseline_value": 675.0,
@@ -155,7 +155,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Immediately swap Trailer the affected variant for the affected variant in the US region, as the affected variant's average completion rate of 0.25 is significantly lower than the expected 0.75, and social media comments highlight confusing plot and poor editing.",
         "params": {
-          "film_id": 11,
+          "film_id": 19,
           "region": "Australia",
           "from_variant": "B",
           "to_variant": "A"
@@ -169,7 +169,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Shift 50% of marketing spend from social to email in the US for 7 days to reinforce the trailer swap, preventing further wasted ad spend on channels that might promote the underperforming Trailer the affected variant.",
         "params": {
-          "film_id": 11,
+          "film_id": 19,
           "region": "Australia",
           "from_channel": "social",
           "to_channel": "email",

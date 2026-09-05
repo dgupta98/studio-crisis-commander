@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T02:00:00",
     "metric": "social_trends.avg_virality",
-    "film_id": 6,
+    "film_id": 11,
     "region": "UK",
     "detector": "zscore",
     "baseline_value": 0.01879583323049398,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T02:00:00",
       "metric": "social_trends.avg_virality",
-      "film_id": 6,
+      "film_id": 11,
       "region": "UK",
       "detector": "zscore",
       "baseline_value": 0.01879583323049398,
@@ -181,7 +181,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "The 'Kael_Spotlight' trailer variant has led to strong negative sentiment and decreased engagement in UK-DE, as indicated by 8000 negative social media mentions. Swapping it will remove the source of viewer disappointment.",
         "params": {
-          "film_id": 6,
+          "film_id": 11,
           "region": "UK",
           "from_variant": "A",
           "to_variant": "B"
@@ -195,7 +195,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Given the 8000 negative social media mentions and resulting decline in viewer engagement in UK-DE, a public relations statement is necessary. This will address the misleading campaign and clarify the secondary character's role.",
         "params": {
-          "film_id": 6,
+          "film_id": 11,
           "region": "UK",
           "message_theme": "apology_misleading_campaign_clarify_character_role"
         },

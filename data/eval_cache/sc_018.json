@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T03:00:00",
     "metric": "trailer_analytics.avg_completion_rate",
-    "film_id": 18,
+    "film_id": 61,
     "region": "India",
     "detector": "zscore",
     "baseline_value": 0.5944008653362592,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T03:00:00",
       "metric": "trailer_analytics.avg_completion_rate",
-      "film_id": 18,
+      "film_id": 61,
       "region": "India",
       "detector": "zscore",
       "baseline_value": 0.5944008653362592,
@@ -162,7 +162,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "The 'Social Media' channel's CTR in India dropped from to, while 'Search Engine Marketing' at 5.1% remains stable. Shifting spend to more stable channels like Search Engine Marketing can help reallocate budget effectively in India.",
         "params": {
-          "film_id": 18,
+          "film_id": 61,
           "region": "India",
           "from_channel": "social",
           "to_channel": "display",
@@ -178,7 +178,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Social media sentiment for 'Midnight Haunting' in India dropped from 0.7 to 0.2 due to 'annoying' ads, indicating significant public dissatisfaction. A PR statement can help mitigate brand damage and address the negative perception in India.",
         "params": {
-          "film_id": 18,
+          "film_id": 61,
           "region": "India",
           "message_theme": "acknowledgement of user feedback and commitment to improving ad experience"
         },

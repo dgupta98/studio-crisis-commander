@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-17T01:52:20",
     "metric": "trailer_analytics.completion_rate",
-    "film_id": 20,
+    "film_id": 52,
     "region": "France",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -19,7 +19,7 @@
     "detection": {
       "metric_ts": "2026-08-17T01:52:20",
       "metric": "trailer_analytics.completion_rate",
-      "film_id": 20,
+      "film_id": 52,
       "region": "France",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -133,7 +133,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "The 'Social Media' channel in France-DE shows a significantly lower conversion rate of 0.01 compared to 'Display Ads' at 0.04 for Film 789. Shifting spend should mitigate further losses.",
         "params": {
-          "film_id": 20,
+          "film_id": 52,
           "region": "France",
           "from_channel": "social",
           "to_channel": "display",
@@ -149,7 +149,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "The recent negative social media sentiment regarding Film 789 in France-DE, with keywords like 'disappointing' and 'misleading', indicates a need to address public perception. A PR statement can help manage the narrative.",
         "params": {
-          "film_id": 20,
+          "film_id": 52,
           "region": "France",
           "message_theme": "clarification_of_film_content"
         },

@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T00:00:00",
     "metric": "social_trends.avg_virality",
-    "film_id": 4,
+    "film_id": 32,
     "region": "Japan",
     "detector": "pctchange",
     "baseline_value": 0.47999998927116394,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T00:00:00",
       "metric": "social_trends.avg_virality",
-      "film_id": 4,
+      "film_id": 32,
       "region": "Japan",
       "detector": "pctchange",
       "baseline_value": 0.47999998927116394,
@@ -225,7 +225,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Issue a public relations statement in Japan-DE acknowledging audience feedback and committing to a review of 'The Galactic Odyssey', managing sentiment while product teams investigate the core content issues identified in the reviews.",
         "params": {
-          "film_id": 4,
+          "film_id": 32,
           "region": "Japan",
           "message_theme": "acknowledgement_of_feedback_and_commitment_to_review"
         },

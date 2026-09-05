@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-23T23:01:48",
     "metric": "trailer_analytics.completion_rate",
-    "film_id": 19,
+    "film_id": 34,
     "region": "Mexico",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-23T23:01:48",
       "metric": "trailer_analytics.completion_rate",
-      "film_id": 19,
+      "film_id": 34,
       "region": "Mexico",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -148,7 +148,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Issue a public relations statement in Mexico-DE to acknowledge and address the critical reception regarding film quality, once the product and editorial teams have investigated and formulated a response to the identified issues.",
         "params": {
-          "film_id": 19,
+          "film_id": 34,
           "region": "Mexico",
           "message_theme": "address concerns about film quality"
         },

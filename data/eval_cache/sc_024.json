@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-23T22:40:12",
     "metric": "campaign_performance.roi",
-    "film_id": 24,
+    "film_id": 39,
     "region": "Australia",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-23T22:40:12",
       "metric": "campaign_performance.roi",
-      "film_id": 24,
+      "film_id": 39,
       "region": "Australia",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -140,7 +140,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Prepare and issue a public relations statement to acknowledge the significant critical feedback on 'The Midnight Echo' in the GLOBAL region. This helps manage public perception and reaffirms the studio's dedication to artistic quality while a deeper content review is underway.",
         "params": {
-          "film_id": 24,
+          "film_id": 39,
           "region": "Australia",
           "message_theme": "addressing critical feedback and commitment to artistic integrity"
         },

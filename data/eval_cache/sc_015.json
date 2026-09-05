@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T03:00:00",
     "metric": "streaming_watch_minutes.completion_ratio",
-    "film_id": 15,
+    "film_id": 25,
     "region": "Germany",
     "detector": "pctchange",
     "baseline_value": 0.5520833333333334,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T03:00:00",
       "metric": "streaming_watch_minutes.completion_ratio",
-      "film_id": 15,
+      "film_id": 25,
       "region": "Germany",
       "detector": "pctchange",
       "baseline_value": 0.5520833333333334,
@@ -144,7 +144,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Switch to a proven asset. Trailer the affected variant in Germany-DE shows a significantly lower conversion rate of 0.005 compared to the affected variant's 0.015, which indicates poor performance.",
         "params": {
-          "film_id": 15,
+          "film_id": 25,
           "region": "Germany",
           "from_variant": "B",
           "to_variant": "A"
@@ -158,7 +158,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Reduce investment into channels promoting the underperforming trailer variant. The social channel has significant spend on the affected variant (50000) while yielding poor conversions, necessitating a shift away.",
         "params": {
-          "film_id": 15,
+          "film_id": 25,
           "region": "Germany",
           "from_channel": "social",
           "to_channel": "display",

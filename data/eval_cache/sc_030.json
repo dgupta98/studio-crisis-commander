@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-23T22:55:02",
     "metric": "review_scores.avg_score",
-    "film_id": 30,
+    "film_id": 125,
     "region": "France",
     "detector": "synth",
     "baseline_value": 0.0,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-23T22:55:02",
       "metric": "review_scores.avg_score",
-      "film_id": 30,
+      "film_id": 125,
       "region": "France",
       "detector": "synth",
       "baseline_value": 0.0,
@@ -117,7 +117,7 @@
         "action_type": "shift_marketing_spend",
         "rationale": "Shift marketing spend from underperforming display ads (ROI 0.5) to more effective social media (ROI 1.2) in France-DE to counter the $750,000 revenue shortfall caused by competitor impact.",
         "params": {
-          "film_id": 30,
+          "film_id": 125,
           "region": "France",
           "from_channel": "display",
           "to_channel": "social",
@@ -133,7 +133,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Address the negative social media sentiment in France-DE directly comparing 'The Emerald Symphony' unfavorably to 'Crimson Peak' to help stabilize public perception and reinforce marketing efforts.",
         "params": {
-          "film_id": 30,
+          "film_id": 125,
           "region": "France",
           "message_theme": "Reaffirm product value against competitor comparisons"
         },

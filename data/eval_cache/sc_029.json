@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-24T00:00:00",
     "metric": "audience_sentiment.avg_score",
-    "film_id": 29,
+    "film_id": 54,
     "region": "Japan",
     "detector": "pctchange",
     "baseline_value": 3.335459589958191,
@@ -20,7 +20,7 @@
     "detection": {
       "metric_ts": "2026-08-24T00:00:00",
       "metric": "audience_sentiment.avg_score",
-      "film_id": 29,
+      "film_id": 54,
       "region": "Japan",
       "detector": "pctchange",
       "baseline_value": 3.335459589958191,
@@ -144,7 +144,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Immediately replace the underperforming trailer the affected variant with the affected variant in Japan-DE, as the affected variant's completion rate is significantly lower at 0.45 compared to the affected variant's 0.70.",
         "params": {
-          "film_id": 29,
+          "film_id": 54,
           "region": "Japan",
           "from_variant": "A",
           "to_variant": "B"
@@ -158,7 +158,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Address the negative social media sentiment in Japan-DE regarding trailer A's awkward pacing and unclear plot by issuing a public statement to rebuild audience confidence.",
         "params": {
-          "film_id": 29,
+          "film_id": 54,
           "region": "Japan",
           "message_theme": "address concerns about trailer quality and plot clarity"
         },

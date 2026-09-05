@@ -3,7 +3,7 @@
   "detection": {
     "metric_ts": "2026-08-20T00:00:00",
     "metric": "box_office_revenue.revenue_usd",
-    "film_id": 14,
+    "film_id": 3,
     "region": "UK",
     "detector": "zscore",
     "baseline_value": 11166.666666666666,
@@ -12,14 +12,14 @@
     "business_impact": 0.0,
     "severity": 0.0,
     "dedup_key": "box_office_revenue.revenue_usd|14|UK|2026-08-20 00:00:00|zscore",
-    "film_title": "The Novices"
+    "film_title": "Mutiny"
   },
   "investigation": {
     "investigation_id": "f44ec8886f394dafbb80c089ed09f49e",
     "detection": {
       "metric_ts": "2026-08-20T00:00:00",
       "metric": "box_office_revenue.revenue_usd",
-      "film_id": 14,
+      "film_id": 3,
       "region": "UK",
       "detector": "zscore",
       "baseline_value": 11166.666666666666,
@@ -28,7 +28,7 @@
       "business_impact": 0.0,
       "severity": 0.0,
       "dedup_key": "box_office_revenue.revenue_usd|14|UK|2026-08-20 00:00:00|zscore",
-      "film_title": "The Novices"
+      "film_title": "Mutiny"
     },
     "findings": [
       {
@@ -132,7 +132,7 @@
         "action_type": "swap_trailer_variant",
         "rationale": "Categorical isolation shows Trailer Variant 'B' has a CTR of 0.005 in UK-DE, significantly lower than Variant 'A's 0.014. Swapping to Variant 'A' directly addresses this underperformance.",
         "params": {
-          "film_id": 14,
+          "film_id": 3,
           "region": "UK",
           "from_variant": "B",
           "to_variant": "A"
@@ -159,7 +159,7 @@
         "action_type": "issue_pr_statement",
         "rationale": "Social media sentiment in UK-DE mentions \"misleading marketing\", indicating a need to proactively address public perception. A PR statement can help mitigate brand damage.",
         "params": {
-          "film_id": 14,
+          "film_id": 3,
           "region": "UK",
           "message_theme": "addressing negative sentiment"
         },
