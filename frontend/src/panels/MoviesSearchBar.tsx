@@ -23,8 +23,8 @@ export function MoviesSearchBar() {
   return (
     <div className="relative w-full max-w-md">
       <input
-        aria-label="Search films"
-        placeholder="Search films…"
+        aria-label="Search movies"
+        placeholder="Search movies…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         className="w-full rounded-md border border-line bg-card px-3 py-1.5 text-sm placeholder:text-ink-soft focus:border-accent focus:outline-none"

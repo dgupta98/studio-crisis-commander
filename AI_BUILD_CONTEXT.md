@@ -8,7 +8,7 @@ This is the single source of truth for all build decisions.
 ## Project identity
 
 - Name: Studio Crisis Commander
-- Type: Autonomous AI operations center for film studios
+- Type: Autonomous AI operations center for movie studios
 - Hackathon: Agentic Cinema: The Blockbuster Hackathon (Google Cloud x ClickHouse track)
 - Deadline: September 7, 2026 @ 2:00 PM PT
 - Repo: github.com/[USERNAME]/studio-crisis-commander
@@ -129,7 +129,7 @@ studio-crisis-commander/
 │       ├── panels/          # AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, AmbientTelemetry
 │       ├── components/      # AppShell, TopBar, GlobalInjectModal, SignalChip, LatencyBadge, RegionFlag, MovieCard, Shelf, FeaturedHero
 │       ├── store/           # runStore, catalogStore, signalStore
-│       ├── hooks/           # useIntakeRates, useFilm, useCachedTriple, useRegion, useReducedMotion
+│       ├── hooks/           # useIntakeRates, useMovie, useCachedTriple, useRegion, useReducedMotion
 │       └── router.tsx
 ├── eval/
 │   └── harness.py

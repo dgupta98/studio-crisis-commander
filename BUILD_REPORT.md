@@ -39,15 +39,15 @@ The layer that grounds everything. Real public data provides the anchors; a gene
 
 ### Real grounding — two sources
 
-- **Catalog:** TMDB Box Office dataset (Kaggle): ~7,000–10,000 real films with actual budgets, revenue, genres, release dates, runtimes, languages. This is the seed catalog.
-- **Live signals:** TMDB REST API (live, free for non-commercial): real popularity scores, vote averages, and review text per film. These anchor the synthetic curves.
+- **Catalog:** TMDB Box Office dataset (Kaggle): ~7,000–10,000 real movies with actual budgets, revenue, genres, release dates, runtimes, languages. This is the seed catalog.
+- **Live signals:** TMDB REST API (live, free for non-commercial): real popularity scores, vote averages, and review text per movie. These anchor the synthetic curves.
 - **Compliance:** TMDB must be credited in README and Devpost (their terms). This is a data source, not an AI tool — it does NOT count against the Google-only AI restriction.
 
 ### Scale and shape (locked)
 
 | | |
 |---|---|
-| Films | 250 (from real TMDB catalog) |
+| Movies | 250 (from real TMDB catalog) |
 | Regions | 15 (NA, LATAM, UK, EU-West, EU-East, Nordics, India, SEA, Korea, Japan, China, MENA, Africa, ANZ, Brazil) |
 | Window | 120 days (pre-release hype → post-release tail) |
 | Granularity | Hourly for streaming/sentiment; daily for box office/spend (matches reality) |
@@ -181,8 +181,8 @@ The layer that decides the Design score — where strong backends most often los
 - Light, editorial, spacious — not a dark Datadog clone. It's Agentic Cinema; the UI should feel like a premium product, with one hero focal point per screen (the "Now investigating" banner reads like a film title card).
 - Signature accent color used only on the focal element; red/amber reserved strictly for crisis states so they hit when they appear.
 - Large/small typographic contrast — big tight-tracked headline numbers, small quiet labels. This is the biggest driver of a "designed" feel. Monospace for queries/IDs to keep "real system internals" credibility.
-- Filmic motion: telemetry lines ease in like a camera move, agent trace reveals with a soft stagger, numbers count rather than snap. Deliberate and cinematic, not bouncy.
-- Optional signature touch: subtle film-grain or widescreen letterbox framing on the hero banner — on-brand, low effort, memorable in the video.
+- Cinematic motion: telemetry lines ease in like a camera move, agent trace reveals with a soft stagger, numbers count rather than snap. Deliberate and cinematic, not bouncy.
+- Optional signature touch: subtle cinema-grain or widescreen letterbox framing on the hero banner — on-brand, low effort, memorable in the video.
 
 ### The eight workflows (all covered; drill-down deferred)
 
@@ -195,7 +195,7 @@ The layer that decides the Design score — where strong backends most often los
 | 5 | History + replay of past investigations | Build — light version |
 | 6 | Crisis-type picker (CGI / competitor / overspend) | Build — cheap, high-value |
 | 7 | Error / failure states | Build — non-negotiable |
-| 8 | Film/region drill-down | Deferred — stretch goal |
+| 8 | Movie/region drill-down | Deferred — stretch goal |
 
 ### The layout and the states
 

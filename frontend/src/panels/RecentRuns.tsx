@@ -41,9 +41,9 @@ export function RecentRuns() {
               <Link
                 to={`/movies/${r.film_id}`}
                 className="truncate flex-1 text-ink hover:text-accent"
-                title={r.report_headline || `Film #${r.film_id}`}
+                title={r.report_headline || `Movie #${r.film_id}`}
               >
-                {r.report_headline || `Film #${r.film_id}`}
+                {r.report_headline || `Movie #${r.film_id}`}
               </Link>
               <span className="font-mono text-[10px] uppercase text-ink-soft shrink-0">
                 {r.region}

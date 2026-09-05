@@ -72,7 +72,7 @@ ClickHouse Cloud (GCP us-east1, 50M+ rows)
 
 - `/` — Landing (particle cascade, live counters, hero, 4-agent fold, CTAs)
 - `/dashboard` — Real-time crisis workspace (intake strip, anomaly feed, investigation/recommendation/approval tabs, persistent agent trace, telemetry)
-- `/movies` — Netflix-style shelves (featured cached investigations, trending in region, recent detections, social storms, streaming climbers, all films)
+- `/movies` — Netflix-style shelves (featured cached investigations, trending in region, recent detections, social storms, streaming climbers, all movies)
 - `/movies/:id` — Movie detail (hero, latest investigation, persistent agent trace, past runs, ambient telemetry)
 - `/audit` — Historical crisis log
 - `/settings` — Config
@@ -121,12 +121,12 @@ studio-crisis-commander/
 │       ├── panels/                # AgentTrace, AnomalyFeed, RecommendationPanel, ApprovalGate, TelemetryStrip, IntakeStrip, MovieHero, LatestInvestigation, RunTimeline, AmbientTelemetry, ...
 │       ├── components/            # AppShell, TopBar, GlobalInjectModal, SignalChip, LatencyBadge, RegionFlag, MovieCard, Shelf, FeaturedHero, PanelStateWrapper, primitives
 │       ├── store/                 # runStore, catalogStore, signalStore (Zustand)
-│       ├── hooks/                 # useIntakeRates, useFilm, useCachedTriple, useRegion, useReducedMotion
+│       ├── hooks/                 # useIntakeRates, useMovie, useCachedTriple, useRegion, useReducedMotion
 │       ├── api/                   # contracts, queries (React Query), openStream
 │       ├── router.tsx             # React Router 6 routes
 │       └── theme/tokens.ts        # signal-family color tokens
 ├── data/
-│   └── eval_cache/                # pre-run investigation triples for featured films
+│   └── eval_cache/                # pre-run investigation triples for featured movies
 ├── scripts/                       # deploy_{frontend,backend,all}.sh, eval_{live,replay,record}.py, lighthouse.sh, preflight.sh, ...
 ├── docs/                          # devpost.md, video_beats.md, superpowers/{specs,plans}
 ├── .env.example
