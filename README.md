@@ -77,17 +77,6 @@ ClickHouse Cloud (GCP us-east1, 50M+ rows)
 - `/audit` — Historical crisis log
 - `/settings` — Config
 
-## Screenshots
-
-| Route | Preview |
-|---|---|
-| `/` | ![Landing](docs/screenshots/landing.png) |
-| `/dashboard` | ![Dashboard](docs/screenshots/dashboard.png) |
-| `/movies` | ![Movies](docs/screenshots/movies.png) |
-| `/movies/:id` | ![Movie Detail](docs/screenshots/movie-detail.png) |
-
----
-
 ## Tech stack
 
 | Layer | Technology |

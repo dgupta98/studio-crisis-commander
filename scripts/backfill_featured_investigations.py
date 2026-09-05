@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,43 +90,95 @@ def _top_regions_per_film(film_ids: list[int], k: int) -> dict[int, list[str]]:
 
 
 def _clone_and_reattribute(
-    payload: dict, film_id: int, region: str,
+    payload: dict, film_id: int, region: str, target_title: str,
 ) -> tuple[InvestigationResult, DecisionResult, ExecutiveReport]:
-    """Deep-copy the scenario triple, then rewrite film_id/region/IDs to
-    match the target so the row lands on the right (film, region) row."""
+    """Deep-copy the scenario triple, then rewrite film_id/region/IDs and
+    substitute the source scenario's film title + region markers in report
+    prose so headline / tldr / SQL provenance all match the target row."""
     inv = InvestigationResult.model_validate(payload["investigation"])
     dec = DecisionResult.model_validate(payload["decision"])
     rep = ExecutiveReport.model_validate(payload["report"])
 
-    # Rebuild IDs so ReplacingMergeTree treats this as a fresh row.
+    src = payload.get("detection") or {}
+    src_film_id = int(src.get("film_id", 0) or 0)
+    src_region = str(src.get("region", "") or "")
+    src_title = str(src.get("film_title", "") or "")
+
     inv.investigation_id = uuid4().hex
     dec.decision_id = uuid4().hex
     dec.investigation_id = inv.investigation_id
 
-    # Remap detection identity so /latest-investigation?region=X finds it.
     d = inv.detection
     d.film_id = int(film_id)
     d.region = str(region)
+    if target_title:
+        d.film_title = target_title
     d.dedup_key = (
         f"{d.metric}|{d.film_id}|{d.region}|"
         f"{d.metric_ts.strftime('%Y-%m-%d %H:%M:%S')}|{d.detector}"
     )
 
-    # Action params typically encode film_id/region — rewrite those too so the
-    # visible copy in the panel matches the region the user selected.
     for a in dec.actions:
         if "film_id" in a.params:
             a.params["film_id"] = int(film_id)
         if "region" in a.params:
             a.params["region"] = str(region)
 
-    # Report headline/tldr may name the original region — leave those alone;
-    # the panel already labels the row by detection.region, and rewriting
-    # freeform prose risks garbling references to specific numbers.
+    def _sub(s: str) -> str:
+        """Swap source title/region/film_id references for the target's.
+        Best-effort string substitution — the source scenario baked these
+        into its narrative when the triple was recorded, and we want the
+        cloned row to read like it was written for THIS film × region."""
+        if not s:
+            return s
+        if src_title and target_title and src_title != target_title:
+            s = s.replace(src_title, target_title)
+        if src_region and src_region != region:
+            # Word-boundary swap avoids clobbering substrings inside SQL
+            # identifiers or other regions that happen to include this
+            # as a prefix (e.g. "MENA" inside "MENAplus" doesn't exist,
+            # but the boundary check keeps us safe from future taxonomies).
+            s = re.sub(rf"\b{re.escape(src_region)}\b", region, s)
+        # Rewrite EVERY `film_id = <N>` (equality only — not IN, not JOIN
+        # subclauses). The rekey didn't update embedded SQL in
+        # source_query/impact_sql, so we can't rely on src_film_id here:
+        # the number in the SQL is the pre-rekey film id, which the scenario
+        # payload no longer carries. Bulk-swap all single-film references
+        # to the target — good enough for demo provenance popovers.
+        if film_id:
+            s = re.sub(r"\bfilm_id\s*=\s*\d+\b", f"film_id = {film_id}", s)
+        return s
+
+    rep.headline = _sub(rep.headline)
+    rep.tldr = _sub(rep.tldr)
+    rep.recommended_actions_prose = _sub(rep.recommended_actions_prose)
+    rep.risks_and_caveats = _sub(rep.risks_and_caveats)
+    for kf in rep.key_figures:
+        kf.label = _sub(kf.label)
+        kf.value = _sub(kf.value)
+        kf.source_query = _sub(kf.source_query)
+
+    # Action rationale + impact SQL likely reference the source film/region too.
+    for a in dec.actions:
+        a.rationale = _sub(a.rationale)
+        a.impact_sql = _sub(a.impact_sql)
+
     rep.report_id = uuid4().hex
     rep.decision_id = dec.decision_id
 
     return inv, dec, rep
+
+
+def _titles_for_films(film_ids: list[int]) -> dict[int, str]:
+    """film_id -> title for the target films (needed for prose substitution)."""
+    if not film_ids:
+        return {}
+    ids_list = ",".join(str(int(x)) for x in film_ids)
+    with client() as c:
+        rows = list(c.query(
+            f"SELECT film_id, title FROM films WHERE film_id IN ({ids_list})"
+        ).result_rows)
+    return {int(r[0]): str(r[1]) for r in rows}
 
 
 def _pick_source_scenario(
@@ -148,6 +201,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--top-k", type=int, default=5)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="Insert fresh rows even for (film, region) pairs that "
+                         "already have audit rows. ReplacingMergeTree keeps the "
+                         "old rows on disk, but /latest-investigation orders "
+                         "by updated_at DESC so the newest wins.")
     args = ap.parse_args()
 
     scenarios = _load_scenarios()
@@ -158,7 +216,8 @@ def main() -> None:
     print(f"Loaded {len(scenarios)} scenarios covering film_ids {featured_ids[:5]}..{featured_ids[-1]}")
 
     top_by_film = _top_regions_per_film(featured_ids, args.top_k)
-    have_pairs = _existing_audit_pairs()
+    have_pairs = set() if args.overwrite else _existing_audit_pairs()
+    titles = _titles_for_films(featured_ids)
 
     plan: list[tuple[int, str]] = []
     for fid in featured_ids:
@@ -175,8 +234,10 @@ def main() -> None:
     print(f"  featured films: {len(featured_ids)}")
     print(f"  average target regions per film: "
           f"{sum(len(top_by_film.get(f, [])) for f in featured_ids) / len(featured_ids):.1f}")
-    print(f"  already present in decision_audit: "
-          f"{sum(1 for f in featured_ids for r in top_by_film.get(f, []) if (f, r) in have_pairs)}")
+    if not args.overwrite:
+        print(f"  already present in decision_audit (skipped): {sum(1 for f in featured_ids for r in top_by_film.get(f, []) if (f, r) in have_pairs)}")
+    else:
+        print(f"  --overwrite mode: existing rows will be superseded by newer inserts")
 
     if args.dry_run:
         print("\n--dry-run: exiting without inserts.")
@@ -193,7 +254,9 @@ def main() -> None:
     for fid, region in plan:
         try:
             payload = _pick_source_scenario(fid, region, scenarios, featured_ids)
-            inv, dec, rep = _clone_and_reattribute(payload, fid, region)
+            inv, dec, rep = _clone_and_reattribute(
+                payload, fid, region, titles.get(fid, ""),
+            )
             audit_insert(dec, inv)
             audit_attach_report(dec.decision_id, rep)
             ok += 1

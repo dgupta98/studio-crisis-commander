@@ -31,6 +31,17 @@ export default function MovieDetailRoute() {
     pickRegion(isoToDashboardRegion(detectIsoFromLocale()))
   }, [selectedRegion, pickRegion])
 
+  // Align runStore.selectedFilmId to the route's film id so useScopeMatches()
+  // (which gates the right-column Investigation / Recommendation / Approval
+  // panels) doesn't blank them because of a stale value left over from a
+  // prior Dashboard visit. Preserves selectedRegion — unlike pickFilm(id),
+  // which resets region.
+  useEffect(() => {
+    if (!id) return
+    if (useRunStore.getState().selectedFilmId === id) return
+    useRunStore.setState({ selectedFilmId: id })
+  }, [id])
+
   // Prefer the bundled eval_cache triple (instant, richest fields).
   // Fall back to the last completed audit row for this film so the panel
   // never renders the "no run yet" empty state when there is history.
