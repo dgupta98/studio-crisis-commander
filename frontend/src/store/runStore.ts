@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type {
   SseEvent, DetectionRow, Finding, DecisionResult, ExecutiveReport,
   ApprovalStatus, AuditRow, MetricsResponse, CrisisType,
+  SignalName, SignalFinding, KeyFigure,
 } from '@/api/contracts'
 import { apiGet, apiPost } from '@/api/client'
 import { openStream } from '@/api/sse'
@@ -470,12 +471,17 @@ export const useRunStore = create<RunStore>()(
       push('pipeline.completed', { run_id: runId, latency_ms: 0, mode }),
     ]
 
+    // Audit rows don't persist investigation findings (only decision +
+    // report). Synthesize a findings list from report.key_figures so the
+    // Investigation tab shows the same SQL + narrative that the report
+    // popovers already do — one card per unique signal family, in the
+    // canonical order sub-agents run.
     set({
       runId: data.scenario_id,
       currentRunFilmId: data.detection.film_id,
       events,
       detection: detectionRow,
-      findings: [],
+      findings: _findingsFromReport(data.report),
       decision: data.agent_run,
       report: data.report,
       approvalStatus: data.approval_status,
@@ -782,6 +788,35 @@ export const useRunStore = create<RunStore>()(
  * Returns true when there IS no explicit scope (dashboard first-mount
  * with no selection yet) so existing panels keep rendering.
  */
+// Canonical sub-agent order — used to sort synthesized findings so the
+// Investigation tab reads in the same sequence as a live pipeline.
+const _SIGNAL_ORDER: SignalName[] = [
+  'numeric_context', 'text_reason', 'categorical_isolation', 'temporal_context',
+]
+
+function _findingsFromReport(report: ExecutiveReport | null): SignalFinding[] {
+  if (!report?.key_figures?.length) return []
+  const bySignal = new Map<SignalName, SignalFinding>()
+  for (const kf of report.key_figures as KeyFigure[]) {
+    const sig = kf.source?.signal
+    // 'decision_impact' isn't a sub-agent — skip it, its provenance shows up
+    // in the Recommendation panel next to the action instead.
+    if (!sig || sig === 'decision_impact') continue
+    if (bySignal.has(sig)) continue
+    bySignal.set(sig, {
+      signal: sig,
+      sql: kf.source_query ?? '',
+      columns: [],
+      rows: [],
+      narrative: `${kf.label}: ${kf.value}`,
+      latency_ms: 0,
+    })
+  }
+  return _SIGNAL_ORDER
+    .map((s) => bySignal.get(s))
+    .filter((f): f is SignalFinding => f !== undefined)
+}
+
 export function useScopeMatches(): boolean {
   return useRunStore((s) => {
     if (s.selectedFilmId === null) return true

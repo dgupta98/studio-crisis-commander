@@ -47,7 +47,7 @@ export function LiveCounter() {
               </span>
               {suffix ? (
                 <span
-                  className="ml-[0.06em] inline-block translate-y-[-0.18em] text-[0.55em] font-semibold leading-none tracking-[0.04em]"
+                  className="ml-[0.08em] inline-block translate-y-[-0.28em] text-[0.72em] font-bold leading-none tracking-[0.02em] text-ink"
                   aria-label={suffix}
                 >
                   {suffix}
