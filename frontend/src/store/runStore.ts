@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import type {
   SseEvent, DetectionRow, Finding, DecisionResult, ExecutiveReport,
   ApprovalStatus, AuditRow, MetricsResponse, CrisisType,
-  SignalName, SignalFinding, KeyFigure,
+  SignalName, SignalFinding, KeyFigure, InvestigationResult,
 } from '@/api/contracts'
 import { apiGet, apiPost } from '@/api/client'
 import { openStream } from '@/api/sse'
@@ -36,6 +36,11 @@ export interface PastRunDetail {
     magnitude: number | null
     latency_ms: number | null
   }
+  // Full investigation payload (findings + hypothesis) when the audit row
+  // has it persisted. Older rows or ones written before the investigation_json
+  // column existed leave this null; the runStore falls back to synthesizing
+  // findings from report.key_figures in that case.
+  investigation: InvestigationResult | null
   agent_run: DecisionResult
   report: ExecutiveReport | null
   approval_status: ApprovalStatus
@@ -471,17 +476,20 @@ export const useRunStore = create<RunStore>()(
       push('pipeline.completed', { run_id: runId, latency_ms: 0, mode }),
     ]
 
-    // Audit rows don't persist investigation findings (only decision +
-    // report). Synthesize a findings list from report.key_figures so the
-    // Investigation tab shows the same SQL + narrative that the report
-    // popovers already do — one card per unique signal family, in the
-    // canonical order sub-agents run.
+    // Prefer the persisted investigation.findings when the audit row has
+    // them (post-investigation_json column). Fall back to synthesizing from
+    // report.key_figures for older rows that were written before the column
+    // existed — same SQL + label:value narrative, one card per signal family.
+    const persistedFindings = data.investigation?.findings ?? null
+    const findings: Finding[] = (persistedFindings && persistedFindings.length > 0)
+      ? persistedFindings
+      : _findingsFromReport(data.report)
     set({
       runId: data.scenario_id,
       currentRunFilmId: data.detection.film_id,
       events,
       detection: detectionRow,
-      findings: _findingsFromReport(data.report),
+      findings,
       decision: data.agent_run,
       report: data.report,
       approvalStatus: data.approval_status,

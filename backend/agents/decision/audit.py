@@ -52,6 +52,11 @@ class AuditRow(BaseModel):
     threshold_usd: float
     agent_run: DecisionResult
     report: Any = None                       # ExecutiveReport | None (lazy)
+    # Full InvestigationResult (findings + hypothesis) persisted so
+    # past-run replays and backfilled rows can render the Investigation
+    # panel with real narratives instead of an empty stub. Stored in
+    # decision_audit.investigation_json (see audit_schema.sql).
+    investigation: InvestigationResult | None = None
     approval_status: ApprovalStatus
     approver: str = ""
     approval_note: str = ""
@@ -149,6 +154,10 @@ def audit_insert(decision: DecisionResult, inv: InvestigationResult) -> AuditRow
     approval_status is derived from decision.status:
       - auto_executed  -> approval_status='auto_executed'   (no human needed)
       - pending_approval -> approval_status='pending_approval'
+
+    Persists the full InvestigationResult (findings + hypothesis) alongside
+    the decision so past-run replays and backfilled rows can render the
+    Investigation panel with real narratives.
     """
     now = datetime.now(timezone.utc)
     approval_status: ApprovalStatus = (
@@ -165,6 +174,7 @@ def audit_insert(decision: DecisionResult, inv: InvestigationResult) -> AuditRow
         threshold_usd=decision.threshold_usd,
         agent_run=decision,
         report=None,
+        investigation=inv,
         approval_status=approval_status,
         approver="",
         approval_note="",
@@ -227,7 +237,8 @@ def list_recent_audit(limit: int = 50) -> list[AuditRow]:
         "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
         "region, actions_json, status, threshold_usd, agent_run_json, "
         "report_json, approval_status, approver, approval_note, "
-        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "toString(approved_at), toString(created_at), toString(updated_at), "
+        "investigation_json "
         "FROM decision_audit FINAL "
         f"ORDER BY updated_at DESC LIMIT {int(limit)}"
     )
@@ -241,7 +252,8 @@ def list_recent_audit_for_film(film_id: int, limit: int = 10) -> list[AuditRow]:
         "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
         "region, actions_json, status, threshold_usd, agent_run_json, "
         "report_json, approval_status, approver, approval_note, "
-        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "toString(approved_at), toString(created_at), toString(updated_at), "
+        "investigation_json "
         "FROM decision_audit FINAL "
         f"WHERE film_id = {int(film_id)} "
         f"ORDER BY updated_at DESC LIMIT {int(limit)}"
@@ -262,7 +274,8 @@ def list_recent_audit_for_film_region(
         "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
         "region, actions_json, status, threshold_usd, agent_run_json, "
         "report_json, approval_status, approver, approval_note, "
-        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "toString(approved_at), toString(created_at), toString(updated_at), "
+        "investigation_json "
         "FROM decision_audit FINAL "
         f"WHERE film_id = {int(film_id)} AND region = '{safe_region}' "
         f"ORDER BY updated_at DESC LIMIT {int(limit)}"
@@ -276,7 +289,8 @@ def get_audit(decision_id: str) -> AuditRow | None:
         "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
         "region, actions_json, status, threshold_usd, agent_run_json, "
         "report_json, approval_status, approver, approval_note, "
-        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "toString(approved_at), toString(created_at), toString(updated_at), "
+        "investigation_json "
         "FROM decision_audit FINAL "
         f"WHERE decision_id = '{_sql_escape(decision_id)}' LIMIT 1"
     )
@@ -292,7 +306,8 @@ async def async_get_audit(decision_id: str) -> AuditRow | None:
         "SELECT decision_id, investigation_id, detection_dedup_key, film_id, "
         "region, actions_json, status, threshold_usd, agent_run_json, "
         "report_json, approval_status, approver, approval_note, "
-        "toString(approved_at), toString(created_at), toString(updated_at) "
+        "toString(approved_at), toString(created_at), toString(updated_at), "
+        "investigation_json "
         "FROM decision_audit FINAL "
         f"WHERE decision_id = '{_sql_escape(decision_id)}' LIMIT 1"
     )
@@ -335,6 +350,9 @@ def _insert_row(row: AuditRow) -> None:
     report_json = ""
     if row.report is not None:
         report_json = _sql_escape(row.report.model_dump_json())
+    investigation_json = ""
+    if row.investigation is not None:
+        investigation_json = _sql_escape(row.investigation.model_dump_json())
     approved_at_sql = (
         "NULL" if row.approved_at is None
         else f"toDateTime('{row.approved_at.strftime('%Y-%m-%d %H:%M:%S')}')"
@@ -343,8 +361,8 @@ def _insert_row(row: AuditRow) -> None:
         "INSERT INTO decision_audit "
         "(decision_id, investigation_id, detection_dedup_key, film_id, region, "
         " actions_json, status, threshold_usd, agent_run_json, report_json, "
-        " approval_status, approver, approval_note, approved_at, "
-        " created_at, updated_at) VALUES "
+        " investigation_json, approval_status, approver, approval_note, "
+        " approved_at, created_at, updated_at) VALUES "
         f"('{_sql_escape(row.decision_id)}',"
         f" '{_sql_escape(row.investigation_id)}',"
         f" '{_sql_escape(row.detection_dedup_key)}',"
@@ -355,6 +373,7 @@ def _insert_row(row: AuditRow) -> None:
         f" {float(row.threshold_usd)},"
         f" '{agent_run_json}',"
         f" '{report_json}',"
+        f" '{investigation_json}',"
         f" '{_sql_escape(row.approval_status)}',"
         f" '{_sql_escape(row.approver)}',"
         f" '{_sql_escape(row.approval_note)}',"
@@ -376,7 +395,12 @@ def _row_to_audit(cols: list[Any]) -> AuditRow:
         actions_json, status, threshold_usd, agent_run_json, report_json,
         approval_status, approver, approval_note,
         approved_at_str, created_at_str, updated_at_str,
+        # investigation_json is appended at the tail of every SELECT so old
+        # readers that don't ask for it still work. Callers that use the newer
+        # column list will pass a 17th element.
+        *rest,
     ) = cols
+    investigation_json = rest[0] if rest else ""
     ReportCls = _report_model_class()
     if report_json and ReportCls is not None:
         report = ReportCls.model_validate_json(report_json)
@@ -385,6 +409,13 @@ def _row_to_audit(cols: list[Any]) -> AuditRow:
         report = json.loads(report_json)
     else:
         report = None
+    investigation: InvestigationResult | None = None
+    if investigation_json:
+        try:
+            investigation = InvestigationResult.model_validate_json(investigation_json)
+        except Exception:  # noqa: BLE001
+            # Old rows may have empty or malformed payloads; degrade gracefully.
+            investigation = None
     return AuditRow(
         decision_id=decision_id,
         investigation_id=investigation_id,
@@ -396,6 +427,7 @@ def _row_to_audit(cols: list[Any]) -> AuditRow:
         threshold_usd=float(threshold_usd),
         agent_run=DecisionResult.model_validate_json(agent_run_json),
         report=report,
+        investigation=investigation,
         approval_status=approval_status,
         approver=approver,
         approval_note=approval_note,

@@ -163,6 +163,16 @@ def _clone_and_reattribute(
         a.rationale = _sub(a.rationale)
         a.impact_sql = _sub(a.impact_sql)
 
+    # Investigation findings — now persisted to the audit row via the
+    # investigation_json column. Substitute the same markers so the panel
+    # reads the target film/region in narratives and SQL popovers.
+    for f in inv.findings:
+        f.sql = _sub(f.sql)
+        f.narrative = _sub(f.narrative)
+    hyp = inv.hypothesis
+    hyp.primary_cause = _sub(hyp.primary_cause)
+    hyp.contributing_factors = [_sub(x) for x in hyp.contributing_factors]
+
     rep.report_id = uuid4().hex
     rep.decision_id = dec.decision_id
 

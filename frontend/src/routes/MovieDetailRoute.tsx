@@ -7,6 +7,7 @@ import { useRunStore, type PastRunDetail } from '@/store/runStore'
 import { queryClient } from '@/api/queryClient'
 import { queries } from '@/api/queries'
 import { detectIsoFromLocale, isoToDashboardRegion, regionLabel, REGIONS } from '@/lib/regions'
+import { ThemedSelect } from '@/components/ThemedSelect'
 import { MovieHero } from '../panels/MovieHero'
 import { LatestInvestigation } from '../panels/LatestInvestigation'
 import { PersistentAgentTrace } from '../panels/PersistentAgentTrace'
@@ -159,23 +160,24 @@ export default function MovieDetailRoute() {
             <span className="font-mono text-[10px] uppercase tracking-widest text-ink-soft">
               Investigation scope
             </span>
-            <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              Region
-              {/* Inline picker so users can switch region context without
-                  hunting for the Dashboard heat map. Uses the canonical
-                  15-region list from lib/regions.ts. */}
-              <select
-                value={selectedRegion ?? ''}
-                onChange={(e) => pickRegion(e.target.value || null)}
-                className="rounded border border-line bg-card-alt px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-ink hover:border-accent focus:outline-none focus:border-accent"
-                aria-label="Investigation region"
-              >
-                {REGIONS.map((r) => (
-                  <option key={r} value={r}>{regionLabel(r)}</option>
-                ))}
-              </select>
-            </label>
+              <span>Region</span>
+              {/* ThemedSelect renders its own listbox so the dropdown stays
+                  on the dark surface — the native <select> popup on macOS
+                  breaks the theme with a pale Aqua panel. Same component
+                  as the Inject modal for visual parity across surfaces. */}
+              <div className="min-w-[180px]">
+                <ThemedSelect<string>
+                  value={selectedRegion ?? ''}
+                  onChange={(v) => pickRegion(v || null)}
+                  options={REGIONS.map((r) => ({ value: r, label: regionLabel(r) }))}
+                  ariaLabel="Investigation region"
+                  buttonClass="text-[10px] uppercase tracking-widest py-1"
+                  listClass="text-[10px] uppercase tracking-widest"
+                />
+              </div>
+            </div>
           </div>
 
           <LatestInvestigation triple={investigation} sample={isSample} />

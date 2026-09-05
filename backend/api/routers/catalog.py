@@ -66,7 +66,10 @@ async def film_latest_investigation(
             "magnitude": _fmt_float(meta.get("magnitude")),
             "latency_ms": None,
         },
-        "investigation": None,
+        "investigation": (
+            a.investigation.model_dump(mode="json")
+            if getattr(a, "investigation", None) is not None else None
+        ),
         "decision": {
             "decision_id": a.decision_id,
             "status": a.approval_status,
@@ -107,7 +110,10 @@ async def film_run_detail(film_id: int, decision_id: str):
             "magnitude": _fmt_float(meta.get("magnitude")),
             "latency_ms": None,
         },
-        "investigation": None,
+        "investigation": (
+            row.investigation.model_dump(mode="json")
+            if getattr(row, "investigation", None) is not None else None
+        ),
         "decision": {
             "decision_id": row.decision_id,
             "status": row.approval_status,
