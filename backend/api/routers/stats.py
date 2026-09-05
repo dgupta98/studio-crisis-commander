@@ -43,9 +43,15 @@ def _summary_sync() -> dict[str, int | float]:
     with client() as c:
         films = int(_scalar(c, "SELECT count() FROM films"))
         regions = int(_scalar(c, "SELECT count(DISTINCT region) FROM box_office_revenue"))
+        # "Days history" = days since our earliest tracked film released.
+        # box_office_revenue.date is bounded to the generator's 120-day window,
+        # which reads as 119 days on the landing counter and undersells the
+        # catalog's actual temporal span. films.release_date covers years,
+        # which matches how a viewer parses "history" (multi-year catalog,
+        # not a rolling 4-month window).
         days = int(_scalar(
             c,
-            "SELECT dateDiff('day', min(date), max(date)) FROM box_office_revenue",
+            "SELECT dateDiff('day', min(release_date), today()) FROM films",
         ))
         rows_total = 0
         for table in _ROWSCAN_TABLES:
