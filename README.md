@@ -25,7 +25,7 @@ A trailer launches worldwide. ClickHouse detects sentiment dropping 28%, EU enga
 
 - **Frontend:** https://scc-frontend-845114229642.us-east1.run.app
 - **Backend:** https://scc-api-845114229642.us-east1.run.app
-- **Video (3 min):** https://youtu.be/<id>
+- **Video (3 min):** https://youtu.be/oKbhqmfthMI
 
 Both services are Cloud Run scale-to-zero; a Cloud Scheduler job pings the backend `/health` every 4 min to keep judging cold-starts off the demo. The dashboard includes a randomized **Inject Crisis** button that introduces an unrehearsed anomaly — the pipeline detects, investigates, and recommends without any pre-scripted scenario.
 

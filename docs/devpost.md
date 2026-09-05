@@ -13,7 +13,7 @@ Detecting data as it lands. Four agents turn raw signal ingest into an executive
 ## Live demo
 - Frontend: https://scc-frontend-845114229642.us-east1.run.app
 - Backend: https://scc-api-845114229642.us-east1.run.app
-- Video (3 min): https://youtu.be/<id>
+- Video (3 min): https://youtu.be/oKbhqmfthMI
 
 ## Track
 ClickHouse — 50M+ rows, streaming ingest, MAD-Z detection.

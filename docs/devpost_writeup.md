@@ -3,7 +3,7 @@
 > _An agentic newsroom for the 2 a.m. crisis DM._
 > Movie-first. Region-aware. Every dollar figure traceable to the SQL that produced it.
 
-**Live:** [scc-frontend.us-east1.run.app](https://scc-frontend-845114229642.us-east1.run.app) · **Code:** [github.com/dgupta98/studio-crisis-commander](https://github.com/dgupta98/studio-crisis-commander) · **Video:** _(link before submit)_
+**Live:** [scc-frontend.us-east1.run.app](https://scc-frontend-845114229642.us-east1.run.app) · **Code:** [github.com/dgupta98/studio-crisis-commander](https://github.com/dgupta98/studio-crisis-commander) · **Video:** [youtu.be/oKbhqmfthMI](https://youtu.be/oKbhqmfthMI)
 
 ---
 
