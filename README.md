@@ -214,19 +214,6 @@ Licensed MIT — see `LICENSE`.
 
 ---
 
-## Submission Ceremony (Sep 6)
-
-1. `bash scripts/preflight.sh` — all 9 gates green.
-2. Final live eval → copy `N/30` and date into README `## Accuracy`.
-3. YouTube video: unlisted → public.
-4. Devpost: submit with ClickHouse track selected.
-5. `git tag v1.0-submitted && git push --tags`.
-6. Screenshot Devpost confirmation → `docs/submission_confirmation.png`.
-
-See `docs/submission_checklist.md` for the full manual gates checklist.
-
----
-
 ## License
 
 MIT - see LICENSE
